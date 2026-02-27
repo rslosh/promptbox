@@ -1,18 +1,98 @@
 "use client";
 
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { getImageColor, getImageLabel } from "@/lib/constants/colors";
 import type { PromptComponent } from "@/lib/supabase/types";
-import { X } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 
 interface PromptComponentsProps {
   components: PromptComponent[];
   onRemoveComponent: (id: string) => void;
+  onInsertToken?: (text: string) => void;
+}
+
+function ImageGroup({
+  imageIndex,
+  components,
+  onInsertToken,
+}: {
+  imageIndex: number;
+  components: PromptComponent[];
+  onInsertToken?: (text: string) => void;
+}) {
+  const [open, setOpen] = useState(true);
+  const color = getImageColor(imageIndex);
+  const label = getImageLabel(imageIndex);
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+      {/* Group header — click to collapse */}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-gray-50"
+      >
+        {open ? (
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+        ) : (
+          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+        )}
+        <div
+          className="flex h-5 w-10 shrink-0 items-center justify-center rounded text-[9px] font-bold text-white"
+          style={{ backgroundColor: color.hex }}
+        >
+          {label}
+        </div>
+        <span className="text-[10px] font-medium text-gray-500">
+          {components.length} field{components.length !== 1 ? "s" : ""}
+        </span>
+      </button>
+
+      {/* Fields */}
+      {open && (
+        <div className="border-t border-gray-50 divide-y divide-gray-50">
+          {components.map((component) => (
+            <button
+              key={component.id}
+              onClick={() => onInsertToken?.(component.value)}
+              disabled={!onInsertToken}
+              title={onInsertToken ? `Insert: ${component.value}` : undefined}
+              className={cn(
+                "group flex w-full items-start gap-2 px-3 py-2 text-left transition-colors",
+                onInsertToken
+                  ? "cursor-pointer hover:bg-[#f2ff59]/20"
+                  : "cursor-default"
+              )}
+            >
+              {/* Field type badge */}
+              <span
+                className="mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold text-white"
+                style={{ backgroundColor: color.hex }}
+              >
+                {component.type}
+              </span>
+
+              {/* Value */}
+              <p className="flex-1 text-[10px] leading-relaxed text-gray-600 line-clamp-3">
+                {component.value}
+              </p>
+
+              {/* Insert affordance */}
+              {onInsertToken && (
+                <Plus className="mt-0.5 h-3 w-3 shrink-0 text-gray-300 opacity-0 transition-opacity group-hover:opacity-100" />
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function PromptComponents({
   components,
-  onRemoveComponent,
+  onRemoveComponent: _onRemoveComponent,
+  onInsertToken,
 }: PromptComponentsProps) {
   const groupedComponents = components.reduce(
     (acc, component) => {
@@ -32,7 +112,7 @@ export function PromptComponents({
     <div>
       <div className="mb-3 flex items-center justify-between">
         <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-          Prompt Components
+          Image Fields
         </p>
         {components.length > 0 && (
           <span className="text-[10px] text-gray-400">{components.length} fields</span>
@@ -40,61 +120,26 @@ export function PromptComponents({
       </div>
 
       {components.length > 0 ? (
-        <div className="space-y-3">
-          {imageIndices.map((imageIndex) => {
-            const color = getImageColor(imageIndex);
-            const label = getImageLabel(imageIndex);
-            const imageComponents = groupedComponents[imageIndex];
-
-            return (
-              <div key={imageIndex} className="space-y-1">
-                {/* Image header */}
-                <div className="flex items-center gap-2 px-1 py-1">
-                  <div
-                    className="flex h-5 w-10 items-center justify-center rounded text-[9px] font-bold text-white"
-                    style={{ backgroundColor: color.hex }}
-                  >
-                    {label}
-                  </div>
-                  <span className="text-[10px] font-medium text-gray-500">
-                    {imageComponents.length} component{imageComponents.length !== 1 ? "s" : ""}
-                  </span>
-                </div>
-
-                {/* Components */}
-                <div className="space-y-1 pl-1">
-                  {imageComponents.map((component) => (
-                    <div
-                      key={component.id}
-                      className="group flex items-start gap-2 rounded-lg border border-gray-100 bg-white py-1.5 pl-2.5 pr-1.5 shadow-sm transition-colors hover:border-gray-200"
-                    >
-                      <span
-                        className="mt-px shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold text-white"
-                        style={{ backgroundColor: color.hex }}
-                      >
-                        {component.type}
-                      </span>
-                      <p className="line-clamp-2 flex-1 text-[10px] leading-relaxed text-gray-600">
-                        {component.value}
-                      </p>
-                      <button
-                        onClick={() => onRemoveComponent(component.id)}
-                        className="mt-0.5 shrink-0 rounded p-0.5 opacity-0 transition-all hover:bg-red-50 group-hover:opacity-100"
-                      >
-                        <X className="h-2.5 w-2.5 text-gray-400 hover:text-red-500" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+        <div className="space-y-2">
+          {imageIndices.map((imageIndex) => (
+            <ImageGroup
+              key={imageIndex}
+              imageIndex={imageIndex}
+              components={groupedComponents[imageIndex]}
+              onInsertToken={onInsertToken}
+            />
+          ))}
+          {onInsertToken && (
+            <p className="px-1 text-[10px] text-gray-300">
+              Click any field to insert it at the cursor
+            </p>
+          )}
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-6 text-center">
-          <p className="text-xs text-gray-400">Select images to extract prompt components</p>
+          <p className="text-xs text-gray-400">Select images to see their fields</p>
           <p className="mt-1 text-[10px] text-gray-300">
-            Each image's JSON fields will appear here
+            Click fields to insert them into your prompt
           </p>
         </div>
       )}

@@ -19,7 +19,7 @@ import { ImageSelectionModal } from "@/components/playground/image-selection-mod
 import { RemixList } from "@/components/playground/remix-list";
 import { RemixControls } from "@/components/playground/remix-controls";
 import { LeftPanel } from "@/components/playground/left-panel";
-import { FloatingBar, type MentionImage } from "@/components/playground/floating-bar";
+import { FloatingBar, type MentionImage, type FloatingBarHandle } from "@/components/playground/floating-bar";
 import { nodeTypes } from "@/components/playground/flow";
 import { usePromptTree } from "@/hooks/use-prompt-tree";
 import { getImageNodePositions } from "@/lib/playground-layout";
@@ -137,6 +137,7 @@ function PlaygroundCanvas({
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [showRemixList, setShowRemixList] = useState(!remixId && !initialImageIds?.length);
   const [showPreview, setShowPreview] = useState(false);
+  const floatingBarRef = useRef<FloatingBarHandle>(null);
 
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState<Node>([]);
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -481,6 +482,7 @@ function PlaygroundCanvas({
             onAddClick={() => setShowImageModal(true)}
             onRemoveImage={removeImage}
             onRemoveComponent={removeComponent}
+            onInsertToken={(text) => floatingBarRef.current?.insertAtCursor(text)}
           />
 
           {/* React Flow canvas */}
@@ -527,6 +529,7 @@ function PlaygroundCanvas({
 
       {/* Floating bar */}
       <FloatingBar
+        ref={floatingBarRef}
         mode={floatingBarMode}
         onModeChange={setFloatingBarMode}
         selectedNode={selectedNode ? { id: selectedNode.id, content: selectedNode.content } : null}

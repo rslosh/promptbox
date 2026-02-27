@@ -19,6 +19,7 @@ interface LeftPanelProps {
   onAddClick: () => void;
   onRemoveImage: (id: string) => void;
   onRemoveComponent: (id: string) => void;
+  onInsertToken?: (text: string) => void;
 }
 
 export function LeftPanel({
@@ -29,6 +30,7 @@ export function LeftPanel({
   onAddClick,
   onRemoveImage,
   onRemoveComponent,
+  onInsertToken,
 }: LeftPanelProps) {
   return (
     <div className="flex shrink-0 items-start">
@@ -48,6 +50,7 @@ export function LeftPanel({
           <PromptComponents
             components={components}
             onRemoveComponent={onRemoveComponent}
+            onInsertToken={onInsertToken}
           />
         </div>
       </div>
