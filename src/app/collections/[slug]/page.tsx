@@ -7,7 +7,6 @@ import { Header } from "@/components/layout/header";
 import { ImageGrid } from "@/components/gallery/image-grid";
 import { ViewOptions, type LayoutType, type ImageSize } from "@/components/gallery/view-options";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   RefreshCw,
   ExternalLink,
@@ -17,8 +16,13 @@ import {
   Clock,
   ImageIcon,
   Wand2,
+  Trash2,
+  X,
+  AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 import type { Collection, ImageAsset, AssetTag, Prompt } from "@/lib/supabase/types";
 
 interface CollectionWithAssets extends Collection {
@@ -43,12 +47,20 @@ const platformLabels: Record<string, string> = {
   manual: "Manual",
 };
 
+const platformColors: Record<string, string> = {
+  pinterest: "text-rose-400 bg-rose-500/10 border-rose-500/20",
+  are_na: "text-blue-400 bg-blue-500/10 border-blue-500/20",
+  tumblr: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20",
+  manual: "text-white/50 bg-white/5 border-white/10",
+};
+
 export default function CollectionPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = use(params);
+  const router = useRouter();
   const searchParams = useSearchParams();
   const initialSyncing = searchParams.get("syncing") === "true";
   const initialJobId = searchParams.get("job");
@@ -65,12 +77,28 @@ export default function CollectionPage({
   });
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const deleteRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const prevImageCount = useRef<number>(0);
+  const syncStartAssetIds = useRef<Set<string>>(new Set());
 
   // View options
   const [layout, setLayout] = useState<LayoutType>("full");
   const [imageSize, setImageSize] = useState<ImageSize>("large");
+
+  // Close delete popover on outside click
+  useEffect(() => {
+    if (!confirmDelete) return;
+    function handleClick(e: MouseEvent) {
+      if (deleteRef.current && !deleteRef.current.contains(e.target as Node)) {
+        setConfirmDelete(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [confirmDelete]);
 
   const fetchCollection = useCallback(async () => {
     try {
@@ -123,14 +151,20 @@ export default function CollectionPage({
       if (data) {
         const newCount = data.assets?.length || 0;
         const addedCount = newCount - prevImageCount.current;
-        setCollection(data);
 
-        // Only update count if we found new images
+        // Sort new assets to the top
+        const preExisting = syncStartAssetIds.current;
+        const sorted = [
+          ...data.assets.filter((a: { id: string }) => !preExisting.has(a.id)).reverse(),
+          ...data.assets.filter((a: { id: string }) => preExisting.has(a.id)),
+        ];
+        setCollection({ ...data, assets: sorted });
+
         if (addedCount > 0) {
           setSyncProgress((prev) => ({
             ...prev,
             imagesFound: prev.imagesFound + addedCount,
-            message: `Found ${addedCount} new image${addedCount === 1 ? '' : 's'}...`,
+            message: `Found ${addedCount} new image${addedCount === 1 ? "" : "s"}...`,
           }));
           prevImageCount.current = newCount;
         }
@@ -140,24 +174,29 @@ export default function CollectionPage({
     // Poll job status to detect completion
     const jobStatusInterval = setInterval(async () => {
       if (!jobId) return;
-      
+
       try {
         const response = await fetch(`/api/jobs/${jobId}`);
         if (response.ok) {
           const job = await response.json();
-          
+
           if (job.status === "completed") {
-            // Job is done - do final fetch and stop syncing
             const finalData = await fetchCollection();
             if (finalData) {
-              setCollection(finalData);
+              const preExisting = syncStartAssetIds.current;
+              const sorted = [
+                ...finalData.assets.filter((a: { id: string }) => !preExisting.has(a.id)).reverse(),
+                ...finalData.assets.filter((a: { id: string }) => preExisting.has(a.id)),
+              ];
+              setCollection({ ...finalData, assets: sorted });
               setSyncProgress((prev) => ({
                 status: "complete",
                 imagesFound: prev.imagesFound,
                 imagesTagged: prev.imagesFound,
-                message: prev.imagesFound > 0 
-                  ? `Added ${prev.imagesFound} new image${prev.imagesFound === 1 ? '' : 's'}!`
-                  : "Already up to date!",
+                message:
+                  prev.imagesFound > 0
+                    ? `Added ${prev.imagesFound} new image${prev.imagesFound === 1 ? "" : "s"}!`
+                    : "Already up to date!",
               }));
             }
             setIsSyncing(false);
@@ -172,13 +211,13 @@ export default function CollectionPage({
             setIsSyncing(false);
             window.history.replaceState({}, "", `/collections/${slug}`);
           } else if (job.status === "running") {
-            // Still running - update to show we're processing
             setSyncProgress((prev) => ({
               ...prev,
               status: "tagging",
-              message: prev.imagesFound > 0 
-                ? `Tagging ${prev.imagesFound} new image${prev.imagesFound === 1 ? '' : 's'}...`
-                : "Checking for new images...",
+              message:
+                prev.imagesFound > 0
+                  ? `Tagging ${prev.imagesFound} new image${prev.imagesFound === 1 ? "" : "s"}...`
+                  : "Checking for new images...",
             }));
           }
         }
@@ -208,7 +247,7 @@ export default function CollectionPage({
   async function handleSync() {
     if (!collection) return;
 
-    // Store current count to track new images
+    syncStartAssetIds.current = new Set(collection.assets?.map((a) => a.id) || []);
     prevImageCount.current = collection.assets?.length || 0;
 
     setIsSyncing(true);
@@ -226,17 +265,10 @@ export default function CollectionPage({
         body: JSON.stringify({ autoTag: true }),
       });
 
-      if (!response.ok) {
-        throw new Error("Sync failed");
-      }
+      if (!response.ok) throw new Error("Sync failed");
 
       const data = await response.json();
-      console.log("Sync started:", data);
-      
-      // Store job ID for status polling
-      if (data.job?.id) {
-        setJobId(data.job.id);
-      }
+      if (data.job?.id) setJobId(data.job.id);
     } catch (err) {
       console.error("Sync error:", err);
       setIsSyncing(false);
@@ -246,6 +278,19 @@ export default function CollectionPage({
         imagesTagged: 0,
         message: "Sync failed. Please try again.",
       });
+    }
+  }
+
+  async function handleDelete() {
+    if (!collection) return;
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/collections/${collection.id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("Delete failed");
+      router.push("/");
+    } catch {
+      setIsDeleting(false);
+      setConfirmDelete(false);
     }
   }
 
@@ -260,7 +305,6 @@ export default function CollectionPage({
     });
   }
 
-  // Get grid column classes based on image size for skeleton loading
   const skeletonGridClasses = {
     small: "grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10",
     medium: "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6",
@@ -272,11 +316,17 @@ export default function CollectionPage({
       <div className="flex min-h-screen">
         <Sidebar />
         <main className="flex-1 pl-64">
-          <div className="flex h-full items-center justify-center">
+          <div className="flex h-full min-h-screen items-center justify-center">
             <div className="text-center">
-              <h2 className="text-xl font-semibold text-white">{error}</h2>
-              <Link href="/" className="mt-4 text-purple-400 hover:text-purple-300">
-                Back to Gallery
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/5">
+                <ImageIcon className="h-5 w-5 text-white/30" />
+              </div>
+              <h2 className="text-base font-medium text-white">{error}</h2>
+              <Link
+                href="/"
+                className="mt-3 inline-block text-sm text-white/40 transition-colors hover:text-white/70"
+              >
+                ← Back to Gallery
               </Link>
             </div>
           </div>
@@ -290,22 +340,23 @@ export default function CollectionPage({
       <Sidebar />
 
       <main className="flex-1 pl-64">
+        {/* Header */}
         <Header
           title={isLoading ? "Loading..." : collection?.name || "Collection"}
           description={
             isLoading
               ? ""
               : isSyncing
-              ? `${collection?.assets?.length || 0} images (syncing...)`
+              ? `${collection?.assets?.length || 0} images · syncing`
               : `${collection?.assets?.length || 0} images`
           }
           actions={
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               {selectedIds.length > 0 && (
                 <Link href={`/playground?images=${selectedIds.join(",")}`}>
-                  <Button>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Remix ({selectedIds.length})
+                  <Button size="sm">
+                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                    Remix {selectedIds.length}
                   </Button>
                 </Link>
               )}
@@ -319,115 +370,205 @@ export default function CollectionPage({
 
               {collection?.source_url && (
                 <>
+                  {/* Sync button */}
                   <Button
                     variant="outline"
+                    size="sm"
                     onClick={handleSync}
                     disabled={isSyncing}
+                    className="gap-1.5"
                   >
                     {isSyncing ? (
                       <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Syncing...
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Syncing
                       </>
                     ) : syncProgress.status === "complete" && syncProgress.imagesFound > 0 ? (
                       <>
-                        <Check className="mr-2 h-4 w-4 text-green-400" />
+                        <Check className="h-3.5 w-3.5 text-emerald-400" />
                         Synced
                       </>
                     ) : (
                       <>
-                        <RefreshCw className="mr-2 h-4 w-4" />
+                        <RefreshCw className="h-3.5 w-3.5" />
                         Sync
                       </>
                     )}
                   </Button>
 
-                  <a
-                    href={collection.source_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Button variant="ghost" size="icon">
-                      <ExternalLink className="h-4 w-4" />
+                  {/* External link */}
+                  <a href={collection.source_url} target="_blank" rel="noopener noreferrer">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-white/40 hover:text-white">
+                      <ExternalLink className="h-3.5 w-3.5" />
                     </Button>
                   </a>
                 </>
+              )}
+
+              {/* Delete — with popover confirmation */}
+              {collection && (
+                <div ref={deleteRef} className="relative">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "h-8 w-8 transition-colors",
+                      confirmDelete
+                        ? "bg-red-500/15 text-red-400"
+                        : "text-white/30 hover:text-red-400 hover:bg-red-500/10"
+                    )}
+                    onClick={() => setConfirmDelete((v) => !v)}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+
+                  {/* Confirmation popover */}
+                  {confirmDelete && (
+                    <div className="absolute right-0 top-[calc(100%+6px)] z-50 w-60 rounded-xl border border-white/10 bg-[#111] p-4 shadow-2xl backdrop-blur-xl">
+                      <div className="mb-3 flex items-start gap-2.5">
+                        <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-500/15">
+                          <AlertTriangle className="h-3 w-3 text-red-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-white">Delete collection?</p>
+                          <p className="mt-0.5 text-xs leading-relaxed text-white/40">
+                            Images stay in your gallery. This can&rsquo;t be undone.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setConfirmDelete(false)}
+                          className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/10 text-xs text-white/50 transition-colors hover:bg-white/5 hover:text-white/80"
+                        >
+                          <X className="h-3 w-3" />
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleDelete}
+                          disabled={isDeleting}
+                          className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/15 text-xs text-red-400 transition-colors hover:bg-red-500/25 hover:text-red-300 disabled:opacity-50"
+                        >
+                          {isDeleting ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3 w-3" />
+                          )}
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           }
         />
 
-        <div className="p-6 space-y-6">
-          {/* Sync Progress Banner */}
-          {isSyncing && (
-            <div className="rounded-xl border border-purple-500/30 bg-purple-500/10 p-4">
-              <div className="flex items-center gap-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-500/20">
-                  {syncProgress.status === "downloading" ? (
-                    <Loader2 className="h-5 w-5 animate-spin text-purple-400" />
-                  ) : syncProgress.status === "tagging" ? (
-                    <Wand2 className="h-5 w-5 text-purple-400 animate-pulse" />
-                  ) : (
-                    <Check className="h-5 w-5 text-green-400" />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-white">
-                    {syncProgress.status === "downloading"
-                      ? "Downloading images..."
-                      : syncProgress.status === "tagging"
-                      ? "Auto-tagging with AI..."
-                      : "Sync complete!"}
-                  </p>
-                  <p className="text-sm text-white/60">{syncProgress.message}</p>
-                </div>
-                {syncProgress.imagesFound > 0 && (
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-white">
-                      {syncProgress.imagesFound}
-                    </p>
-                    <p className="text-xs text-white/40">new image{syncProgress.imagesFound === 1 ? '' : 's'}</p>
-                  </div>
-                )}
-              </div>
-              {syncProgress.status === "tagging" && (
-                <div className="mt-3">
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500 animate-pulse"
-                      style={{ width: "100%" }}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
+        {/* Sync progress bar — thin strip under header */}
+        <div
+          className={cn(
+            "h-[2px] w-full transition-opacity duration-500",
+            isSyncing ? "opacity-100" : "opacity-0"
           )}
+        >
+          <div
+            className={cn(
+              "h-full bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500 bg-[length:200%_100%]",
+              isSyncing && "animate-[shimmer_1.5s_ease-in-out_infinite]"
+            )}
+            style={{
+              animation: isSyncing
+                ? "shimmer 1.5s ease-in-out infinite"
+                : undefined,
+            }}
+          />
+          <style>{`
+            @keyframes shimmer {
+              0% { background-position: 200% 0; }
+              100% { background-position: -200% 0; }
+            }
+          `}</style>
+        </div>
 
-          {/* Collection Info */}
-          {!isLoading && collection && !isSyncing && (
-            <div className="flex items-center gap-4">
-              <Badge variant="secondary">
+        <div className="p-6 space-y-5">
+          {/* Collection meta row */}
+          {!isLoading && collection && (
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* Platform badge */}
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium",
+                  platformColors[collection.platform] ?? platformColors.manual
+                )}
+              >
                 {platformLabels[collection.platform]}
-              </Badge>
+              </span>
+
+              {/* Last synced */}
               {collection.last_synced_at && (
-                <span className="flex items-center gap-1 text-sm text-white/40">
+                <span className="flex items-center gap-1.5 text-xs text-white/30">
                   <Clock className="h-3 w-3" />
-                  Last synced: {formatDate(collection.last_synced_at)}
+                  {formatDate(collection.last_synced_at)}
                 </span>
               )}
+
+              {/* Description */}
               {collection.description && (
-                <p className="text-sm text-white/60">{collection.description}</p>
+                <>
+                  <span className="text-white/15">·</span>
+                  <p className="text-xs text-white/40">{collection.description}</p>
+                </>
+              )}
+
+              {/* Sync status chip — replaces the chunky banner */}
+              {isSyncing && (
+                <span className="ml-auto flex items-center gap-1.5 rounded-full border border-purple-500/25 bg-purple-500/10 px-3 py-0.5 text-xs text-purple-300">
+                  {syncProgress.status === "downloading" ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Wand2 className="h-3 w-3 animate-pulse" />
+                  )}
+                  {syncProgress.status === "downloading" ? "Downloading" : "Tagging with AI"}
+                  {syncProgress.imagesFound > 0 && (
+                    <span className="ml-0.5 rounded-full bg-purple-500/20 px-1.5 py-px font-medium tabular-nums">
+                      {syncProgress.imagesFound} new
+                    </span>
+                  )}
+                </span>
+              )}
+
+              {/* Sync complete chip */}
+              {!isSyncing && syncProgress.status === "complete" && syncProgress.imagesFound > 0 && (
+                <span className="ml-auto flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-0.5 text-xs text-emerald-400">
+                  <Check className="h-3 w-3" />
+                  {syncProgress.imagesFound} new image{syncProgress.imagesFound === 1 ? "" : "s"} added
+                </span>
+              )}
+
+              {/* Failed chip */}
+              {!isSyncing && syncProgress.status === "failed" && (
+                <span className="ml-auto flex items-center gap-1.5 rounded-full border border-red-500/25 bg-red-500/10 px-3 py-0.5 text-xs text-red-400">
+                  <AlertTriangle className="h-3 w-3" />
+                  {syncProgress.message}
+                </span>
               )}
             </div>
           )}
 
           {/* Image Grid */}
           {isLoading ? (
-            <div className={`grid gap-4 ${skeletonGridClasses[imageSize]}`}>
+            <div className={`grid gap-3 ${skeletonGridClasses[imageSize]}`}>
               {Array.from({ length: 12 }).map((_, i) => (
                 <div
                   key={i}
                   className="aspect-square animate-pulse rounded-xl bg-white/5"
+                  style={{ animationDelay: `${i * 40}ms` }}
                 />
               ))}
             </div>
@@ -438,7 +579,6 @@ export default function CollectionPage({
               selectedIds={selectedIds}
               onSelectionChange={setSelectedIds}
               onDelete={(id) => {
-                // Remove from UI only - actual deletion would need API call
                 setCollection((prev) =>
                   prev
                     ? {
@@ -454,25 +594,34 @@ export default function CollectionPage({
               imageSize={imageSize}
             />
           ) : isSyncing ? (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-purple-500/30 bg-purple-500/5 py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-purple-400" />
-              <p className="mt-4 text-white/60">Downloading images...</p>
-              <p className="text-sm text-white/40">This may take a moment for large boards</p>
+            /* Syncing empty state */
+            <div className="flex flex-col items-center justify-center py-24">
+              <div className="relative mb-5">
+                <div className="h-14 w-14 rounded-2xl border border-purple-500/20 bg-purple-500/5" />
+                <Loader2 className="absolute inset-0 m-auto h-6 w-6 animate-spin text-purple-400/60" />
+              </div>
+              <p className="text-sm font-medium text-white/60">Downloading images&hellip;</p>
+              <p className="mt-1 text-xs text-white/25">Large boards may take a moment</p>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/20 py-16">
-              <ImageIcon className="h-12 w-12 text-white/20" />
-              <p className="mt-4 text-white/40">No images in this collection yet</p>
+            /* Empty state */
+            <div className="flex flex-col items-center justify-center py-24">
+              <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/8 bg-white/3">
+                <ImageIcon className="h-6 w-6 text-white/20" />
+              </div>
+              <p className="text-sm font-medium text-white/50">No images yet</p>
+              <p className="mt-1 text-xs text-white/25">
+                Sync this collection to import from {platformLabels[collection?.platform ?? "manual"]}
+              </p>
               {collection?.source_url && (
-                <Button
-                  variant="outline"
-                  className="mt-4"
+                <button
                   onClick={handleSync}
                   disabled={isSyncing}
+                  className="mt-5 flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/60 transition-colors hover:border-white/20 hover:bg-white/8 hover:text-white disabled:opacity-40"
                 >
-                  <RefreshCw className="mr-2 h-4 w-4" />
+                  <RefreshCw className="h-3.5 w-3.5" />
                   Sync from {platformLabels[collection.platform]}
-                </Button>
+                </button>
               )}
             </div>
           )}

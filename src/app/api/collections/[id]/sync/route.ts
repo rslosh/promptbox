@@ -109,8 +109,15 @@ async function syncCollection(
 
     console.log(`[sync] Collection has ${existingHashes.size} existing images`);
 
+    // Normalize the URL (e.g. Pinterest ?boardId= links → canonical /username/board/)
+    const resolvedUrl = await resolveUrl(sourceUrl);
+    if (resolvedUrl !== sourceUrl) {
+      console.log(`[sync] Resolved URL: ${sourceUrl} → ${resolvedUrl}`);
+      await supabase.from("collections").update({ source_url: resolvedUrl }).eq("id", collectionId);
+    }
+
     // Run gallery-dl with JSON metadata output
-    await runGalleryDl(sourceUrl, tempDir);
+    await runGalleryDl(resolvedUrl, tempDir);
 
     // Find all downloaded images
     const files = await findImages(tempDir);
@@ -173,6 +180,26 @@ async function syncCollection(
   }
 }
 
+async function resolveUrl(url: string): Promise<string> {
+  try {
+    const response = await fetch(url, {
+      redirect: "follow",
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      },
+    });
+    const resolved = response.url;
+    // Only use if it resolved to a meaningfully different, non-auth URL
+    if (resolved !== url && !resolved.includes("/login") && !resolved.includes("/auth")) {
+      return resolved;
+    }
+  } catch {
+    // Fall through — use original
+  }
+  return url;
+}
+
 function runGalleryDl(url: string, outputDir: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const args = ["--dest", outputDir, "--no-mtime", url];
@@ -193,7 +220,11 @@ function runGalleryDl(url: string, outputDir: string): Promise<string> {
       if (code === 0) {
         resolve(stdout);
       } else {
-        reject(new Error(`gallery-dl exited with code ${code}: ${stderr}`));
+        const unsupported = stderr.includes("Unsupported URL");
+        const message = unsupported
+          ? `Unsupported URL. For Pinterest, use a board URL like: https://www.pinterest.com/username/boardname/`
+          : `gallery-dl exited with code ${code}: ${stderr}`;
+        reject(new Error(message));
       }
     });
 
@@ -334,8 +365,9 @@ async function processImageForCollection(
 
 async function tagImages(assetIds: string[], apiKey: string) {
   const ai = new GoogleGenAI({ apiKey });
+  const CONCURRENCY = 3;
 
-  for (const assetId of assetIds) {
+  async function tagOne(assetId: string) {
     try {
       const { data: asset, error: assetError } = await supabase
         .from("image_assets")
@@ -343,13 +375,13 @@ async function tagImages(assetIds: string[], apiKey: string) {
         .eq("id", assetId)
         .single();
 
-      if (assetError || !asset) continue;
+      if (assetError || !asset) return;
 
       const { data: imageData, error: imageError } = await supabase.storage
         .from("image_assets")
         .download(asset.storage_path);
 
-      if (imageError || !imageData) continue;
+      if (imageError || !imageData) return;
 
       const buffer = Buffer.from(await imageData.arrayBuffer());
       const base64Image = buffer.toString("base64");
@@ -479,9 +511,20 @@ async function tagImages(assetIds: string[], apiKey: string) {
       }
 
       console.log(`[sync] Tagged image: ${assetId}`);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
     } catch (error) {
       console.error(`[sync] Failed to tag image ${assetId}:`, error);
     }
   }
+
+  // Concurrency pool — keeps CONCURRENCY workers busy at all times
+  const queue = [...assetIds];
+  async function worker(): Promise<void> {
+    const assetId = queue.shift();
+    if (!assetId) return;
+    await tagOne(assetId);
+    return worker();
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(CONCURRENCY, assetIds.length) }, worker)
+  );
 }
