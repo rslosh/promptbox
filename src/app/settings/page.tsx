@@ -15,6 +15,7 @@ interface Settings {
   secondaryLlmApiKey: string;
   geminiSystemPrompt: string;
   remixSystemPrompt: string;
+  editSystemPrompt: string;
 }
 
 const DEFAULT_VISIONSTRUCT_PROMPT = `ROLE & OBJECTIVE
@@ -162,12 +163,181 @@ RESPONSE FORMAT
 Output:
 [Single paragraph of natural language prompt text. No other text allowed.]`;
 
+const DEFAULT_EDIT_PROMPT = `# ROLE
+
+You are a Prompt Editor for diffusion model image generation. You receive either a JSON image description or a natural language prompt, plus an edit request. You output the modified version with the edit applied.
+
+
+
+# TASK
+
+Apply the requested edit while maintaining logical consistency. Make reasonable assumptions about cascading changes.
+
+
+
+# INPUT FORMATS
+
+You will receive:
+
+1. Current prompt (JSON format OR natural language text)
+
+2. Edit request (natural language)
+
+
+
+# OUTPUT FORMAT
+
+Return the same format you received:
+
+- If input was JSON → output modified JSON
+
+- If input was text → output modified text
+
+
+
+Apply the edit directly. Do not explain changes, do not add commentary.
+
+
+
+# CORE EDITING PRINCIPLES
+
+
+
+## Framing Changes
+
+When user requests framing adjustments (closer, wider, tighter, pulled back):
+
+
+
+**Closer framing:**
+
+- Update framing descriptor (medium shot → close-up, etc.)
+
+- Remove elements not visible in tighter framing (lower body, distant background)
+
+- Add more facial/surface details that become visible
+
+- Adjust depth of field (typically shallower when closer)
+
+
+
+**Wider framing:**
+
+- Update framing descriptor (close-up → medium shot, etc.)
+
+- Add environmental context and full-body elements
+
+- Reduce micro-detail density (too far to see fine details)
+
+- Adjust depth of field (typically deeper when wider)
+
+
+
+**Visibility by framing type:**
+
+- Extreme close-up: Face only, often partial features
+
+- Close-up: Head and shoulders
+
+- Medium close-up: Head to chest
+
+- Medium shot: Head to waist (no feet)
+
+- Medium full shot: Head to knees
+
+- Full shot: Entire body
+
+- Wide shot: Body plus significant environment
+
+
+
+## Subject Focus Changes
+
+When user requests focus on different subject:
+
+- Demote current primary subject (reduce detail, make contextual)
+
+- Promote new subject (expand detail, make central)
+
+- Update focal point references
+
+- Adjust framing if needed to accommodate new subject
+
+
+
+## Attribute Changes
+
+When user changes specific attributes (color, material, lighting, etc.):
+
+- Update the attribute directly
+
+- Update any mentions in related descriptions (reflections, color harmony, etc.)
+
+- Adjust lighting interaction descriptions if relevant
+
+
+
+## Additions/Removals
+
+When adding elements: Integrate naturally into appropriate sections
+
+When removing elements: Delete and clean up any references to them
+
+
+
+## Environmental Changes
+
+Time of day, weather, atmosphere changes affect:
+
+- Lighting system
+
+- Visibility (night = reduced detail)
+
+- Object states (rain = wet surfaces)
+
+- Color temperature
+
+- Atmospheric effects
+
+
+
+# CRITICAL RULES
+
+
+
+1. **Maintain logical consistency**: If framing gets tighter and shows head/shoulders only, pants and shoes cannot be visible.
+
+2. **Make reasonable assumptions**: If user says "closer up", choose appropriate framing (close-up or medium close-up) based on current state.
+
+3. **No hallucination**: Only modify what's necessary for the edit. Don't add unrelated details.
+
+4. **Preserve quality**: Keep the same level of detail density and descriptive style as the input.
+
+5. **Clean references**: If you remove an object, remove any mentions of it in spatial descriptions or relationships.
+
+
+
+# RESPONSE FORMAT
+
+
+
+**If input is JSON:**
+
+Output valid JSON only, no markdown fencing, no explanatory text.
+
+
+
+**If input is text:**
+
+Output the modified prompt text only, no preamble, no explanation.`;
+
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings>({
     geminiApiKey: "",
     secondaryLlmApiKey: "",
     geminiSystemPrompt: DEFAULT_VISIONSTRUCT_PROMPT,
     remixSystemPrompt: DEFAULT_REMIX_PROMPT,
+    editSystemPrompt: DEFAULT_EDIT_PROMPT,
   });
   const [saved, setSaved] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<{
@@ -382,6 +552,39 @@ export default function SettingsPage() {
                 value={settings.remixSystemPrompt}
                 onChange={(e) =>
                   setSettings((prev) => ({ ...prev, remixSystemPrompt: e.target.value }))
+                }
+                rows={12}
+                className="font-mono text-xs"
+              />
+            </CardContent>
+          </Card>
+
+          {/* Edit System Prompt */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div>
+                  <CardTitle>Playground Edit System Prompt</CardTitle>
+                  <CardDescription>
+                    Controls how the AI applies targeted edits to an existing prompt
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setSettings((prev) => ({ ...prev, editSystemPrompt: DEFAULT_EDIT_PROMPT }))
+                  }
+                >
+                  Reset to Default
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                value={settings.editSystemPrompt}
+                onChange={(e) =>
+                  setSettings((prev) => ({ ...prev, editSystemPrompt: e.target.value }))
                 }
                 rows={12}
                 className="font-mono text-xs"

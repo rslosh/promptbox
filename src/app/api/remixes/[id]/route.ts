@@ -53,10 +53,17 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       "history",
     ];
 
-    const updateData: Record<string, unknown> = {};
+    const updateData: {
+      name?: string | null;
+      image_ids?: string[];
+      prompt_components?: unknown;
+      edit_instructions?: string;
+      generated_prompt?: string;
+      history?: unknown;
+    } = {};
     for (const field of allowedFields) {
       if (body[field] !== undefined) {
-        updateData[field] = body[field];
+        (updateData as Record<string, unknown>)[field] = body[field];
       }
     }
 
@@ -67,7 +74,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const { data, error } = await supabaseAdmin
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabaseAdmin as any)
       .from("playground_remixes")
       .update(updateData)
       .eq("id", id)

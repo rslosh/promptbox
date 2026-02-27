@@ -6,6 +6,7 @@ import path from "path";
 import os from "os";
 import crypto from "crypto";
 import { GoogleGenAI } from "@google/genai";
+import { fetchCosmosClusterImages, downloadCosmosImage } from "@/lib/cosmos";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -67,7 +68,7 @@ export async function POST(
     }
 
     // Start sync in background
-    syncCollection(job.id, collection.id, collection.source_url, autoTag).catch(console.error);
+    syncCollection(job.id, collection.id, collection.source_url, autoTag, collection.platform ?? null).catch(console.error);
 
     return NextResponse.json({
       message: "Sync started",
@@ -84,7 +85,8 @@ async function syncCollection(
   jobId: string,
   collectionId: string,
   sourceUrl: string,
-  autoTag: boolean
+  autoTag: boolean,
+  platform: string | null = null
 ) {
   // Update job status to running
   await supabase
@@ -104,7 +106,7 @@ async function syncCollection(
       .eq("collection_id", collectionId);
 
     const existingHashes = new Set(
-      existingAssets?.map((a) => (a.asset as { hash_sha256: string })?.hash_sha256).filter(Boolean) || []
+      existingAssets?.map((a) => (a.asset as unknown as { hash_sha256: string })?.hash_sha256).filter(Boolean) || []
     );
 
     console.log(`[sync] Collection has ${existingHashes.size} existing images`);
@@ -116,11 +118,22 @@ async function syncCollection(
       await supabase.from("collections").update({ source_url: resolvedUrl }).eq("id", collectionId);
     }
 
-    // Run gallery-dl with JSON metadata output
-    await runGalleryDl(resolvedUrl, tempDir);
+    // Backfill platform if collection was created before cosmos detection was added
+    if (platform !== "cosmos" && resolvedUrl.includes("cosmos.so")) {
+      await supabase.from("collections").update({ platform: "cosmos" }).eq("id", collectionId);
+    }
 
-    // Find all downloaded images
-    const files = await findImages(tempDir);
+    // Fetch images: cosmos clusters via HTML scraping, everything else via gallery-dl
+    let files: string[];
+    if (platform === "cosmos" || resolvedUrl.includes("cosmos.so")) {
+      const imageUrls = await fetchCosmosClusterImages(resolvedUrl);
+      console.log(`[sync] Found ${imageUrls.length} Cosmos image URLs`);
+      const downloaded = await Promise.all(imageUrls.map((u) => downloadCosmosImage(u, tempDir)));
+      files = downloaded.filter((f): f is string => f !== null);
+    } else {
+      await runGalleryDl(resolvedUrl, tempDir);
+      files = await findImages(tempDir);
+    }
     console.log(`[sync] Found ${files.length} images to process`);
 
     // Process each image

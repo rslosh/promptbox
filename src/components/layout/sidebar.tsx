@@ -30,6 +30,7 @@ const platformIcons: Record<string, string> = {
   are_na: "🔲",
   tumblr: "📝",
   manual: "📁",
+  cosmos: "🌌",
 };
 
 export function Sidebar() {

@@ -57,7 +57,7 @@ export function usePlaygroundState({
 
       setRemixName(remix.name);
       setSelectedImages(images || []);
-      setPromptComponents(remix.prompt_components as PromptComponent[]);
+      setPromptComponents(remix.prompt_components as unknown as PromptComponent[]);
       setEditInstructions(remix.edit_instructions);
       setGeneratedPrompt(remix.generated_prompt);
       setHistory(remix.history as string[]);
