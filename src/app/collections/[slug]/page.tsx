@@ -23,6 +23,9 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { Chip } from "@/components/ui/chip";
+import { IconWell } from "@/components/ui/icon-well";
+import { EmptyState } from "@/components/ui/empty-state";
 import type { Collection, ImageAsset, AssetTag, Prompt } from "@/lib/supabase/types";
 
 interface CollectionWithAssets extends Collection {
@@ -501,14 +504,9 @@ export default function CollectionPage({
           {!isLoading && collection && (
             <div className="flex items-center gap-3 flex-wrap">
               {/* Platform badge */}
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium",
-                  platformColors[collection.platform] ?? platformColors.manual
-                )}
-              >
+              <Chip className={cn(platformColors[collection.platform] ?? platformColors.manual)}>
                 {platformLabels[collection.platform]}
-              </span>
+              </Chip>
 
               {/* Last synced */}
               {collection.last_synced_at && (
@@ -526,9 +524,9 @@ export default function CollectionPage({
                 </>
               )}
 
-              {/* Sync status chip — replaces the chunky banner */}
+              {/* Sync status chip */}
               {isSyncing && (
-                <span className="ml-auto flex items-center gap-1.5 rounded-full border border-purple-500/25 bg-purple-500/10 px-3 py-0.5 text-xs text-purple-300">
+                <Chip variant="accent" className="ml-auto">
                   {syncProgress.status === "downloading" ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
                   ) : (
@@ -540,23 +538,23 @@ export default function CollectionPage({
                       {syncProgress.imagesFound} new
                     </span>
                   )}
-                </span>
+                </Chip>
               )}
 
               {/* Sync complete chip */}
               {!isSyncing && syncProgress.status === "complete" && syncProgress.imagesFound > 0 && (
-                <span className="ml-auto flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-0.5 text-xs text-emerald-400">
+                <Chip variant="success" className="ml-auto">
                   <Check className="h-3 w-3" />
                   {syncProgress.imagesFound} new image{syncProgress.imagesFound === 1 ? "" : "s"} added
-                </span>
+                </Chip>
               )}
 
               {/* Failed chip */}
               {!isSyncing && syncProgress.status === "failed" && (
-                <span className="ml-auto flex items-center gap-1.5 rounded-full border border-red-500/25 bg-red-500/10 px-3 py-0.5 text-xs text-red-400">
+                <Chip variant="danger" className="ml-auto">
                   <AlertTriangle className="h-3 w-3" />
                   {syncProgress.message}
-                </span>
+                </Chip>
               )}
             </div>
           )}
@@ -597,7 +595,7 @@ export default function CollectionPage({
             /* Syncing empty state */
             <div className="flex flex-col items-center justify-center py-24">
               <div className="relative mb-5">
-                <div className="h-14 w-14 rounded-2xl border border-purple-500/20 bg-purple-500/5" />
+                <IconWell size="xl" variant="accent" className="opacity-40" />
                 <Loader2 className="absolute inset-0 m-auto h-6 w-6 animate-spin text-purple-400/60" />
               </div>
               <p className="text-sm font-medium text-white/60">Downloading images&hellip;</p>
@@ -605,25 +603,16 @@ export default function CollectionPage({
             </div>
           ) : (
             /* Empty state */
-            <div className="flex flex-col items-center justify-center py-24">
-              <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/8 bg-white/3">
-                <ImageIcon className="h-6 w-6 text-white/20" />
-              </div>
-              <p className="text-sm font-medium text-white/50">No images yet</p>
-              <p className="mt-1 text-xs text-white/25">
-                Sync this collection to import from {platformLabels[collection?.platform ?? "manual"]}
-              </p>
-              {collection?.source_url && (
-                <button
-                  onClick={handleSync}
-                  disabled={isSyncing}
-                  className="mt-5 flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/60 transition-colors hover:border-white/20 hover:bg-white/8 hover:text-white disabled:opacity-40"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  Sync from {platformLabels[collection.platform]}
-                </button>
-              )}
-            </div>
+            <EmptyState
+              icon={ImageIcon}
+              title="No images yet"
+              description={`Sync this collection to import from ${platformLabels[collection?.platform ?? "manual"]}`}
+              action={
+                collection?.source_url
+                  ? { label: `Sync from ${platformLabels[collection.platform]}`, onClick: handleSync }
+                  : undefined
+              }
+            />
           )}
         </div>
       </main>

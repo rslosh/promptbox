@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Check, Eye, Copy, Trash2 } from "lucide-react";
 import type { ImageAsset, AssetTag, Prompt } from "@/lib/supabase/types";
+import { EmptyState } from "@/components/ui/empty-state";
 import { getThumbnailUrl, getImageUrl } from "@/lib/supabase/client";
 import { copyToClipboard, formatRelativeTime } from "@/lib/utils";
 import type { LayoutType, ImageSize } from "./view-options";
@@ -99,20 +100,12 @@ export function ImageGrid({
 
   if (images.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-center">
-        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/8 bg-white/3">
-          <Eye className="h-6 w-6 text-white/20" />
-        </div>
-        <p className="text-sm font-medium text-white/50">No images found</p>
-        <p className="mt-1 text-xs text-white/25">
-          Try adjusting your filters or upload new images.
-        </p>
-        <Link href="/upload" onClick={(e) => e.stopPropagation()}>
-          <button className="mt-5 flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/50 transition-colors hover:border-white/20 hover:bg-white/8 hover:text-white">
-            Upload images
-          </button>
-        </Link>
-      </div>
+      <EmptyState
+        icon={Eye}
+        title="No images found"
+        description="Try adjusting your filters or upload new images."
+        action={{ label: "Upload images", href: "/upload" }}
+      />
     );
   }
 

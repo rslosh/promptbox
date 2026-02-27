@@ -4,6 +4,10 @@ import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
+import { Panel } from "@/components/ui/panel";
+import { IconWell } from "@/components/ui/icon-well";
+import { Input } from "@/components/ui/input";
+import { Chip } from "@/components/ui/chip";
 import { cn } from "@/lib/utils";
 import {
   Upload,
@@ -195,16 +199,16 @@ export default function UploadPage() {
               <input {...getInputProps()} />
 
               {/* Icon */}
-              <div
+              <IconWell
+                size="lg"
+                variant={isDragActive ? "accent" : "default"}
                 className={cn(
-                  "flex h-12 w-12 items-center justify-center rounded-2xl border transition-colors",
-                  isDragActive
-                    ? "border-purple-500/40 bg-purple-500/15 text-purple-400"
-                    : "border-white/10 bg-white/5 text-white/30 group-hover:border-white/20 group-hover:text-white/50"
+                  "transition-colors",
+                  !isDragActive && "group-hover:border-white/20 group-hover:text-white/50"
                 )}
               >
                 <FolderOpen className="h-5 w-5" />
-              </div>
+              </IconWell>
 
               <div className="text-center">
                 <p className={cn("text-sm font-medium", isDragActive ? "text-purple-300" : "text-white/60")}>
@@ -310,11 +314,11 @@ export default function UploadPage() {
           </section>
 
           {/* ── Import Collection ── */}
-          <section className="rounded-2xl border border-white/8 bg-white/[0.02] p-5 space-y-4">
+          <Panel className="p-5 space-y-4">
             <div className="flex items-start gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/40">
+              <IconWell size="sm">
                 <Link2 className="h-3.5 w-3.5" />
-              </div>
+              </IconWell>
               <div>
                 <p className="text-sm font-medium text-white/80">Import Collection</p>
                 <p className="text-xs text-white/35 mt-0.5">
@@ -324,7 +328,7 @@ export default function UploadPage() {
             </div>
 
             <div className="flex gap-2">
-              <input
+              <Input
                 type="url"
                 placeholder="https://pinterest.com/username/board-name"
                 value={galleryDlUrl}
@@ -333,7 +337,6 @@ export default function UploadPage() {
                   if (collectionError) setCollectionError(null);
                 }}
                 onKeyDown={(e) => e.key === "Enter" && handleCreateCollection()}
-                className="flex h-9 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-white/25 focus:border-purple-500/50 focus:outline-none focus:ring-1 focus:ring-purple-500/30 transition-colors"
               />
               <button
                 onClick={handleCreateCollection}
@@ -373,24 +376,21 @@ export default function UploadPage() {
               <div className="h-3 w-px bg-white/10" />
               <div className="flex gap-1.5">
                 {platformMeta.map(({ emoji, label }) => (
-                  <span
-                    key={label}
-                    className="inline-flex items-center gap-1 rounded-full border border-white/8 bg-white/4 px-2 py-0.5 text-xs text-white/40"
-                  >
+                  <Chip key={label} className="gap-1 px-2">
                     <span className="text-[11px]">{emoji}</span>
                     {label}
-                  </span>
+                  </Chip>
                 ))}
               </div>
             </div>
-          </section>
+          </Panel>
 
           {/* ── Single URL Import ── */}
-          <section className="rounded-2xl border border-white/8 bg-white/[0.02] p-5 space-y-4">
+          <Panel className="p-5 space-y-4">
             <div className="flex items-start gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/40">
+              <IconWell size="sm">
                 <ImageIcon className="h-3.5 w-3.5" />
-              </div>
+              </IconWell>
               <div>
                 <p className="text-sm font-medium text-white/80">Import from URL</p>
                 <p className="text-xs text-white/35 mt-0.5">
@@ -400,13 +400,12 @@ export default function UploadPage() {
             </div>
 
             <div className="flex gap-2">
-              <input
+              <Input
                 type="url"
                 placeholder="https://example.com/image.jpg"
                 value={singleUrl}
                 onChange={(e) => setSingleUrl(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleGalleryDl()}
-                className="flex h-9 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-white/25 focus:border-purple-500/50 focus:outline-none focus:ring-1 focus:ring-purple-500/30 transition-colors"
               />
               <button
                 onClick={handleGalleryDl}
@@ -422,7 +421,7 @@ export default function UploadPage() {
                 Import
               </button>
             </div>
-          </section>
+          </Panel>
         </div>
       </main>
     </div>
