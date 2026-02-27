@@ -26,7 +26,7 @@ import { usePromptTree } from "@/hooks/use-prompt-tree";
 import { getImageNodePositions } from "@/lib/playground-layout";
 import { getImageColor, getImageLabel } from "@/lib/constants/colors";
 import type { PromptTreeNode } from "@/lib/playground-types";
-import { Loader2, ChevronDown, X, Copy, Check, GitCompare } from "lucide-react";
+import { Loader2, ChevronDown, X, Copy, Check, GitCompare, Combine } from "lucide-react";
 import { DEFAULT_SYSTEM_PROMPT } from "@/lib/remix-prompts";
 import { computeWordDiff, type DiffToken } from "@/lib/diff";
 import { PlaygroundHistoryContext } from "@/contexts/playground-history-context";
@@ -393,6 +393,23 @@ function PlaygroundCanvas({
   // Keep ref in sync so the history handler always sees fresh nodes
   promptNodesRef.current = promptNodes;
 
+  // Add a combine/merge node to the canvas
+  const handleAddMergeNode = useCallback(() => {
+    const currentNodes = rfNodes;
+    const maxY = currentNodes.reduce((max, n) => Math.max(max, n.position.y + 200), 200);
+    const id = `merge-${Date.now()}`;
+    setRfNodes((prev) => [
+      ...prev,
+      {
+        id,
+        type: "mergeNode",
+        position: { x: 0, y: maxY },
+        data: {},
+        draggable: true,
+      },
+    ]);
+  }, [rfNodes, setRfNodes]);
+
   // Stable handler — builds ancestry chain on demand from the ref
   const handleShowHistory = useCallback((nodeId: string) => {
     const byId = new Map(promptNodesRef.current.map((n) => [n.id, n]));
@@ -469,6 +486,8 @@ function PlaygroundCanvas({
   useEffect(() => {
     setRfNodes((prev) => {
       const imageNodes = prev.filter((n) => n.type === "imageNode");
+      // Merge nodes are user-placed — preserve them across prompt syncs
+      const mergeNodes = prev.filter((n) => n.type === "mergeNode");
       // Map of node id → current position in RF (includes user drags)
       const currentPositions = new Map<string, { x: number; y: number }>(
         prev.filter((n) => n.type === "promptNode").map((n) => [n.id, n.position])
@@ -489,7 +508,7 @@ function PlaygroundCanvas({
         },
         draggable: true,
       }));
-      return [...imageNodes, ...promptRfNodes];
+      return [...imageNodes, ...promptRfNodes, ...mergeNodes];
     });
   }, [promptNodes, setRfNodes]);
 
@@ -736,6 +755,14 @@ function PlaygroundCanvas({
           >
             <ChevronDown className="h-4 w-4 rotate-90" />
             All Remixes
+          </button>
+          <div className="h-4 w-px bg-gray-200" />
+          <button
+            onClick={handleAddMergeNode}
+            className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-500 transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700"
+          >
+            <Combine className="h-3.5 w-3.5" />
+            Add Combine Node
           </button>
           <div className="h-4 w-px bg-gray-200" />
           <RemixControls
