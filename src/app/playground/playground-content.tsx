@@ -813,7 +813,7 @@ function PlaygroundCanvas({
                 size={1}
               />
               <Controls position="bottom-right" />
-              <Panel position="bottom-left">
+              <Panel position="top-left">
                 <button
                   onClick={handleAddMergeNode}
                   className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-500 shadow-sm transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700"
