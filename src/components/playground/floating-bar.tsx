@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { Zap, Loader2, X } from "lucide-react";
+import { Zap, Loader2, X, Eye } from "lucide-react";
 
 type FloatingBarMode = "generate" | "edit" | "duplicate";
 
@@ -38,6 +38,7 @@ interface FloatingBarProps {
   error: string | null;
   onClearError: () => void;
   mentionImages: MentionImage[];
+  onShowPreview?: () => void;
 }
 
 // Extract plain text from contenteditable (mention spans count as @label)
@@ -83,6 +84,7 @@ export function FloatingBar({
   error,
   onClearError,
   mentionImages,
+  onShowPreview,
 }: FloatingBarProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const [mentionState, setMentionState] = useState<InternalMentionState | null>(null);
@@ -384,10 +386,19 @@ export function FloatingBar({
           </div>
 
           {/* Hint */}
-          <div className="border-t border-gray-50 px-4 py-1.5">
+          <div className="flex items-center justify-between border-t border-gray-50 px-4 py-1.5">
             <p className="text-[10px] text-gray-300">
               ⌘ + Enter to generate · @ to reference an image
             </p>
+            {onShowPreview && mode === "generate" && (
+              <button
+                onClick={onShowPreview}
+                className="flex items-center gap-1 text-[10px] text-gray-300 transition-colors hover:text-gray-500"
+              >
+                <Eye className="h-3 w-3" />
+                View request
+              </button>
+            )}
           </div>
         </div>
       </div>

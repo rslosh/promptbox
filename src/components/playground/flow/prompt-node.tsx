@@ -59,7 +59,7 @@ export function PromptNode({
           ? "border-gray-900 ring-2 ring-gray-900 shadow-lg"
           : "border-gray-200 hover:shadow-md"
       )}
-      style={{ width: 280 }}
+      style={{ width: 340 }}
     >
       <Handle
         type="target"
@@ -102,7 +102,7 @@ export function PromptNode({
         <p
           className={cn(
             "text-xs text-gray-800 leading-relaxed",
-            expanded ? "" : "line-clamp-3"
+            expanded ? "" : "line-clamp-6"
           )}
         >
           {data.content}
@@ -111,7 +111,7 @@ export function PromptNode({
 
       {/* Show more / less */}
       <div className="px-3 pb-3">
-        {data.content && data.content.length > 120 && (
+        {data.content && data.content.length > 300 && (
           <button
             onClick={(e) => {
               e.stopPropagation();
