@@ -12,6 +12,7 @@ interface PromptNodeData {
   content: string;
   mode: NodeMode;
   instruction: string;
+  model?: string;
   selected?: boolean;
 }
 
@@ -123,6 +124,13 @@ export function PromptNode({
           {data.content}
         </p>
       </div>
+
+      {/* Model label */}
+      {data.model && (
+        <div className="px-3 pb-1.5">
+          <span className="font-mono text-[9px] text-gray-300">{data.model}</span>
+        </div>
+      )}
 
       {/* Expand / collapse — full-width bar */}
       {isLong && (

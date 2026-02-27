@@ -229,6 +229,7 @@ function PlaygroundCanvas({
         content: pn.content,
         mode: pn.mode,
         instruction: pn.instruction,
+        model: pn.model,
       },
       selected: pn.id === selectedNodeId,
       draggable: true,
@@ -358,6 +359,7 @@ function PlaygroundCanvas({
       const now = new Date().toISOString();
       const parentId = floatingBarMode !== "generate" ? (selectedNodeId ?? null) : null;
       const imageIds = selectedImages.map((i) => i.id);
+      const model: string | undefined = data.model;
 
       const newNodes: PromptTreeNode[] = prompts.map((content, i) => ({
         id: `node-${Date.now()}-${i}`,
@@ -366,8 +368,9 @@ function PlaygroundCanvas({
         instruction,
         imageIds,
         parentId,
-        position: { x: 0, y: 0 }, // layoutTree will reposition
+        position: { x: 0, y: 0 },
         createdAt: now,
+        model,
       }));
 
       await handleGenerationComplete(newNodes);

@@ -7,6 +7,7 @@ export interface PromptTreeNode {
   parentId: string | null;
   position: { x: number; y: number };
   createdAt: string;
+  model?: string;
 }
 
 export type PromptTree = PromptTreeNode[];
