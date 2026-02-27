@@ -344,16 +344,41 @@ export function usePromptTree({
 
   // Handle generation complete — creates remix on first generation
   const handleGenerationComplete = useCallback(
-    async (nodes: PromptTreeNode[]) => {
-      addPromptNodes(nodes);
+    async (newNodes: PromptTreeNode[]) => {
+      // Compute final layout synchronously so we don't depend on stale state
+      const combined = layoutTree([...promptNodes, ...newNodes]);
+      setPromptNodes(combined);
+      setHasUnsavedChanges(true);
+
       if (!remixId) {
-        // Will save after state settles via the next autoSave cycle
-        setTimeout(async () => {
-          await createRemix();
-        }, 100);
+        setIsSaving(true);
+        try {
+          const response = await fetch("/api/remixes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: remixName,
+              image_ids: selectedImages.map((i) => i.id),
+              prompt_components: promptComponents,
+              edit_instructions: "",
+              generated_prompt: combined[combined.length - 1]?.content || "",
+              history: { nodes: combined },
+            }),
+          });
+          if (!response.ok) throw new Error("Failed to create remix");
+          const created = await response.json();
+          setRemixId(created.id);
+          setHasUnsavedChanges(false);
+          // Update URL without triggering Next.js re-mount (avoids clearing node state)
+          window.history.replaceState({}, "", `/playground/${created.id}`);
+        } catch (error) {
+          console.error("Create remix error:", error);
+        } finally {
+          setIsSaving(false);
+        }
       }
     },
-    [remixId, addPromptNodes, createRemix]
+    [remixId, promptNodes, remixName, selectedImages, promptComponents]
   );
 
   return {
