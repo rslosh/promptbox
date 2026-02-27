@@ -9,6 +9,7 @@ import {
   BackgroundVariant,
   useNodesState,
   useEdgesState,
+  useReactFlow,
   type Node,
   type Edge,
 } from "@xyflow/react";
@@ -32,6 +33,7 @@ interface Settings {
   geminiApiKey: string;
   secondaryLlmApiKey: string;
   remixSystemPrompt: string;
+  editSystemPrompt: string;
 }
 
 interface PlaygroundContentProps {
@@ -143,6 +145,8 @@ function PlaygroundCanvas({
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
   const reactFlowRef = useRef<HTMLDivElement>(null);
+  const initialFitDoneRef = useRef(false);
+  const { fitView } = useReactFlow();
 
   const {
     remixId: currentRemixId,
@@ -219,38 +223,54 @@ function PlaygroundCanvas({
     });
   }, [selectedImages, setRfNodes]);
 
-  // Sync prompt nodes + edges into React Flow when promptNodes change
+  // Sync prompt nodes into React Flow — preserves user-dragged positions.
+  // Uses the functional setRfNodes form so we can read the current RF positions
+  // (which include user drags) and only apply layout positions for NEW nodes.
   useEffect(() => {
-    const newPromptNodes: Node[] = promptNodes.map((pn) => ({
-      id: pn.id,
-      type: "promptNode",
-      position: pn.position,
-      data: {
-        content: pn.content,
-        mode: pn.mode,
-        instruction: pn.instruction,
-        model: pn.model,
-      },
-      selected: pn.id === selectedNodeId,
-      draggable: true,
-    }));
-
     setRfNodes((prev) => {
       const imageNodes = prev.filter((n) => n.type === "imageNode");
-      return [...imageNodes, ...newPromptNodes];
+      // Map of node id → current position in RF (includes user drags)
+      const currentPositions = new Map<string, { x: number; y: number }>(
+        prev.filter((n) => n.type === "promptNode").map((n) => [n.id, n.position])
+      );
+      const promptRfNodes: Node[] = promptNodes.map((pn) => ({
+        id: pn.id,
+        type: "promptNode",
+        // Existing nodes keep their RF position; new nodes use the layout position
+        position: currentPositions.get(pn.id) ?? pn.position,
+        data: {
+          content: pn.content,
+          mode: pn.mode,
+          instruction: pn.instruction,
+          model: pn.model,
+        },
+        draggable: true,
+      }));
+      return [...imageNodes, ...promptRfNodes];
     });
+  }, [promptNodes, setRfNodes]);
 
-    // Build edges
+  // Sync selection separately — never touches positions, only flips `selected`
+  useEffect(() => {
+    setRfNodes((nds) =>
+      nds.map((n) => ({
+        ...n,
+        selected: n.type === "promptNode" && n.id === selectedNodeId,
+      }))
+    );
+  }, [selectedNodeId, setRfNodes]);
+
+  // Sync edges
+  useEffect(() => {
     const edges: Edge[] = [];
 
     // Edges from image nodes to root prompt nodes (those with no parent)
     const rootPromptNodes = promptNodes.filter((n) => n.parentId === null);
     rootPromptNodes.forEach((pn) => {
       pn.imageIds.forEach((imgId) => {
-        const imageNodeId = `img-${imgId}`;
         edges.push({
           id: `edge-img-${imgId}-${pn.id}`,
-          source: imageNodeId,
+          source: `img-${imgId}`,
           target: pn.id,
           type: "smoothstep",
           animated: isGenerating,
@@ -274,7 +294,16 @@ function PlaygroundCanvas({
       });
 
     setRfEdges(edges);
-  }, [promptNodes, selectedNodeId, isGenerating, setRfNodes, setRfEdges]);
+  }, [promptNodes, isGenerating, setRfEdges]);
+
+  // Fit view once when nodes first appear (initial load / first generate)
+  useEffect(() => {
+    if (initialFitDoneRef.current || rfNodes.length === 0) return;
+    initialFitDoneRef.current = true;
+    // Small delay so React Flow has time to measure node sizes
+    const t = setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 100);
+    return () => clearTimeout(t);
+  }, [rfNodes.length, fitView]);
 
   // Auto-collapse panel when a node is selected
   useEffect(() => {
@@ -327,6 +356,7 @@ function PlaygroundCanvas({
           instruction,
           selectedPrompt: selectedNode?.content,
           apiKey: settings?.secondaryLlmApiKey || settings?.geminiApiKey,
+          editSystemPrompt: settings?.editSystemPrompt,
         };
       } else {
         body = {
@@ -498,8 +528,6 @@ function PlaygroundCanvas({
               onNodeClick={handleNodeClick}
               onPaneClick={handlePaneClick}
               nodeTypes={nodeTypes}
-              fitView
-              fitViewOptions={{ padding: 0.2 }}
               minZoom={0.2}
               maxZoom={2}
               proOptions={{ hideAttribution: true }}

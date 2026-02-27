@@ -1,64 +1,72 @@
 import type { PromptTreeNode } from "./playground-types";
 
-const IMAGE_NODE_Y = -160;
+const IMAGE_NODE_Y = -200;
 const IMAGE_NODE_X_STEP = 220;
 const ROOT_NODE_Y = 0;
-const ROOT_NODE_X_STEP = 300;
-const CHILD_Y_STEP = 220;
-const SIBLING_X_STEP = 300;
+const ROOT_NODE_X_STEP = 380;
+// Large enough to clear an expanded node (340px wide, can be 400–600px tall)
+const CHILD_Y_STEP = 520;
+const SIBLING_X_STEP = 380;
 
-export function layoutTree(nodes: PromptTreeNode[]): PromptTreeNode[] {
+/**
+ * Layout the prompt tree.
+ *
+ * When `newNodeIds` is provided (incremental mode):
+ *   - Existing nodes keep their current positions unchanged
+ *   - Only the new nodes are positioned relative to their already-placed parent
+ *
+ * When `newNodeIds` is omitted (full re-layout, e.g. initial hydration from DB):
+ *   - All nodes are repositioned from scratch with BFS
+ */
+export function layoutTree(
+  nodes: PromptTreeNode[],
+  newNodeIds?: Set<string>
+): PromptTreeNode[] {
   if (nodes.length === 0) return nodes;
 
   const updatedNodes = nodes.map((n) => ({ ...n }));
   const nodeMap = new Map(updatedNodes.map((n) => [n.id, n]));
+  const needsPosition = (n: PromptTreeNode) => !newNodeIds || newNodeIds.has(n.id);
 
-  // Separate image-reference nodes (no parentId, mode=generate, no content = placeholder)
-  // from real prompt nodes. We identify image nodes by a special marker if needed,
-  // but image nodes are kept in the React Flow state separately. Here we only layout
-  // PromptTreeNodes.
-
-  // Root nodes: parentId === null
   const rootNodes = updatedNodes.filter((n) => n.parentId === null);
 
-  // Layout root nodes
-  rootNodes.forEach((node, i) => {
-    node.position = {
-      x: i * ROOT_NODE_X_STEP,
-      y: ROOT_NODE_Y,
-    };
-  });
-
-  // Center root nodes
-  if (rootNodes.length > 1) {
-    const totalWidth = (rootNodes.length - 1) * ROOT_NODE_X_STEP;
+  // Full layout: position root nodes
+  if (!newNodeIds) {
     rootNodes.forEach((node, i) => {
-      node.position.x = i * ROOT_NODE_X_STEP - totalWidth / 2;
+      node.position = { x: i * ROOT_NODE_X_STEP, y: ROOT_NODE_Y };
     });
+    if (rootNodes.length > 1) {
+      const totalWidth = (rootNodes.length - 1) * ROOT_NODE_X_STEP;
+      rootNodes.forEach((node, i) => {
+        node.position.x = i * ROOT_NODE_X_STEP - totalWidth / 2;
+      });
+    }
   }
 
-  // BFS to layout children
+  // BFS: walk the tree and position children that need placement
   const queue: PromptTreeNode[] = [...rootNodes];
   while (queue.length > 0) {
     const parent = queue.shift()!;
     const children = updatedNodes.filter((n) => n.parentId === parent.id);
-
     if (children.length === 0) continue;
 
-    const parentX = parent.position.x;
-    const parentY = parent.position.y;
-    const childY = parentY + CHILD_Y_STEP;
+    const childrenToPlace = children.filter(needsPosition);
 
-    // Center siblings on parent's X
-    const totalWidth = (children.length - 1) * SIBLING_X_STEP;
-    const startX = parentX - totalWidth / 2;
+    if (childrenToPlace.length > 0) {
+      const parentX = parent.position.x;
+      const parentY = parent.position.y;
+      const childY = parentY + CHILD_Y_STEP;
+      const totalWidth = (children.length - 1) * SIBLING_X_STEP;
+      const startX = parentX - totalWidth / 2;
 
-    children.forEach((child, i) => {
-      child.position = {
-        x: startX + i * SIBLING_X_STEP,
-        y: childY,
-      };
-    });
+      // Position all children (including already-placed siblings) so X stays
+      // correct even when a new sibling is added alongside existing ones.
+      children.forEach((child, i) => {
+        if (needsPosition(child)) {
+          child.position = { x: startX + i * SIBLING_X_STEP, y: childY };
+        }
+      });
+    }
 
     queue.push(...children);
   }

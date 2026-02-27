@@ -22,7 +22,7 @@ async function callModel(
   systemPrompt: string,
   userMessage: string
 ): Promise<{ text: string; model: string }> {
-  const models = ["gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-1.5-flash"];
+  const models = ["gemini-3-flash-preview", "gemini-2.5-flash"];
   let lastError: Error | null = null;
 
   for (const model of models) {
@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
       count = 3,
       apiKey,
       systemPrompt,
+      editSystemPrompt,
     } = body;
 
     const geminiKey = apiKey || process.env.GEMINI_API_KEY || process.env.SECONDARY_LLM_API_KEY;
@@ -153,7 +154,8 @@ ${instruction || "Refine and improve this prompt."}
 
 Return the revised prompt now:`;
 
-      const { text, model } = await callModel(ai, EDIT_SYSTEM_PROMPT, userMessage);
+      const activeEditSystemPrompt = editSystemPrompt || EDIT_SYSTEM_PROMPT;
+      const { text, model } = await callModel(ai, activeEditSystemPrompt, userMessage);
 
       return NextResponse.json({ prompts: [text], model });
     }

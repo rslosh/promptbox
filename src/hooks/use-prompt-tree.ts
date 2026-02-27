@@ -225,8 +225,9 @@ export function usePromptTree({
   // Add prompt nodes after generation
   const addPromptNodes = useCallback((newNodes: PromptTreeNode[]) => {
     setPromptNodes((prev) => {
+      const ids = new Set(newNodes.map((n) => n.id));
       const combined = [...prev, ...newNodes];
-      return layoutTree(combined);
+      return layoutTree(combined, ids);
     });
     setHasUnsavedChanges(true);
   }, []);
@@ -363,8 +364,11 @@ export function usePromptTree({
   // Handle generation complete — creates remix on first generation
   const handleGenerationComplete = useCallback(
     async (newNodes: PromptTreeNode[]) => {
-      // Compute final layout synchronously so we don't depend on stale state
-      const combined = layoutTree([...promptNodes, ...newNodes]);
+      // Compute final layout synchronously so we don't depend on stale state.
+      // Pass newNodeIds so only the new nodes are repositioned; existing nodes
+      // keep their current positions (prevents the whole graph from jumping).
+      const newNodeIds = new Set(newNodes.map((n) => n.id));
+      const combined = layoutTree([...promptNodes, ...newNodes], newNodeIds);
       setPromptNodes(combined);
       setHasUnsavedChanges(true);
 

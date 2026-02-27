@@ -450,7 +450,7 @@ export const FloatingBar = forwardRef<FloatingBarHandle, FloatingBarProps>(
                   <>
                     <Zap className="h-4 w-4" />
                     <span className="hidden sm:inline">
-                      {mode === "generate" ? "Generate" : "Go"}
+                      {mode === "generate" ? "Generate" : mode === "edit" ? "Edit" : "Duplicate"}
                     </span>
                   </>
                 )}
