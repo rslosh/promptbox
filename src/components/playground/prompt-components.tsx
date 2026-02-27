@@ -12,6 +12,105 @@ interface PromptComponentsProps {
   onInsertToken?: (text: string) => void;
 }
 
+// Group a flat component list by the first dot-path segment
+function groupByTopLevel(components: PromptComponent[]): [string, PromptComponent[]][] {
+  const map = new Map<string, PromptComponent[]>();
+  for (const c of components) {
+    const group = c.type.split(".")[0];
+    if (!map.has(group)) map.set(group, []);
+    map.get(group)!.push(c);
+  }
+  return [...map.entries()];
+}
+
+// Single field row — clickable to insert
+function FieldRow({
+  component,
+  onInsertToken,
+}: {
+  component: PromptComponent;
+  onInsertToken?: (text: string) => void;
+}) {
+  // Show the sub-path (everything after the first segment) as the key label
+  const subKey = component.type.split(".").slice(1).join(".") || component.type;
+
+  return (
+    <button
+      onClick={() => onInsertToken?.(component.value)}
+      disabled={!onInsertToken}
+      title={onInsertToken ? `Insert: ${component.value}` : undefined}
+      className={cn(
+        "group flex w-full items-start gap-2 px-3 py-1.5 text-left transition-colors",
+        onInsertToken ? "cursor-pointer hover:bg-[#f2ff59]/25" : "cursor-default"
+      )}
+    >
+      <span className="mt-0.5 w-24 shrink-0 truncate font-mono text-[9px] text-gray-400">
+        {subKey}
+      </span>
+      <p className="flex-1 text-[10px] leading-relaxed text-gray-700 line-clamp-2">
+        {component.value}
+      </p>
+      {onInsertToken && (
+        <Plus className="mt-0.5 h-3 w-3 shrink-0 text-gray-300 opacity-0 transition-opacity group-hover:opacity-100" />
+      )}
+    </button>
+  );
+}
+
+// Collapsible sub-group (one top-level JSON key, e.g. "objects", "meta")
+function TopLevelGroup({
+  groupName,
+  items,
+  colorHex,
+  onInsertToken,
+  defaultOpen,
+}: {
+  groupName: string;
+  items: PromptComponent[];
+  colorHex: string;
+  onInsertToken?: (text: string) => void;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen ?? false);
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-gray-100">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-2 bg-gray-50 px-3 py-1.5 text-left transition-colors hover:bg-gray-100"
+      >
+        {open ? (
+          <ChevronDown className="h-3 w-3 shrink-0 text-gray-400" />
+        ) : (
+          <ChevronRight className="h-3 w-3 shrink-0 text-gray-400" />
+        )}
+        <span className="flex-1 font-mono text-[10px] font-semibold text-gray-600">
+          {groupName}
+        </span>
+        <span
+          className="rounded px-1.5 py-0.5 text-[8px] font-bold text-white"
+          style={{ backgroundColor: colorHex }}
+        >
+          {items.length}
+        </span>
+      </button>
+
+      {open && (
+        <div className="divide-y divide-gray-50 border-t border-gray-100">
+          {items.map((component) => (
+            <FieldRow
+              key={component.id}
+              component={component}
+              onInsertToken={onInsertToken}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Per-image collapsible block
 function ImageGroup({
   imageIndex,
   components,
@@ -24,10 +123,11 @@ function ImageGroup({
   const [open, setOpen] = useState(true);
   const color = getImageColor(imageIndex);
   const label = getImageLabel(imageIndex);
+  const groups = groupByTopLevel(components);
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
-      {/* Group header — click to collapse */}
+      {/* Image header */}
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-gray-50"
@@ -44,44 +144,22 @@ function ImageGroup({
           {label}
         </div>
         <span className="text-[10px] font-medium text-gray-500">
-          {components.length} field{components.length !== 1 ? "s" : ""}
+          {components.length} fields
         </span>
       </button>
 
-      {/* Fields */}
+      {/* Sub-groups */}
       {open && (
-        <div className="border-t border-gray-50 divide-y divide-gray-50">
-          {components.map((component) => (
-            <button
-              key={component.id}
-              onClick={() => onInsertToken?.(component.value)}
-              disabled={!onInsertToken}
-              title={onInsertToken ? `Insert: ${component.value}` : undefined}
-              className={cn(
-                "group flex w-full items-start gap-2 px-3 py-2 text-left transition-colors",
-                onInsertToken
-                  ? "cursor-pointer hover:bg-[#f2ff59]/20"
-                  : "cursor-default"
-              )}
-            >
-              {/* Field type badge */}
-              <span
-                className="mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold text-white"
-                style={{ backgroundColor: color.hex }}
-              >
-                {component.type}
-              </span>
-
-              {/* Value */}
-              <p className="flex-1 text-[10px] leading-relaxed text-gray-600 line-clamp-3">
-                {component.value}
-              </p>
-
-              {/* Insert affordance */}
-              {onInsertToken && (
-                <Plus className="mt-0.5 h-3 w-3 shrink-0 text-gray-300 opacity-0 transition-opacity group-hover:opacity-100" />
-              )}
-            </button>
+        <div className="space-y-1 border-t border-gray-50 p-2">
+          {groups.map(([groupName, items], i) => (
+            <TopLevelGroup
+              key={groupName}
+              groupName={groupName}
+              items={items}
+              colorHex={color.hex}
+              onInsertToken={onInsertToken}
+              defaultOpen={i === 0}
+            />
           ))}
         </div>
       )}
@@ -94,17 +172,16 @@ export function PromptComponents({
   onRemoveComponent: _onRemoveComponent,
   onInsertToken,
 }: PromptComponentsProps) {
-  const groupedComponents = components.reduce(
-    (acc, component) => {
-      const key = component.imageIndex;
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(component);
+  const groupedByImage = components.reduce(
+    (acc, c) => {
+      if (!acc[c.imageIndex]) acc[c.imageIndex] = [];
+      acc[c.imageIndex].push(c);
       return acc;
     },
     {} as Record<number, PromptComponent[]>
   );
 
-  const imageIndices = Object.keys(groupedComponents)
+  const imageIndices = Object.keys(groupedByImage)
     .map(Number)
     .sort((a, b) => a - b);
 
@@ -125,13 +202,13 @@ export function PromptComponents({
             <ImageGroup
               key={imageIndex}
               imageIndex={imageIndex}
-              components={groupedComponents[imageIndex]}
+              components={groupedByImage[imageIndex]}
               onInsertToken={onInsertToken}
             />
           ))}
           {onInsertToken && (
             <p className="px-1 text-[10px] text-gray-300">
-              Click any field to insert it at the cursor
+              Click any field to insert it at cursor
             </p>
           )}
         </div>

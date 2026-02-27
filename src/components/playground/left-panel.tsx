@@ -33,29 +33,35 @@ export function LeftPanel({
   onInsertToken,
 }: LeftPanelProps) {
   return (
-    <div className="flex shrink-0 items-start">
+    // h-full so the panel stretches to the parent flex container's height (enables scrolling)
+    <div className="flex h-full shrink-0">
       {/* Collapsible content */}
       <div
         className={cn(
-          "overflow-hidden transition-all duration-300",
+          "h-full overflow-hidden transition-all duration-300",
           open ? "w-[280px]" : "w-0"
         )}
       >
-        <div className="flex h-full w-[280px] flex-col gap-4 overflow-y-auto border-r border-gray-200 bg-white p-4 pb-48">
-          <SelectedImages
-            images={images}
-            onAddClick={onAddClick}
-            onRemoveImage={onRemoveImage}
-          />
-          <PromptComponents
-            components={components}
-            onRemoveComponent={onRemoveComponent}
-            onInsertToken={onInsertToken}
-          />
+        <div className="flex h-full w-[280px] flex-col border-r border-gray-200 bg-white">
+          {/* Scrollable content area with bottom padding so floating bar doesn't cover last item */}
+          <div className="flex-1 overflow-y-auto p-4 pb-52">
+            <div className="space-y-6">
+              <SelectedImages
+                images={images}
+                onAddClick={onAddClick}
+                onRemoveImage={onRemoveImage}
+              />
+              <PromptComponents
+                components={components}
+                onRemoveComponent={onRemoveComponent}
+                onInsertToken={onInsertToken}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Toggle tab — flex sibling, always visible at the canvas edge */}
+      {/* Toggle tab */}
       <button
         onClick={onToggle}
         title={open ? "Collapse panel" : "Expand panel"}
