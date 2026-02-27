@@ -1,10 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { X, Filter, ChevronDown, FolderOpen, Check } from "lucide-react";
+import { X, ChevronDown, Check, FolderOpen, ArrowUpDown } from "lucide-react";
 import type { Collection } from "@/lib/supabase/types";
 
 interface FilterBarProps {
@@ -34,210 +32,237 @@ export function FilterBar({
 }: FilterBarProps) {
   const [showAllTags, setShowAllTags] = useState(false);
   const [showCollectionDropdown, setShowCollectionDropdown] = useState(false);
-  const collectionDropdownRef = useRef<HTMLDivElement>(null);
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const collectionRef = useRef<HTMLDivElement>(null);
+  const sortRef = useRef<HTMLDivElement>(null);
 
-  const displayedTags = showAllTags ? tags : tags.slice(0, 12);
+  const displayedTags = showAllTags ? tags : tags.slice(0, 14);
+  const hasActiveFilters = selectedTags.length > 0 || selectedCollections.length > 0;
+  const activeFilterCount = selectedTags.length + selectedCollections.length;
 
   const toggleTag = (tag: string) => {
-    if (selectedTags.includes(tag)) {
-      onTagsChange(selectedTags.filter((t) => t !== tag));
-    } else {
-      onTagsChange([...selectedTags, tag]);
-    }
+    onTagsChange(
+      selectedTags.includes(tag)
+        ? selectedTags.filter((t) => t !== tag)
+        : [...selectedTags, tag]
+    );
   };
 
-  const toggleCollection = (collectionId: string) => {
+  const toggleCollection = (id: string) => {
     if (!onCollectionsChange) return;
-    if (selectedCollections.includes(collectionId)) {
-      onCollectionsChange(selectedCollections.filter((c) => c !== collectionId));
-    } else {
-      onCollectionsChange([...selectedCollections, collectionId]);
-    }
+    onCollectionsChange(
+      selectedCollections.includes(id)
+        ? selectedCollections.filter((c) => c !== id)
+        : [...selectedCollections, id]
+    );
   };
-
-  const hasActiveFilters = selectedTags.length > 0 || selectedCollections.length > 0;
 
   const clearAllFilters = () => {
     onTagsChange([]);
     onCollectionsChange?.([]);
   };
 
-  // Close dropdown when clicking outside
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        collectionDropdownRef.current &&
-        !collectionDropdownRef.current.contains(event.target as Node)
-      ) {
+    function handleClick(e: MouseEvent) {
+      if (collectionRef.current && !collectionRef.current.contains(e.target as Node)) {
         setShowCollectionDropdown(false);
       }
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) {
+        setShowSortDropdown(false);
+      }
     }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
   return (
-    <div className="space-y-4">
-      {/* Source, Collection and Sort filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-white/40" />
-          <span className="text-sm text-white/60">Source:</span>
-        </div>
-        
-        <div className="flex gap-1">
-          {(["all", "upload", "gallery_dl"] as const).map((source) => (
-            <Button
-              key={source}
-              size="sm"
-              variant={sourceFilter === source ? "default" : "ghost"}
-              className="h-7 text-xs"
-              onClick={() => onSourceFilterChange(source)}
+    <div className="space-y-3">
+      {/* Controls row */}
+      <div className="flex flex-wrap items-center gap-1.5">
+
+        {/* Source pills */}
+        <div className="flex items-center rounded-lg border border-white/8 bg-white/3 p-0.5">
+          {(
+            [
+              { value: "all", label: "All" },
+              { value: "upload", label: "Uploads" },
+              { value: "gallery_dl", label: "Imported" },
+            ] as const
+          ).map(({ value, label }) => (
+            <button
+              key={value}
+              onClick={() => onSourceFilterChange(value)}
+              className={cn(
+                "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                sourceFilter === value
+                  ? "bg-white/10 text-white"
+                  : "text-white/40 hover:text-white/70"
+              )}
             >
-              {source === "all" ? "All" : source === "upload" ? "Uploaded" : "Gallery-DL"}
-            </Button>
+              {label}
+            </button>
           ))}
         </div>
 
-        {/* Collection Filter */}
+        <div className="h-4 w-px bg-white/10" />
+
+        {/* Collections dropdown */}
         {collections.length > 0 && onCollectionsChange && (
-          <>
-            <div className="h-4 w-px bg-white/20" />
-
-            <div className="relative" ref={collectionDropdownRef}>
-              <Button
-                size="sm"
-                variant={selectedCollections.length > 0 ? "default" : "ghost"}
-                className={cn(
-                  "h-7 text-xs",
-                  selectedCollections.length > 0 && "bg-purple-600/30 hover:bg-purple-600/40"
-                )}
-                onClick={() => setShowCollectionDropdown(!showCollectionDropdown)}
-              >
-                <FolderOpen className="mr-1 h-3 w-3" />
-                {selectedCollections.length === 0
-                  ? "Collections"
-                  : selectedCollections.length === 1
-                  ? collections.find((c) => c.id === selectedCollections[0])?.name || "1 selected"
-                  : `${selectedCollections.length} collections`}
-                <ChevronDown className="ml-1 h-3 w-3" />
-              </Button>
-
-              {showCollectionDropdown && (
-                <div className="absolute left-0 top-full z-50 mt-1 min-w-[200px] max-h-[300px] overflow-y-auto rounded-lg border border-white/10 bg-zinc-900 p-1 shadow-xl">
-                  {collections.map((collection) => {
-                    const isSelected = selectedCollections.includes(collection.id);
-                    return (
-                      <button
-                        key={collection.id}
-                        className={cn(
-                          "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors",
-                          isSelected
-                            ? "bg-purple-600/20 text-white"
-                            : "text-white/70 hover:bg-white/5 hover:text-white"
-                        )}
-                        onClick={() => toggleCollection(collection.id)}
-                      >
-                        <div
-                          className={cn(
-                            "flex h-4 w-4 items-center justify-center rounded border",
-                            isSelected
-                              ? "border-purple-500 bg-purple-500"
-                              : "border-white/30"
-                          )}
-                        >
-                          {isSelected && <Check className="h-3 w-3 text-white" />}
-                        </div>
-                        <span className="flex-1 truncate">{collection.name}</span>
-                        <span className="text-xs text-white/40">{collection.image_count}</span>
-                      </button>
-                    );
-                  })}
-
-                  {selectedCollections.length > 0 && (
-                    <>
-                      <div className="my-1 h-px bg-white/10" />
-                      <button
-                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-red-400 hover:bg-white/5"
-                        onClick={() => {
-                          onCollectionsChange([]);
-                          setShowCollectionDropdown(false);
-                        }}
-                      >
-                        <X className="h-3 w-3" />
-                        Clear selection
-                      </button>
-                    </>
-                  )}
-                </div>
+          <div className="relative" ref={collectionRef}>
+            <button
+              onClick={() => setShowCollectionDropdown((v) => !v)}
+              className={cn(
+                "flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-xs transition-colors",
+                selectedCollections.length > 0
+                  ? "border-purple-500/40 bg-purple-500/10 text-purple-300"
+                  : "border-white/8 bg-white/3 text-white/50 hover:border-white/15 hover:text-white/80"
               )}
-            </div>
-          </>
+            >
+              <FolderOpen className="h-3 w-3" />
+              {selectedCollections.length === 0
+                ? "Collections"
+                : selectedCollections.length === 1
+                ? (collections.find((c) => c.id === selectedCollections[0])?.name ?? "1 selected")
+                : `${selectedCollections.length} collections`}
+              <ChevronDown
+                className={cn(
+                  "h-3 w-3 transition-transform",
+                  showCollectionDropdown && "rotate-180"
+                )}
+              />
+            </button>
+
+            {showCollectionDropdown && (
+              <div className="absolute left-0 top-full z-50 mt-1.5 min-w-[200px] max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-[#111] py-1 shadow-2xl backdrop-blur-xl">
+                {collections.map((col) => {
+                  const active = selectedCollections.includes(col.id);
+                  return (
+                    <button
+                      key={col.id}
+                      onClick={() => toggleCollection(col.id)}
+                      className={cn(
+                        "flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors",
+                        active
+                          ? "bg-purple-500/10 text-white"
+                          : "text-white/60 hover:bg-white/5 hover:text-white"
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
+                          active ? "border-purple-500 bg-purple-500" : "border-white/20"
+                        )}
+                      >
+                        {active && <Check className="h-2.5 w-2.5 text-white" />}
+                      </div>
+                      <span className="flex-1 truncate">{col.name}</span>
+                      <span className="tabular-nums text-xs text-white/30">{col.image_count}</span>
+                    </button>
+                  );
+                })}
+
+                {selectedCollections.length > 0 && (
+                  <>
+                    <div className="my-1 mx-2 h-px bg-white/8" />
+                    <button
+                      onClick={() => {
+                        onCollectionsChange([]);
+                        setShowCollectionDropdown(false);
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-white/5"
+                    >
+                      <X className="h-3 w-3" />
+                      Clear
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         )}
 
-        <div className="h-4 w-px bg-white/20" />
-
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-white/60">Sort:</span>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 text-xs"
-            onClick={() => onSortChange(sortBy === "newest" ? "oldest" : "newest")}
+        {/* Sort dropdown */}
+        <div className="relative" ref={sortRef}>
+          <button
+            onClick={() => setShowSortDropdown((v) => !v)}
+            className="flex h-7 items-center gap-1.5 rounded-lg border border-white/8 bg-white/3 px-2.5 text-xs text-white/50 transition-colors hover:border-white/15 hover:text-white/80"
           >
-            {sortBy === "newest" ? "Newest first" : "Oldest first"}
-            <ChevronDown className="ml-1 h-3 w-3" />
-          </Button>
+            <ArrowUpDown className="h-3 w-3" />
+            {sortBy === "newest" ? "Newest" : "Oldest"}
+            <ChevronDown
+              className={cn("h-3 w-3 transition-transform", showSortDropdown && "rotate-180")}
+            />
+          </button>
+
+          {showSortDropdown && (
+            <div className="absolute left-0 top-full z-50 mt-1.5 w-36 rounded-xl border border-white/10 bg-[#111] py-1 shadow-2xl backdrop-blur-xl">
+              {(["newest", "oldest"] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => {
+                    onSortChange(s);
+                    setShowSortDropdown(false);
+                  }}
+                  className={cn(
+                    "flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors capitalize",
+                    sortBy === s
+                      ? "text-white"
+                      : "text-white/50 hover:bg-white/5 hover:text-white"
+                  )}
+                >
+                  {sortBy === s && <Check className="h-3 w-3 text-purple-400" />}
+                  {sortBy !== s && <span className="w-3" />}
+                  {s} first
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
+        {/* Active filter count + clear */}
         {hasActiveFilters && (
           <>
-            <div className="h-4 w-px bg-white/20" />
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 text-xs text-red-400 hover:text-red-300"
+            <div className="h-4 w-px bg-white/10" />
+            <button
               onClick={clearAllFilters}
+              className="flex h-7 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 text-xs text-white/50 transition-colors hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400"
             >
-              Clear filters
-              <X className="ml-1 h-3 w-3" />
-            </Button>
+              <X className="h-3 w-3" />
+              {activeFilterCount} filter{activeFilterCount !== 1 ? "s" : ""}
+            </button>
           </>
         )}
       </div>
 
       {/* Tag chips */}
       {tags.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {displayedTags.map((tag) => (
-            <Badge
-              key={tag}
-              variant={selectedTags.includes(tag) ? "default" : "outline"}
-              className={cn(
-                "cursor-pointer transition-colors",
-                selectedTags.includes(tag)
-                  ? "bg-purple-600/30 hover:bg-purple-600/40"
-                  : "hover:bg-white/10"
-              )}
-              onClick={() => toggleTag(tag)}
+        <div className="flex flex-wrap gap-1.5">
+          {displayedTags.map((tag) => {
+            const active = selectedTags.includes(tag);
+            return (
+              <button
+                key={tag}
+                onClick={() => toggleTag(tag)}
+                className={cn(
+                  "flex h-6 items-center gap-1 rounded-full border px-2.5 text-xs transition-colors",
+                  active
+                    ? "border-purple-500/50 bg-purple-500/15 text-purple-300"
+                    : "border-white/8 bg-white/3 text-white/40 hover:border-white/15 hover:text-white/70"
+                )}
+              >
+                {tag}
+                {active && <X className="h-2.5 w-2.5" />}
+              </button>
+            );
+          })}
+
+          {tags.length > 14 && (
+            <button
+              onClick={() => setShowAllTags((v) => !v)}
+              className="flex h-6 items-center rounded-full border border-white/8 bg-white/3 px-2.5 text-xs text-white/30 transition-colors hover:text-white/60"
             >
-              {tag}
-              {selectedTags.includes(tag) && (
-                <X className="ml-1 h-3 w-3" />
-              )}
-            </Badge>
-          ))}
-          
-          {tags.length > 12 && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-6 px-2 text-xs"
-              onClick={() => setShowAllTags(!showAllTags)}
-            >
-              {showAllTags ? "Show less" : `+${tags.length - 12} more`}
-            </Button>
+              {showAllTags ? "Less" : `+${tags.length - 14}`}
+            </button>
           )}
         </div>
       )}

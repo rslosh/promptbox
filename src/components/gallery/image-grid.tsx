@@ -45,6 +45,7 @@ export function ImageGrid({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const handleSelect = (id: string) => {
     if (!onSelectionChange) return;
@@ -66,25 +67,30 @@ export function ImageGrid({
     }
   };
 
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
+  const handleDeleteClick = (id: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    if (!confirm("Are you sure you want to delete this image?")) return;
-    
+    setConfirmDeleteId(id);
+  };
+
+  const handleDeleteConfirm = async (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setConfirmDeleteId(null);
     setDeletingId(id);
     try {
-      const response = await fetch(`/api/images/${id}`, {
-        method: "DELETE",
-      });
-      
-      if (response.ok && onDelete) {
-        onDelete(id);
-      }
+      const response = await fetch(`/api/images/${id}`, { method: "DELETE" });
+      if (response.ok && onDelete) onDelete(id);
     } catch (error) {
       console.error("Delete error:", error);
     }
     setDeletingId(null);
+  };
+
+  const handleDeleteCancel = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setConfirmDeleteId(null);
   };
 
   const handleImageError = (imageId: string) => {
@@ -94,15 +100,17 @@ export function ImageGrid({
   if (images.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
-        <div className="rounded-full bg-white/5 p-4">
-          <Eye className="h-8 w-8 text-white/40" />
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/8 bg-white/3">
+          <Eye className="h-6 w-6 text-white/20" />
         </div>
-        <h3 className="mt-4 text-lg font-medium text-white">No images yet</h3>
-        <p className="mt-2 text-sm text-white/60">
-          Upload some images to get started with prompt generation.
+        <p className="text-sm font-medium text-white/50">No images found</p>
+        <p className="mt-1 text-xs text-white/25">
+          Try adjusting your filters or upload new images.
         </p>
-        <Link href="/upload">
-          <Button className="mt-6">Upload Images</Button>
+        <Link href="/upload" onClick={(e) => e.stopPropagation()}>
+          <button className="mt-5 flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/50 transition-colors hover:border-white/20 hover:bg-white/8 hover:text-white">
+            Upload images
+          </button>
         </Link>
       </div>
     );
@@ -114,6 +122,7 @@ export function ImageGrid({
         const isSelected = selectedIds.includes(image.id);
         const firstPrompt = image.prompts?.[0];
         const isDeleting = deletingId === image.id;
+        const isConfirmingDelete = confirmDeleteId === image.id;
         
         // Use thumbnail if available, fallback to original image
         const useFallback = failedImages.has(image.id);
@@ -171,11 +180,38 @@ export function ImageGrid({
 
               {/* Delete button - top right */}
               <button
-                onClick={(e) => handleDelete(image.id, e)}
-                className="absolute right-2 top-2 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white/70 opacity-0 transition-opacity hover:bg-red-600 hover:text-white group-hover:opacity-100"
+                onClick={(e) => handleDeleteClick(image.id, e)}
+                className={cn(
+                  "absolute right-2 top-2 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white/60 transition-all hover:bg-red-500/80 hover:text-white",
+                  isConfirmingDelete ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                )}
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-3 w-3" />
               </button>
+
+              {/* Inline delete confirm overlay */}
+              {isConfirmingDelete && (
+                <div
+                  className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 bg-black/75 backdrop-blur-sm"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <p className="text-xs font-medium text-white">Delete image?</p>
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={handleDeleteCancel}
+                      className="rounded-lg border border-white/20 bg-white/10 px-3 py-1 text-xs text-white/70 transition-colors hover:bg-white/20"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={(e) => handleDeleteConfirm(image.id, e)}
+                      className="rounded-lg border border-red-500/40 bg-red-500/25 px-3 py-1 text-xs text-red-300 transition-colors hover:bg-red-500/40"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Hover overlay */}
               <div className="absolute inset-0 z-10 flex flex-col justify-end bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100">

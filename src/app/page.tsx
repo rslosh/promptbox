@@ -19,6 +19,7 @@ interface ImageWithDetails extends ImageAsset {
 
 export default function GalleryPage() {
   const [images, setImages] = useState<ImageWithDetails[]>([]);
+  const [allImagesCount, setAllImagesCount] = useState(0);
   const [allTags, setAllTags] = useState<string[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -27,6 +28,11 @@ export default function GalleryPage() {
   const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const hasActiveFilters =
+    selectedTags.length > 0 ||
+    selectedCollections.length > 0 ||
+    sourceFilter !== "all";
   
   // View options
   const [layout, setLayout] = useState<LayoutType>("full");
@@ -106,6 +112,8 @@ export default function GalleryPage() {
     }
 
     setImages(filteredData);
+    // Track total unfiltered count for the header description
+    if (!hasActiveFilters) setAllImagesCount(filteredData.length);
     setIsLoading(false);
   }
 
@@ -152,7 +160,13 @@ export default function GalleryPage() {
       <main className="flex-1 pl-64">
         <Header
           title="Gallery"
-          description={`${images.length} images`}
+          description={
+            isLoading
+              ? ""
+              : hasActiveFilters
+              ? `${images.length} of ${allImagesCount} images`
+              : `${images.length} image${images.length !== 1 ? "s" : ""}`
+          }
           actions={
             <div className="flex gap-2">
               {selectedIds.length > 0 && (
@@ -199,6 +213,7 @@ export default function GalleryPage() {
                 <div
                   key={i}
                   className="aspect-square animate-pulse rounded-xl bg-white/5"
+                  style={{ animationDelay: `${i * 40}ms` }}
                 />
               ))}
             </div>
