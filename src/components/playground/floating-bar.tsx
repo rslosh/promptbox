@@ -172,7 +172,7 @@ export const FloatingBar = forwardRef<FloatingBarHandle, FloatingBarProps>(
       editorRef.current?.focus();
     }, [mode]);
 
-    const leftOffset = 256 + (panelOpen ? 280 : 0);
+    const leftOffset = 256 + (panelOpen ? 340 : 0);
     const hasNode = selectedNode !== null;
 
     const placeholder =

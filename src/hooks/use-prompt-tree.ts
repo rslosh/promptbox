@@ -185,7 +185,8 @@ export function usePromptTree({
             if (typeof item === "string" && item.trim()) {
               results.push({ type: path, value: item.trim() });
             } else if (item && typeof item === "object" && !Array.isArray(item)) {
-              flattenJson(item as Record<string, unknown>, path).forEach((r) =>
+              // Use indexed path so each array element is distinguishable: objects[0].label
+              flattenJson(item as Record<string, unknown>, `${path}[${i}]`).forEach((r) =>
                 results.push(r)
               );
             }

@@ -39,10 +39,10 @@ export function LeftPanel({
       <div
         className={cn(
           "h-full overflow-hidden transition-all duration-300",
-          open ? "w-[280px]" : "w-0"
+          open ? "w-[340px]" : "w-0"
         )}
       >
-        <div className="flex h-full w-[280px] flex-col border-r border-gray-200 bg-white">
+        <div className="flex h-full w-[340px] flex-col border-r border-gray-200 bg-white">
           {/* Scrollable content area with bottom padding so floating bar doesn't cover last item */}
           <div className="flex-1 overflow-y-auto p-4 pb-52">
             <div className="space-y-6">
