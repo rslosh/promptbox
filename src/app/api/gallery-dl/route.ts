@@ -6,6 +6,7 @@ import path from "path";
 import os from "os";
 import crypto from "crypto";
 import { GoogleGenAI } from "@google/genai";
+import { fetchCosmosClusterImages, downloadCosmosImage } from "@/lib/cosmos";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -73,11 +74,15 @@ async function processGalleryDl(jobId: string, url: string, autoTag: boolean) {
   await fs.mkdir(tempDir, { recursive: true });
 
   try {
-    // Run gallery-dl
-    await runGalleryDl(url, tempDir);
-
-    // Find all downloaded images
-    const files = await findImages(tempDir);
+    let files: string[];
+    if (url.includes("cosmos.so")) {
+      const imageUrls = await fetchCosmosClusterImages(url);
+      const downloaded = await Promise.all(imageUrls.map((u) => downloadCosmosImage(u, tempDir)));
+      files = downloaded.filter((f): f is string => f !== null);
+    } else {
+      await runGalleryDl(url, tempDir);
+      files = await findImages(tempDir);
+    }
     
     console.log(`[gallery-dl] Found ${files.length} images to process`);
 

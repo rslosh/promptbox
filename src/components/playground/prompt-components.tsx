@@ -1,7 +1,5 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { getImageColor, getImageLabel } from "@/lib/constants/colors";
 import type { PromptComponent } from "@/lib/supabase/types";
@@ -16,104 +14,90 @@ export function PromptComponents({
   components,
   onRemoveComponent,
 }: PromptComponentsProps) {
-  // Group components by image
-  const groupedComponents = components.reduce((acc, component) => {
-    const key = component.imageIndex;
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(component);
-    return acc;
-  }, {} as Record<number, PromptComponent[]>);
+  const groupedComponents = components.reduce(
+    (acc, component) => {
+      const key = component.imageIndex;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(component);
+      return acc;
+    },
+    {} as Record<number, PromptComponent[]>
+  );
 
-  const imageIndices = Object.keys(groupedComponents).map(Number).sort((a, b) => a - b);
+  const imageIndices = Object.keys(groupedComponents)
+    .map(Number)
+    .sort((a, b) => a - b);
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm">Prompt Components</CardTitle>
-          {components.length > 0 && (
-            <span className="text-xs text-gray-600">{components.length} fields</span>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent>
-        {components.length > 0 ? (
-          <div className="max-h-[500px] space-y-4 overflow-y-auto pr-1">
-            {imageIndices.map((imageIndex) => {
-              const color = getImageColor(imageIndex);
-              const label = getImageLabel(imageIndex);
-              const imageComponents = groupedComponents[imageIndex];
-
-              return (
-                <div key={imageIndex} className="space-y-2">
-                  {/* Image header with strong color bar */}
-                  <div className={cn("flex items-center gap-2 rounded-lg px-3 py-2", color.bg)}>
-                    <div
-                      className={cn(
-                        "flex h-7 w-14 items-center justify-center rounded-md text-xs font-bold",
-                        color.dot,
-                        "text-white"
-                      )}
-                    >
-                      {label}
-                    </div>
-                    <span className={cn("text-xs font-medium", color.text)}>
-                      {imageComponents.length} component{imageComponents.length !== 1 ? "s" : ""}
-                    </span>
-                  </div>
-
-                  {/* Components for this image */}
-                  <div className="space-y-1.5 pl-2">
-                    {imageComponents.map((component) => (
-                      <div
-                        key={component.id}
-                        className={cn(
-                          "group flex items-start gap-2 rounded-lg border-l-4 bg-black/[0.03] py-2 pl-3 pr-2 transition-colors hover:bg-black/[0.06]",
-                          color.border
-                        )}
-                      >
-                        {/* Component type badge */}
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "shrink-0 border-0 text-[10px]",
-                            color.bg,
-                            color.text
-                          )}
-                        >
-                          {component.type}
-                        </Badge>
-
-                        {/* Component value */}
-                        <p className="line-clamp-2 flex-1 text-xs text-gray-700">
-                          {component.value}
-                        </p>
-
-                        {/* Remove button */}
-                        <button
-                          onClick={() => onRemoveComponent(component.id)}
-                          className="shrink-0 rounded p-1 opacity-0 transition-all hover:bg-red-50 group-hover:opacity-100"
-                        >
-                          <X className="h-3 w-3 text-gray-500 hover:text-red-500" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <p className="text-sm text-gray-600">
-              Select images to extract prompt components
-            </p>
-            <p className="mt-1 text-xs text-gray-500">
-              Each image's JSON fields will appear here
-            </p>
-          </div>
+    <div>
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+          Prompt Components
+        </p>
+        {components.length > 0 && (
+          <span className="text-[10px] text-gray-400">{components.length} fields</span>
         )}
-      </CardContent>
-    </Card>
+      </div>
+
+      {components.length > 0 ? (
+        <div className="space-y-3">
+          {imageIndices.map((imageIndex) => {
+            const color = getImageColor(imageIndex);
+            const label = getImageLabel(imageIndex);
+            const imageComponents = groupedComponents[imageIndex];
+
+            return (
+              <div key={imageIndex} className="space-y-1">
+                {/* Image header */}
+                <div className="flex items-center gap-2 px-1 py-1">
+                  <div
+                    className="flex h-5 w-10 items-center justify-center rounded text-[9px] font-bold text-white"
+                    style={{ backgroundColor: color.hex }}
+                  >
+                    {label}
+                  </div>
+                  <span className="text-[10px] font-medium text-gray-500">
+                    {imageComponents.length} component{imageComponents.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+
+                {/* Components */}
+                <div className="space-y-1 pl-1">
+                  {imageComponents.map((component) => (
+                    <div
+                      key={component.id}
+                      className="group flex items-start gap-2 rounded-lg border border-gray-100 bg-white py-1.5 pl-2.5 pr-1.5 shadow-sm transition-colors hover:border-gray-200"
+                    >
+                      <span
+                        className="mt-px shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold text-white"
+                        style={{ backgroundColor: color.hex }}
+                      >
+                        {component.type}
+                      </span>
+                      <p className="line-clamp-2 flex-1 text-[10px] leading-relaxed text-gray-600">
+                        {component.value}
+                      </p>
+                      <button
+                        onClick={() => onRemoveComponent(component.id)}
+                        className="mt-0.5 shrink-0 rounded p-0.5 opacity-0 transition-all hover:bg-red-50 group-hover:opacity-100"
+                      >
+                        <X className="h-2.5 w-2.5 text-gray-400 hover:text-red-500" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-6 text-center">
+          <p className="text-xs text-gray-400">Select images to extract prompt components</p>
+          <p className="mt-1 text-[10px] text-gray-300">
+            Each image's JSON fields will appear here
+          </p>
+        </div>
+      )}
+    </div>
   );
 }

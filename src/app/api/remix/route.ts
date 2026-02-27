@@ -61,139 +61,207 @@ RESPONSE FORMAT
 Output:
 [Single paragraph of natural language prompt text. No other text allowed.]`;
 
+const EDIT_SYSTEM_PROMPT = `You are a prompt editor. Take the given image generation prompt and apply the user's instruction as a targeted edit. Preserve everything not explicitly mentioned. Return only the revised prompt text, no preamble, no explanation, no metadata.`;
+
+const DUPLICATE_SYSTEM_PROMPT = `You are a prompt variation generator. Given an image generation prompt and a variation instruction, generate exactly one distinct creative variation. Make it meaningfully different while staying true to the core concept. Return only the variation prompt text, no preamble, no numbering, no extra text.`;
+
+async function callModel(
+  ai: GoogleGenAI,
+  systemPrompt: string,
+  userMessage: string
+): Promise<{ text: string; model: string }> {
+  const models = ["gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-1.5-flash"];
+  let lastError: Error | null = null;
+
+  for (const model of models) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: userMessage,
+        config: { systemInstruction: systemPrompt },
+      });
+      return { text: (response.text || "").trim(), model };
+    } catch (err) {
+      lastError = err as Error;
+      const msg = (err as Error).message || "";
+      if (
+        msg.includes("429") ||
+        msg.includes("RESOURCE_EXHAUSTED") ||
+        msg.includes("404") ||
+        msg.includes("NOT_FOUND")
+      ) {
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  throw lastError || new Error("All models failed");
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { components, instructions, imageIds, apiKey, systemPrompt, imagePrompts } = await request.json();
+    const body = await request.json();
+    const {
+      mode,
+      instruction,
+      imagePrompts,
+      components,
+      instructions,
+      imageIds,
+      selectedPrompt,
+      count = 3,
+      apiKey,
+      systemPrompt,
+    } = body;
 
-    if (!imagePrompts?.length && !components?.length && !instructions?.trim()) {
-      return NextResponse.json({ error: "No image data or instructions provided" }, { status: 400 });
-    }
-
-    // Use provided API key or env variable
     const geminiKey = apiKey || process.env.GEMINI_API_KEY || process.env.SECONDARY_LLM_API_KEY;
-    
+
     if (!geminiKey) {
       return NextResponse.json({ error: "LLM API key not configured" }, { status: 400 });
     }
 
-    // Format full JSON prompts from each image
-    let sourcePromptsSection = "";
-    
-    if (imagePrompts && imagePrompts.length > 0) {
-      // Use full JSON prompts (preferred)
-      sourcePromptsSection = (imagePrompts as ImagePromptData[])
-        .sort((a, b) => a.imageIndex - b.imageIndex)
-        .map((img) => {
-          const imageLabel = `Image ${img.imageIndex + 1}`;
-          const jsonStr = JSON.stringify(img.jsonPrompt, null, 2);
-          return `[${imageLabel}]\n${jsonStr}`;
-        })
-        .join("\n\n");
-    } else if (components && components.length > 0) {
-      // Fallback to component-based format
-      const componentsByImage: Record<string, { type: string; value: string }[]> = {};
-      (components as PromptComponent[]).forEach((c) => {
-        const imgLabel = `Image ${c.imageIndex + 1}`;
-        if (!componentsByImage[imgLabel]) {
-          componentsByImage[imgLabel] = [];
-        }
-        componentsByImage[imgLabel].push({ type: c.type, value: c.value });
-      });
+    const ai = new GoogleGenAI({ apiKey: geminiKey });
 
-      sourcePromptsSection = Object.entries(componentsByImage)
-        .map(([imgLabel, comps]) => {
-          const fields = comps.map((c) => `  "${c.type}": "${c.value}"`).join(",\n");
-          return `[${imgLabel}]\n{\n${fields}\n}`;
-        })
-        .join("\n\n");
-    }
+    // Backwards compat: no mode = legacy generate
+    if (!mode || mode === "generate") {
+      const effectiveInstruction = instruction || instructions;
 
-    // Use custom system prompt or default
-    const activeSystemPrompt = systemPrompt || DEFAULT_SYSTEM_PROMPT;
+      if (!imagePrompts?.length && !components?.length && !effectiveInstruction?.trim()) {
+        return NextResponse.json({ error: "No image data or instructions provided" }, { status: 400 });
+      }
 
-    // Build the user message with source prompts and remix request
-    const userMessage = `SOURCE PROMPTS:
+      let sourcePromptsSection = "";
+
+      if (imagePrompts && imagePrompts.length > 0) {
+        sourcePromptsSection = (imagePrompts as ImagePromptData[])
+          .sort((a, b) => a.imageIndex - b.imageIndex)
+          .map((img) => {
+            const imageLabel = `Image ${img.imageIndex + 1}`;
+            const jsonStr = JSON.stringify(img.jsonPrompt, null, 2);
+            return `[${imageLabel}]\n${jsonStr}`;
+          })
+          .join("\n\n");
+      } else if (components && components.length > 0) {
+        const componentsByImage: Record<string, { type: string; value: string }[]> = {};
+        (components as PromptComponent[]).forEach((c) => {
+          const imgLabel = `Image ${c.imageIndex + 1}`;
+          if (!componentsByImage[imgLabel]) componentsByImage[imgLabel] = [];
+          componentsByImage[imgLabel].push({ type: c.type, value: c.value });
+        });
+
+        sourcePromptsSection = Object.entries(componentsByImage)
+          .map(([imgLabel, comps]) => {
+            const fields = comps.map((c) => `  "${c.type}": "${c.value}"`).join(",\n");
+            return `[${imgLabel}]\n{\n${fields}\n}`;
+          })
+          .join("\n\n");
+      }
+
+      const activeSystemPrompt = systemPrompt || DEFAULT_SYSTEM_PROMPT;
+
+      const userMessage = `SOURCE PROMPTS:
 
 ${sourcePromptsSection}
 
 ---
 
 REMIX REQUEST:
-${instructions || "Combine all elements from the source images into a single cohesive scene, preserving the best qualities of each."}
+${effectiveInstruction || "Combine all elements from the source images into a single cohesive scene, preserving the best qualities of each."}
 
 ---
 
 Generate the final prompt now:`;
 
-    // Initialize Gemini with the new SDK
-    const ai = new GoogleGenAI({ apiKey: geminiKey });
+      const { text, model } = await callModel(ai, activeSystemPrompt, userMessage);
 
-    // Try primary model, fall back to alternatives if rate limited
-    // Using current models per Gemini API guidelines (2025)
-    const models = ["gemini-3-flash-preview", "gemini-2.5-flash-lite", "gemini-2.0-flash"];
-    let lastError: Error | null = null;
-
-    for (const model of models) {
-      try {
-        const response = await ai.models.generateContent({
-          model,
-          contents: userMessage,
-          config: {
-            systemInstruction: activeSystemPrompt,
-          },
-        });
-
-        const generatedPrompt = (response.text || "").trim();
-
-        return NextResponse.json({
-          prompt: generatedPrompt,
-          components: components.length,
-          imageIds,
-          model,
-        });
-      } catch (err) {
-        lastError = err as Error;
-        const errorMessage = (err as Error).message || "";
-        
-        // If rate limited or model not found, try next model
-        if (
-          errorMessage.includes("429") || 
-          errorMessage.includes("RESOURCE_EXHAUSTED") ||
-          errorMessage.includes("404") ||
-          errorMessage.includes("NOT_FOUND")
-        ) {
-          console.log(`Error on ${model} (${errorMessage.includes("429") ? "rate limit" : "not found"}), trying next model...`);
-          continue;
-        }
-        
-        // For other errors, throw immediately
-        throw err;
-      }
+      return NextResponse.json({
+        prompt: text,
+        prompts: [text],
+        components: components?.length || 0,
+        imageIds,
+        model,
+      });
     }
 
-    // All models failed with rate limits
-    console.error("All models rate limited:", lastError);
-    return NextResponse.json(
-      { 
-        error: "API rate limit exceeded. Please wait a moment and try again, or check your API key billing settings.",
-        retryAfter: 30
-      }, 
-      { status: 429 }
-    );
+    if (mode === "edit") {
+      if (!selectedPrompt) {
+        return NextResponse.json({ error: "selectedPrompt required for edit mode" }, { status: 400 });
+      }
+
+      const userMessage = `ORIGINAL PROMPT:
+${selectedPrompt}
+
+---
+
+EDIT INSTRUCTION:
+${instruction || "Refine and improve this prompt."}
+
+---
+
+Return the revised prompt now:`;
+
+      const { text, model } = await callModel(ai, EDIT_SYSTEM_PROMPT, userMessage);
+
+      return NextResponse.json({ prompts: [text], model });
+    }
+
+    if (mode === "duplicate") {
+      if (!selectedPrompt) {
+        return NextResponse.json({ error: "selectedPrompt required for duplicate mode" }, { status: 400 });
+      }
+
+      const numVariations = Math.max(1, Math.min(10, Number(count) || 3));
+
+      const variationMessage = (i: number) => `ORIGINAL PROMPT:
+${selectedPrompt}
+
+---
+
+VARIATION INSTRUCTION:
+${instruction || "Create a distinct creative variation of this prompt."}
+
+Generate variation ${i + 1} of ${numVariations}. Make it meaningfully different from the original and from other variations.
+
+Return only the variation prompt:`;
+
+      const results = await Promise.all(
+        Array.from({ length: numVariations }, (_, i) =>
+          callModel(ai, DUPLICATE_SYSTEM_PROMPT, variationMessage(i))
+        )
+      );
+
+      const prompts = results.map((r) => r.text);
+      const model = results[0]?.model || "unknown";
+
+      return NextResponse.json({ prompts, model });
+    }
+
+    return NextResponse.json({ error: "Invalid mode" }, { status: 400 });
   } catch (error) {
     console.error("Remix error:", error);
     const errorMessage = (error as Error).message || "";
-    
+
     if (errorMessage.includes("429") || errorMessage.includes("RESOURCE_EXHAUSTED")) {
       return NextResponse.json(
-        { 
+        {
           error: "API rate limit exceeded. Please wait a moment and try again.",
-          retryAfter: 30
-        }, 
+          retryAfter: 30,
+        },
         { status: 429 }
       );
     }
-    
+
+    if (errorMessage.includes("All models failed")) {
+      return NextResponse.json(
+        {
+          error: "API rate limit exceeded. Please wait a moment and try again, or check your API key billing settings.",
+          retryAfter: 30,
+        },
+        { status: 429 }
+      );
+    }
+
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

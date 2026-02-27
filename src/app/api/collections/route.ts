@@ -15,10 +15,11 @@ function slugify(text: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-function detectPlatform(url: string): "pinterest" | "are_na" | "tumblr" | "manual" {
+function detectPlatform(url: string): "pinterest" | "are_na" | "tumblr" | "manual" | "cosmos" {
   if (url.includes("pinterest.com")) return "pinterest";
   if (url.includes("are.na")) return "are_na";
   if (url.includes("tumblr.com")) return "tumblr";
+  if (url.includes("cosmos.so")) return "cosmos";
   return "manual";
 }
 
@@ -47,7 +48,12 @@ function extractBoardName(url: string): string {
         return subdomain.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
       }
     }
-    
+
+    // Cosmos: cosmos.so/{username}/{cluster-slug}
+    if (urlObj.hostname.includes("cosmos.so") && pathParts.length >= 2) {
+      return pathParts[1].replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    }
+
     return "Untitled Collection";
   } catch {
     return "Untitled Collection";

@@ -48,6 +48,7 @@ const platformLabels: Record<string, string> = {
   are_na: "Are.na",
   tumblr: "Tumblr",
   manual: "Manual",
+  cosmos: "Cosmos",
 };
 
 const platformColors: Record<string, string> = {
@@ -55,6 +56,7 @@ const platformColors: Record<string, string> = {
   are_na: "text-blue-600 bg-blue-50 border-blue-200",
   tumblr: "text-cyan-700 bg-cyan-50 border-cyan-200",
   manual: "text-gray-700 bg-black/[0.04] border-black/[0.1]",
+  cosmos: "text-violet-700 bg-violet-50 border-violet-200",
 };
 
 export default function CollectionPage({
