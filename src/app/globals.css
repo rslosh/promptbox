@@ -3,11 +3,13 @@
 @tailwind utilities;
 
 :root {
-  --bg: #53544b;
-  --fg: rgba(255, 255, 255, 0.90);
-  --fg-secondary: rgba(255, 255, 255, 0.55);
-  --fg-muted: rgba(255, 255, 255, 0.30);
-  --border: rgba(255, 255, 255, 0.10);
+  --bg: #f4f3ef;
+  --bg-surface: rgba(255, 255, 255, 0.78);
+  --fg: #1c1b18;
+  --fg-secondary: rgba(28, 27, 24, 0.55);
+  --fg-muted: rgba(28, 27, 24, 0.35);
+  --border: rgba(28, 27, 24, 0.08);
+  --border-strong: rgba(28, 27, 24, 0.14);
   --accent: #f2ff59;
   --accent-fg: #1c1b18;
 }
@@ -25,7 +27,7 @@ body::before {
   z-index: 0;
   background-image: url("data:image/svg+xml,<svg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
   background-size: 256px 256px;
-  opacity: 0.05;
+  opacity: 0.032;
   pointer-events: none;
 }
 
@@ -40,12 +42,12 @@ body::before {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.12);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.22);
 }
 
 /* Selection */

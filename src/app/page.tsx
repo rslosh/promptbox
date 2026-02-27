@@ -212,7 +212,7 @@ export default function GalleryPage() {
               {Array.from({ length: 12 }).map((_, i) => (
                 <div
                   key={i}
-                  className="aspect-square animate-pulse rounded-xl bg-white/[0.07]"
+                  className="aspect-square animate-pulse rounded-xl bg-black/[0.06]"
                   style={{ animationDelay: `${i * 40}ms` }}
                 />
               ))}

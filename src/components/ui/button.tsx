@@ -14,13 +14,13 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         className={cn(
           "inline-flex items-center justify-center rounded-lg font-medium transition-colors",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f2ff59]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#53544b]",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f2ff59]/60 focus-visible:ring-offset-2",
           "disabled:pointer-events-none disabled:opacity-40",
           {
-            "bg-[#f2ff59] text-[#1c1b18] hover:bg-[#f2ff59]/85": variant === "default",
-            "bg-white/[0.1] text-white/80 hover:bg-white/[0.16]": variant === "secondary",
-            "text-white/60 hover:bg-white/[0.08] hover:text-white/90": variant === "ghost",
-            "border border-white/[0.15] bg-transparent text-white/70 hover:bg-white/[0.08] hover:text-white/90": variant === "outline",
+            "bg-gray-900 text-white hover:bg-gray-800": variant === "default",
+            "bg-black/[0.06] text-gray-700 hover:bg-black/[0.1]": variant === "secondary",
+            "text-gray-600 hover:bg-black/[0.05] hover:text-gray-900": variant === "ghost",
+            "border border-black/[0.12] bg-transparent text-gray-700 hover:bg-black/[0.04] hover:text-gray-900": variant === "outline",
             "bg-red-500 text-white hover:bg-red-600": variant === "destructive",
           },
           {
