@@ -6,12 +6,15 @@ import {
   ReactFlowProvider,
   Background,
   Controls,
+  Panel,
   BackgroundVariant,
   useNodesState,
   useEdgesState,
   useReactFlow,
+  addEdge,
   type Node,
   type Edge,
+  type Connection,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
@@ -589,6 +592,12 @@ function PlaygroundCanvas({
     selectNode(null);
   }, [selectNode]);
 
+  const onConnect = useCallback(
+    (connection: Connection) =>
+      setRfEdges((eds) => addEdge({ ...connection, type: "smoothstep", style: { stroke: "#d1d5db", strokeWidth: 1.5 } }, eds)),
+    [setRfEdges]
+  );
+
   async function handleGenerate() {
     setIsGenerating(true);
     setGenerationError(null);
@@ -757,14 +766,6 @@ function PlaygroundCanvas({
             All Remixes
           </button>
           <div className="h-4 w-px bg-gray-200" />
-          <button
-            onClick={handleAddMergeNode}
-            className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-500 transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700"
-          >
-            <Combine className="h-3.5 w-3.5" />
-            Add Combine Node
-          </button>
-          <div className="h-4 w-px bg-gray-200" />
           <RemixControls
             remixId={currentRemixId}
             remixName={remixName}
@@ -799,6 +800,7 @@ function PlaygroundCanvas({
               onEdgesChange={onEdgesChange}
               onNodeClick={handleNodeClick}
               onPaneClick={handlePaneClick}
+              onConnect={onConnect}
               nodeTypes={nodeTypes}
               minZoom={0.2}
               maxZoom={2}
@@ -811,6 +813,15 @@ function PlaygroundCanvas({
                 size={1}
               />
               <Controls position="bottom-right" />
+              <Panel position="bottom-left">
+                <button
+                  onClick={handleAddMergeNode}
+                  className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-500 shadow-sm transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700"
+                >
+                  <Combine className="h-3.5 w-3.5 text-orange-500" />
+                  Add Combine Node
+                </button>
+              </Panel>
             </ReactFlow>
 
             {/* Empty state overlay */}
