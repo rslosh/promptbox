@@ -53,7 +53,7 @@ export function ViewOptions({
           <div className="space-y-4">
             {/* Layout */}
             <div>
-              <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+              <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-600">
                 Layout
               </h4>
               <div className="space-y-0.5">
@@ -90,7 +90,7 @@ export function ViewOptions({
 
             {/* Image Size */}
             <div>
-              <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+              <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-600">
                 Grid size
               </h4>
               <div className="space-y-0.5">

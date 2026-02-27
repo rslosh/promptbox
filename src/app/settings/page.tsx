@@ -237,9 +237,9 @@ export default function SettingsPage() {
   function getStatusBadge(status: "untested" | "success" | "error") {
     switch (status) {
       case "success":
-        return <Badge className="bg-green-500/20 text-green-300">Connected</Badge>;
+        return <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700">Connected</Badge>;
       case "error":
-        return <Badge className="bg-red-500/20 text-red-300">Error</Badge>;
+        return <Badge className="border-red-200 bg-red-50 text-red-600">Error</Badge>;
       default:
         return <Badge variant="outline">Not tested</Badge>;
     }
@@ -268,7 +268,7 @@ export default function SettingsPage() {
               {/* Gemini API Key */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 text-sm font-medium text-white">
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-900">
                     <Sparkles className="h-4 w-4" />
                     Gemini API Key
                   </label>
@@ -288,7 +288,7 @@ export default function SettingsPage() {
                     Test
                   </Button>
                 </div>
-                <p className="text-xs text-white/40">
+                <p className="text-xs text-gray-600">
                   Used for image tagging and prompt generation
                 </p>
               </div>
@@ -296,7 +296,7 @@ export default function SettingsPage() {
               {/* Secondary LLM API Key */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 text-sm font-medium text-white">
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-900">
                     <Bot className="h-4 w-4" />
                     Secondary LLM API Key
                   </label>
@@ -316,7 +316,7 @@ export default function SettingsPage() {
                     Test
                   </Button>
                 </div>
-                <p className="text-xs text-white/40">
+                <p className="text-xs text-gray-600">
                   Used for prompt remixing and editing in the playground
                 </p>
               </div>
@@ -390,11 +390,11 @@ export default function SettingsPage() {
           </Card>
 
           {/* Info */}
-          <Card className="border-yellow-500/20 bg-yellow-500/5">
+          <Card className="border-amber-200 bg-amber-50">
             <CardContent className="flex items-start gap-3 pt-6">
-              <AlertCircle className="h-5 w-5 shrink-0 text-yellow-400" />
+              <AlertCircle className="h-5 w-5 shrink-0 text-amber-500" />
               <div>
-                <p className="text-sm text-yellow-200">
+                <p className="text-sm text-amber-800">
                   API keys are stored locally in your browser and never sent to our servers.
                   They are only used for direct API calls to the respective services.
                 </p>

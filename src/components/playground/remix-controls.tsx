@@ -57,7 +57,7 @@ export function RemixControls({
       ) : (
         <button
           onClick={() => setIsEditingName(true)}
-          className="text-sm text-white/60 hover:text-white"
+          className="text-sm text-gray-700 hover:text-gray-900"
         >
           {remixName || "Untitled remix"}
         </button>
@@ -65,7 +65,7 @@ export function RemixControls({
 
       {/* Unsaved indicator */}
       {hasUnsavedChanges && !isSaving && (
-        <span className="text-xs text-amber-400">Unsaved</span>
+        <span className="text-xs text-amber-600">Unsaved</span>
       )}
 
       {/* Save button */}
@@ -94,7 +94,7 @@ export function RemixControls({
         size="sm"
         variant="ghost"
         onClick={onClear}
-        className="text-red-400 hover:text-red-300"
+        className="text-red-500 hover:text-red-700"
       >
         <Trash2 className="h-4 w-4" />
       </Button>

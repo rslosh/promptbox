@@ -32,7 +32,7 @@ export function PromptComponents({
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm">Prompt Components</CardTitle>
           {components.length > 0 && (
-            <span className="text-xs text-white/40">{components.length} fields</span>
+            <span className="text-xs text-gray-600">{components.length} fields</span>
           )}
         </div>
       </CardHeader>
@@ -68,7 +68,7 @@ export function PromptComponents({
                       <div
                         key={component.id}
                         className={cn(
-                          "group flex items-start gap-2 rounded-lg border-l-4 bg-white/5 py-2 pl-3 pr-2 transition-colors hover:bg-white/10",
+                          "group flex items-start gap-2 rounded-lg border-l-4 bg-black/[0.03] py-2 pl-3 pr-2 transition-colors hover:bg-black/[0.06]",
                           color.border
                         )}
                       >
@@ -85,16 +85,16 @@ export function PromptComponents({
                         </Badge>
 
                         {/* Component value */}
-                        <p className="line-clamp-2 flex-1 text-xs text-white/70">
+                        <p className="line-clamp-2 flex-1 text-xs text-gray-700">
                           {component.value}
                         </p>
 
                         {/* Remove button */}
                         <button
                           onClick={() => onRemoveComponent(component.id)}
-                          className="shrink-0 rounded p-1 opacity-0 transition-all hover:bg-red-500/20 group-hover:opacity-100"
+                          className="shrink-0 rounded p-1 opacity-0 transition-all hover:bg-red-50 group-hover:opacity-100"
                         >
-                          <X className="h-3 w-3 text-white/40 hover:text-red-400" />
+                          <X className="h-3 w-3 text-gray-500 hover:text-red-500" />
                         </button>
                       </div>
                     ))}
@@ -105,10 +105,10 @@ export function PromptComponents({
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-8 text-center">
-            <p className="text-sm text-white/40">
+            <p className="text-sm text-gray-600">
               Select images to extract prompt components
             </p>
-            <p className="mt-1 text-xs text-white/30">
+            <p className="mt-1 text-xs text-gray-500">
               Each image's JSON fields will appear here
             </p>
           </div>

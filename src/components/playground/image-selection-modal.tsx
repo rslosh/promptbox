@@ -123,16 +123,16 @@ export function ImageSelectionModal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="flex max-h-[85vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl">
+      <div className="flex max-h-[85vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-black/[0.08] bg-white/95 shadow-2xl backdrop-blur-xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-black/[0.06] px-6 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-600/20">
-              <Images className="h-5 w-5 text-purple-400" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#f2ff59]/30">
+              <Images className="h-5 w-5 text-gray-700" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-white">Select Images</h2>
-              <p className="text-sm text-white/60">
+              <h2 className="text-lg font-semibold text-gray-900">Select Images</h2>
+              <p className="text-sm text-gray-600">
                 Choose images to remix their prompts
               </p>
             </div>
@@ -151,7 +151,7 @@ export function ImageSelectionModal({
         </div>
 
         {/* Filters */}
-        <div className="border-b border-white/10 px-6 py-4">
+        <div className="border-b border-black/[0.06] px-6 py-4">
           <FilterBar
             tags={allTags}
             selectedTags={selectedTags}
@@ -167,13 +167,13 @@ export function ImageSelectionModal({
         <div className="flex-1 overflow-y-auto p-6">
           {isLoading ? (
             <div className="flex h-64 items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-white/40" />
+              <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
             </div>
           ) : images.length === 0 ? (
             <div className="flex h-64 flex-col items-center justify-center text-center">
-              <Images className="h-12 w-12 text-white/20" />
-              <p className="mt-4 text-white/60">No images found</p>
-              <p className="text-sm text-white/40">
+              <Images className="h-12 w-12 text-gray-300" />
+              <p className="mt-4 text-gray-700">No images found</p>
+              <p className="text-sm text-gray-600">
                 Try adjusting your filters or upload some images
               </p>
             </div>
@@ -193,8 +193,8 @@ export function ImageSelectionModal({
                     className={cn(
                       "group relative aspect-square overflow-hidden rounded-xl border-2 transition-all",
                       isSelected
-                        ? "border-purple-500 ring-2 ring-purple-500/50"
-                        : "border-transparent hover:border-white/30"
+                        ? "border-gray-900 ring-2 ring-gray-900/20"
+                        : "border-transparent hover:border-black/[0.2]"
                     )}
                   >
                     <Image
@@ -211,8 +211,8 @@ export function ImageSelectionModal({
                       className={cn(
                         "absolute left-2 top-2 flex h-6 w-6 items-center justify-center rounded-full border-2 transition-all",
                         isSelected
-                          ? "border-purple-500 bg-purple-500"
-                          : "border-white/50 bg-black/50 opacity-0 group-hover:opacity-100"
+                          ? "border-gray-900 bg-gray-900"
+                          : "border-white/70 bg-black/30 opacity-0 group-hover:opacity-100"
                       )}
                     >
                       {isSelected && <Check className="h-3.5 w-3.5 text-white" />}
@@ -249,7 +249,7 @@ export function ImageSelectionModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-white/10 px-6 py-4">
+        <div className="flex items-center justify-between border-t border-black/[0.06] px-6 py-4">
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
@@ -259,7 +259,7 @@ export function ImageSelectionModal({
               <Button
                 variant="ghost"
                 onClick={() => setSelectedIds([])}
-                className="text-white/60"
+                className="text-gray-600"
               >
                 Clear selection
               </Button>

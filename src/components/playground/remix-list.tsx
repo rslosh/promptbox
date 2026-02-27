@@ -71,7 +71,7 @@ export function RemixList({ onCreateNew }: RemixListProps) {
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-white/40" />
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
       </div>
     );
   }
@@ -81,8 +81,8 @@ export function RemixList({ onCreateNew }: RemixListProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-white">Your Remixes</h2>
-          <p className="text-sm text-white/60">
+          <h2 className="text-lg font-semibold text-gray-900">Your Remixes</h2>
+          <p className="text-sm text-gray-600">
             {remixes.length} saved remix{remixes.length !== 1 ? "es" : ""}
           </p>
         </div>
@@ -104,7 +104,7 @@ export function RemixList({ onCreateNew }: RemixListProps) {
               <Card
                 key={remix.id}
                 className={cn(
-                  "group cursor-pointer transition-all hover:border-purple-500/50 hover:bg-white/5",
+                  "group cursor-pointer transition-all hover:border-[#f2ff59] hover:bg-[#f2ff59]/10",
                   isDeleting && "opacity-50 pointer-events-none"
                 )}
                 onClick={() => handleOpen(remix.id)}
@@ -112,19 +112,19 @@ export function RemixList({ onCreateNew }: RemixListProps) {
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <h3 className="truncate font-medium text-white">
+                      <h3 className="truncate font-medium text-gray-900">
                         {remix.name || "Untitled remix"}
                       </h3>
-                      <div className="mt-1 flex items-center gap-2 text-xs text-white/40">
+                      <div className="mt-1 flex items-center gap-2 text-xs text-gray-600">
                         <Clock className="h-3 w-3" />
                         <span>{formatRelativeTime(remix.updated_at)}</span>
                       </div>
                     </div>
                     <button
                       onClick={(e) => handleDelete(remix.id, e)}
-                      className="shrink-0 rounded p-1.5 opacity-0 transition-all hover:bg-red-500/20 group-hover:opacity-100"
+                      className="shrink-0 rounded p-1.5 opacity-0 transition-all hover:bg-red-50 group-hover:opacity-100"
                     >
-                      <Trash2 className="h-4 w-4 text-white/40 hover:text-red-400" />
+                      <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
                     </button>
                   </div>
 
@@ -137,7 +137,7 @@ export function RemixList({ onCreateNew }: RemixListProps) {
                     {hasPrompt && (
                       <Badge
                         variant="outline"
-                        className="border-green-500/30 bg-green-500/10 text-green-400 text-xs"
+                        className="border-emerald-200 bg-emerald-50 text-emerald-700 text-xs"
                       >
                         <Sparkles className="mr-1 h-3 w-3" />
                         Generated
@@ -147,7 +147,7 @@ export function RemixList({ onCreateNew }: RemixListProps) {
 
                   {/* Preview of generated prompt */}
                   {remix.generated_prompt && (
-                    <p className="mt-3 line-clamp-2 text-xs text-white/50">
+                    <p className="mt-3 line-clamp-2 text-xs text-gray-600">
                       {remix.generated_prompt}
                     </p>
                   )}
@@ -159,11 +159,11 @@ export function RemixList({ onCreateNew }: RemixListProps) {
       ) : (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="rounded-full bg-purple-500/10 p-4">
-              <FolderOpen className="h-8 w-8 text-purple-400" />
+            <div className="rounded-full bg-[#f2ff59]/30 p-4">
+              <FolderOpen className="h-8 w-8 text-gray-700" />
             </div>
-            <h3 className="mt-4 font-medium text-white">No remixes yet</h3>
-            <p className="mt-1 text-sm text-white/60">
+            <h3 className="mt-4 font-medium text-gray-900">No remixes yet</h3>
+            <p className="mt-1 text-sm text-gray-600">
               Create your first remix by selecting images and generating a prompt
             </p>
             <Button onClick={onCreateNew} className="mt-6">

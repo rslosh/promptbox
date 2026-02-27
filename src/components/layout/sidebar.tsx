@@ -79,7 +79,7 @@ export function Sidebar() {
                   "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                   isActive
                     ? "bg-[#f2ff59] text-gray-900"
-                    : "text-gray-500 hover:bg-black/[0.04] hover:text-gray-800"
+                    : "text-gray-700 hover:bg-black/[0.05] hover:text-gray-900"
                 )}
               >
                 <item.icon className="h-4 w-4 shrink-0" />
@@ -93,7 +93,7 @@ export function Sidebar() {
         <div className="mt-5">
           <button
             onClick={() => setCollectionsExpanded(!collectionsExpanded)}
-            className="flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-gray-400 hover:text-gray-600 transition-colors"
+            className="flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-gray-600 hover:text-gray-800 transition-colors"
           >
             <span className="flex items-center gap-1.5">
               <FolderHeart className="h-3.5 w-3.5" />
@@ -113,7 +113,7 @@ export function Sidebar() {
                   <div className="h-3.5 w-24 animate-pulse rounded-md bg-black/[0.07]" />
                 </div>
               ) : collections.length === 0 ? (
-                <p className="px-3 py-2 text-xs text-gray-400">No collections yet</p>
+                <p className="px-3 py-2 text-xs text-gray-600">No collections yet</p>
               ) : (
                 collections.map((collection) => {
                   const isActive = pathname === `/collections/${collection.slug}`;
@@ -125,14 +125,14 @@ export function Sidebar() {
                         "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors",
                         isActive
                           ? "bg-[#f2ff59] text-gray-900 font-medium"
-                          : "text-gray-500 hover:bg-black/[0.04] hover:text-gray-800"
+                          : "text-gray-700 hover:bg-black/[0.05] hover:text-gray-900"
                       )}
                     >
                       <span className="text-base leading-none">
                         {platformIcons[collection.platform]}
                       </span>
                       <span className="flex-1 truncate">{collection.name}</span>
-                      <span className={cn("tabular-nums text-xs", isActive ? "text-gray-700" : "text-gray-400")}>
+                      <span className={cn("tabular-nums text-xs", isActive ? "text-gray-700" : "text-gray-600")}>
                         {collection.image_count}
                       </span>
                     </Link>
@@ -143,7 +143,7 @@ export function Sidebar() {
               {/* Add Collection Link */}
               <Link
                 href="/upload"
-                className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-gray-400 transition-colors hover:bg-black/[0.04] hover:text-gray-600"
+                className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-gray-600 transition-colors hover:bg-black/[0.05] hover:text-gray-800"
               >
                 <Plus className="h-3.5 w-3.5" />
                 <span>Add collection</span>
@@ -155,7 +155,7 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="border-t border-black/[0.06] p-4">
-        <p className="text-[11px] leading-relaxed text-gray-400">
+        <p className="text-[11px] leading-relaxed text-gray-600">
           Organize, tag, and remix your AI prompts
         </p>
       </div>

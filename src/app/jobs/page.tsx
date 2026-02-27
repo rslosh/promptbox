@@ -66,26 +66,26 @@ export default function JobsPage() {
   function getStatusIcon(status: string) {
     switch (status) {
       case "completed":
-        return <CheckCircle className="h-4 w-4 text-green-400" />;
+        return <CheckCircle className="h-4 w-4 text-emerald-600" />;
       case "failed":
-        return <XCircle className="h-4 w-4 text-red-400" />;
+        return <XCircle className="h-4 w-4 text-red-600" />;
       case "running":
-        return <Loader2 className="h-4 w-4 animate-spin text-blue-400" />;
+        return <Loader2 className="h-4 w-4 animate-spin text-blue-600" />;
       default:
-        return <Clock className="h-4 w-4 text-yellow-400" />;
+        return <Clock className="h-4 w-4 text-amber-600" />;
     }
   }
 
   function getStatusColor(status: string) {
     switch (status) {
       case "completed":
-        return "bg-green-500/20 text-green-300";
+        return "border border-emerald-200 bg-emerald-50 text-emerald-700";
       case "failed":
-        return "bg-red-500/20 text-red-300";
+        return "border border-red-200 bg-red-50 text-red-600";
       case "running":
-        return "bg-blue-500/20 text-blue-300";
+        return "border border-blue-200 bg-blue-50 text-blue-700";
       default:
-        return "bg-yellow-500/20 text-yellow-300";
+        return "border border-amber-200 bg-amber-50 text-amber-700";
     }
   }
 
@@ -114,26 +114,26 @@ export default function JobsPage() {
           <div className="grid grid-cols-4 gap-4">
             <Card>
               <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-white">{jobs.length}</div>
-                <div className="text-sm text-white/60">Total Jobs</div>
+                <div className="text-2xl font-bold text-gray-900">{jobs.length}</div>
+                <div className="text-sm text-gray-600">Total Jobs</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-blue-400">{runningJobs.length}</div>
-                <div className="text-sm text-white/60">Active</div>
+                <div className="text-2xl font-bold text-blue-600">{runningJobs.length}</div>
+                <div className="text-sm text-gray-600">Active</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-green-400">{completedJobs.length}</div>
-                <div className="text-sm text-white/60">Completed</div>
+                <div className="text-2xl font-bold text-emerald-600">{completedJobs.length}</div>
+                <div className="text-sm text-gray-600">Completed</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-red-400">{failedJobs.length}</div>
-                <div className="text-sm text-white/60">Failed</div>
+                <div className="text-2xl font-bold text-red-600">{failedJobs.length}</div>
+                <div className="text-sm text-gray-600">Failed</div>
               </CardContent>
             </Card>
           </div>
@@ -147,19 +147,19 @@ export default function JobsPage() {
               {isLoading ? (
                 <div className="space-y-3">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className="h-16 animate-pulse rounded-lg bg-white/5" />
+                    <div key={i} className="h-16 animate-pulse rounded-lg bg-black/[0.06]" />
                   ))}
                 </div>
               ) : jobs.length === 0 ? (
                 <div className="py-12 text-center">
-                  <p className="text-white/40">No jobs yet</p>
+                  <p className="text-gray-600">No jobs yet</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {jobs.map((job) => (
                     <div
                       key={job.id}
-                      className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 p-4"
+                      className="flex items-center justify-between rounded-lg border border-black/[0.08] bg-black/[0.03] p-4"
                     >
                       <div className="flex items-center gap-4">
                         {getStatusIcon(job.status)}
@@ -170,7 +170,7 @@ export default function JobsPage() {
                             </Badge>
                             <Badge variant="outline">{job.source_type}</Badge>
                           </div>
-                          <p className="mt-1 text-sm text-white/60 truncate max-w-md">
+                          <p className="mt-1 text-sm text-gray-600 truncate max-w-md">
                             {job.source_ref}
                           </p>
                           {job.error && (
@@ -182,7 +182,7 @@ export default function JobsPage() {
                       </div>
 
                       <div className="flex items-center gap-4">
-                        <span className="text-sm text-white/40">
+                        <span className="text-sm text-gray-600">
                           {formatRelativeTime(job.created_at)}
                         </span>
                         <div className="flex gap-1">
@@ -198,7 +198,7 @@ export default function JobsPage() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="text-red-400 hover:text-red-300"
+                            className="text-red-500 hover:text-red-700"
                             onClick={() => deleteJob(job.id)}
                           >
                             <Trash2 className="h-4 w-4" />

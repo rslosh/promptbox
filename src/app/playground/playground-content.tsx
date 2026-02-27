@@ -196,7 +196,7 @@ export function PlaygroundContent({
         <Sidebar />
         <main className="flex-1 pl-64">
           <div className="flex h-full items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-white/40" />
+            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
           </div>
         </main>
       </div>
@@ -246,7 +246,7 @@ export function PlaygroundContent({
                 onClick={() => {
                   setShowRemixList(true);
                 }}
-                className="text-white/60 hover:text-white"
+                className="text-gray-600 hover:text-gray-900"
               >
                 <ChevronDown className="mr-1 h-4 w-4 rotate-90" />
                 All Remixes
@@ -295,13 +295,13 @@ export function PlaygroundContent({
 
                   {/* Error message */}
                   {generationError && (
-                    <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3">
-                      <AlertCircle className="h-4 w-4 shrink-0 text-red-400 mt-0.5" />
+                    <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3">
+                      <AlertCircle className="h-4 w-4 shrink-0 text-red-500 mt-0.5" />
                       <div className="flex-1">
-                        <p className="text-sm text-red-300">{generationError}</p>
+                        <p className="text-sm text-red-700">{generationError}</p>
                         <button
                           onClick={() => setGenerationError(null)}
-                          className="mt-1 text-xs text-red-400 hover:text-red-300"
+                          className="mt-1 text-xs text-red-500 hover:text-red-700"
                         >
                           Dismiss
                         </button>
@@ -364,9 +364,9 @@ export function PlaygroundContent({
                         History ({history.length})
                       </CardTitle>
                       {showHistory ? (
-                        <ChevronUp className="h-4 w-4 text-white/40" />
+                        <ChevronUp className="h-4 w-4 text-gray-500" />
                       ) : (
-                        <ChevronDown className="h-4 w-4 text-white/40" />
+                        <ChevronDown className="h-4 w-4 text-gray-500" />
                       )}
                     </div>
                   </CardHeader>
@@ -377,7 +377,7 @@ export function PlaygroundContent({
                           <button
                             key={index}
                             onClick={() => restoreFromHistory(prompt)}
-                            className="w-full rounded-lg border border-white/10 bg-white/5 p-2 text-left text-xs text-white/60 transition-colors hover:bg-white/10"
+                            className="w-full rounded-lg border border-black/[0.08] bg-black/[0.03] p-2 text-left text-xs text-gray-700 transition-colors hover:bg-black/[0.06]"
                           >
                             <p className="line-clamp-2">{prompt}</p>
                           </button>
@@ -416,8 +416,8 @@ export function PlaygroundContent({
                 <CardContent>
                   {generatedPrompt ? (
                     <div className="space-y-4">
-                      <div className="rounded-lg bg-black/50 p-4">
-                        <p className="whitespace-pre-wrap text-sm text-white/80">
+                      <div className="rounded-lg bg-black/[0.04] p-4">
+                        <p className="whitespace-pre-wrap text-sm text-gray-900">
                           {generatedPrompt}
                         </p>
                       </div>
@@ -441,7 +441,7 @@ export function PlaygroundContent({
                     </div>
                   ) : (
                     <div className="flex h-48 items-center justify-center">
-                      <p className="text-center text-sm text-white/40">
+                      <p className="text-center text-sm text-gray-600">
                         Select images and provide instructions to generate a
                         prompt
                       </p>

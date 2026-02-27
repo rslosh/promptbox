@@ -54,7 +54,7 @@ const platformColors: Record<string, string> = {
   pinterest: "text-rose-600 bg-rose-50 border-rose-200",
   are_na: "text-blue-600 bg-blue-50 border-blue-200",
   tumblr: "text-cyan-700 bg-cyan-50 border-cyan-200",
-  manual: "text-gray-500 bg-black/[0.04] border-black/[0.1]",
+  manual: "text-gray-700 bg-black/[0.04] border-black/[0.1]",
 };
 
 export default function CollectionPage({
@@ -322,12 +322,12 @@ export default function CollectionPage({
           <div className="flex h-full min-h-screen items-center justify-center">
             <div className="text-center">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-black/[0.1] bg-black/[0.04]">
-                <ImageIcon className="h-5 w-5 text-gray-400" />
+                <ImageIcon className="h-5 w-5 text-gray-600" />
               </div>
               <h2 className="text-base font-medium text-gray-800">{error}</h2>
               <Link
                 href="/"
-                className="mt-3 inline-block text-sm text-gray-400 transition-colors hover:text-gray-700"
+                className="mt-3 inline-block text-sm text-gray-600 transition-colors hover:text-gray-900"
               >
                 ← Back to Gallery
               </Link>
@@ -401,7 +401,7 @@ export default function CollectionPage({
 
                   {/* External link */}
                   <a href={collection.source_url} target="_blank" rel="noopener noreferrer">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-gray-700">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-600 hover:text-gray-900">
                       <ExternalLink className="h-3.5 w-3.5" />
                     </Button>
                   </a>
@@ -418,7 +418,7 @@ export default function CollectionPage({
                       "h-8 w-8 transition-colors",
                       confirmDelete
                         ? "bg-red-50 text-red-500"
-                        : "text-gray-400 hover:text-red-500 hover:bg-red-50"
+                        : "text-gray-600 hover:text-red-500 hover:bg-red-50"
                     )}
                     onClick={() => setConfirmDelete((v) => !v)}
                     disabled={isDeleting}
@@ -439,7 +439,7 @@ export default function CollectionPage({
                         </div>
                         <div>
                           <p className="text-sm font-medium text-gray-900">Delete collection?</p>
-                          <p className="mt-0.5 text-xs leading-relaxed text-gray-500">
+                          <p className="mt-0.5 text-xs leading-relaxed text-gray-600">
                             Images stay in your gallery. This can&rsquo;t be undone.
                           </p>
                         </div>
@@ -510,7 +510,7 @@ export default function CollectionPage({
 
               {/* Last synced */}
               {collection.last_synced_at && (
-                <span className="flex items-center gap-1.5 text-xs text-gray-400">
+                <span className="flex items-center gap-1.5 text-xs text-gray-600">
                   <Clock className="h-3 w-3" />
                   {formatDate(collection.last_synced_at)}
                 </span>
@@ -519,8 +519,8 @@ export default function CollectionPage({
               {/* Description */}
               {collection.description && (
                 <>
-                  <span className="text-gray-300">·</span>
-                  <p className="text-xs text-gray-400">{collection.description}</p>
+                  <span className="text-gray-400">·</span>
+                  <p className="text-xs text-gray-600">{collection.description}</p>
                 </>
               )}
 
@@ -596,10 +596,10 @@ export default function CollectionPage({
             <div className="flex flex-col items-center justify-center py-24">
               <div className="relative mb-5">
                 <IconWell size="xl" variant="accent" className="opacity-40" />
-                <Loader2 className="absolute inset-0 m-auto h-6 w-6 animate-spin text-gray-400" />
+                <Loader2 className="absolute inset-0 m-auto h-6 w-6 animate-spin text-gray-600" />
               </div>
-              <p className="text-sm font-medium text-gray-500">Downloading images&hellip;</p>
-              <p className="mt-1 text-xs text-gray-400">Large boards may take a moment</p>
+              <p className="text-sm font-medium text-gray-700">Downloading images&hellip;</p>
+              <p className="mt-1 text-xs text-gray-600">Large boards may take a moment</p>
             </div>
           ) : (
             /* Empty state */

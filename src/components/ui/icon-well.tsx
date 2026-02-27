@@ -17,7 +17,7 @@ const sizeClasses: Record<IconWellSize, string> = {
 };
 
 const variantClasses: Record<IconWellVariant, string> = {
-  default: "border border-black/[0.08] bg-black/[0.04] text-gray-500",
+  default: "border border-black/[0.08] bg-black/[0.04] text-gray-600",
   accent:  "border border-[#f2ff59] bg-[#f2ff59]/30 text-gray-800",
   danger:  "border border-red-200 bg-red-50 text-red-500",
   success: "border border-emerald-200 bg-emerald-50 text-emerald-600",

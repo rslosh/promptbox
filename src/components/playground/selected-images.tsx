@@ -76,7 +76,7 @@ export function SelectedImages({
                     <p className={cn("text-xs font-medium truncate", color.text)}>
                       {image.source_ref || `Image ${index + 1}`}
                     </p>
-                    <p className="text-[10px] text-white/40 mt-0.5">
+                    <p className="text-[10px] text-gray-600 mt-0.5">
                       {image.width}×{image.height} • {image.format}
                     </p>
                   </div>
@@ -84,7 +84,7 @@ export function SelectedImages({
                   {/* Remove button */}
                   <button
                     onClick={() => onRemoveImage(image.id)}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/5 opacity-0 transition-all hover:bg-red-600 group-hover:opacity-100"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black/[0.06] opacity-0 transition-all hover:bg-red-600 group-hover:opacity-100"
                   >
                     <X className="h-4 w-4 text-white" />
                   </button>
@@ -95,7 +95,7 @@ export function SelectedImages({
             {/* Add more button */}
             <button
               onClick={onAddClick}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-white/20 py-3 text-sm text-white/40 transition-colors hover:border-white/40 hover:text-white/60"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-black/[0.12] py-3 text-sm text-gray-600 transition-colors hover:border-black/[0.22] hover:text-gray-800"
             >
               <Plus className="h-4 w-4" />
               Add more images
@@ -104,7 +104,7 @@ export function SelectedImages({
         ) : (
           <button
             onClick={onAddClick}
-            className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-white/20 py-8 text-white/40 transition-colors hover:border-purple-500/50 hover:text-white/60"
+            className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-black/[0.12] py-8 text-gray-600 transition-colors hover:border-[#f2ff59] hover:text-gray-800"
           >
             <Plus className="h-8 w-8" />
             <span className="text-sm">Click to select images</span>

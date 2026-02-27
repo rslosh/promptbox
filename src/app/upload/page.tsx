@@ -211,10 +211,10 @@ export default function UploadPage() {
               </IconWell>
 
               <div className="text-center">
-                <p className={cn("text-sm font-medium", isDragActive ? "text-gray-800" : "text-gray-500")}>
+                <p className={cn("text-sm font-medium", isDragActive ? "text-gray-800" : "text-gray-700")}>
                   {isDragActive ? "Drop to add" : "Drag images here"}
                 </p>
-                <p className="mt-0.5 text-xs text-gray-400">
+                <p className="mt-0.5 text-xs text-gray-600">
                   or click to browse — PNG, JPG, GIF, WebP
                 </p>
               </div>
@@ -272,7 +272,7 @@ export default function UploadPage() {
 
                 {/* Upload controls */}
                 <div className="flex items-center justify-between border-t border-black/[0.06] pt-4">
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-gray-600">
                     {completeCount > 0
                       ? `${completeCount} of ${files.length} uploaded`
                       : `${files.length} file${files.length !== 1 ? "s" : ""} queued`}
@@ -280,7 +280,7 @@ export default function UploadPage() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setFiles([])}
-                      className="text-xs text-gray-400 transition-colors hover:text-gray-600"
+                      className="text-xs text-gray-600 transition-colors hover:text-gray-800"
                     >
                       Clear all
                     </button>
@@ -321,7 +321,7 @@ export default function UploadPage() {
               </IconWell>
               <div>
                 <p className="text-sm font-medium text-gray-800">Import Collection</p>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <p className="text-xs text-gray-600 mt-0.5">
                   Paste a board or channel URL to create a synced collection.
                 </p>
               </div>
@@ -372,7 +372,7 @@ export default function UploadPage() {
 
             {/* Platform badges */}
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400">Supported</span>
+              <span className="text-xs text-gray-600">Supported</span>
               <div className="h-3 w-px bg-black/[0.08]" />
               <div className="flex gap-1.5">
                 {platformMeta.map(({ emoji, label }) => (
@@ -393,7 +393,7 @@ export default function UploadPage() {
               </IconWell>
               <div>
                 <p className="text-sm font-medium text-gray-800">Import from URL</p>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <p className="text-xs text-gray-600 mt-0.5">
                   Import images from a single URL without creating a collection.
                 </p>
               </div>

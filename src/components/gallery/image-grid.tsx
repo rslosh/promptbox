@@ -253,7 +253,7 @@ export function ImageGrid({
             {/* Footer - hide on small size */}
             {imageSize !== "small" && (
               <div className="px-2.5 py-2">
-                <p className="text-[11px] text-gray-400">
+                <p className="text-[11px] text-gray-600">
                   {formatRelativeTime(image.created_at)}
                 </p>
               </div>

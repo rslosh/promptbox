@@ -20,7 +20,7 @@ function LoadingFallback() {
       <Sidebar />
       <main className="flex-1 pl-64">
         <div className="flex h-full items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-white/40" />
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
         </div>
       </main>
     </div>
