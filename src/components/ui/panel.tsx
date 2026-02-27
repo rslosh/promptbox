@@ -2,11 +2,11 @@ import { cn } from "@/lib/utils";
 
 interface PanelProps extends React.HTMLAttributes<HTMLDivElement> {}
 
-/** Consistent section container — frosted glass card */
+/** Consistent section container — frosted olive glass card */
 export function Panel({ className, ...props }: PanelProps) {
   return (
     <div
-      className={cn("rounded-2xl border border-black/[0.07] bg-white/65 backdrop-blur-sm", className)}
+      className={cn("rounded-2xl border border-white/[0.09] bg-white/[0.07] backdrop-blur-sm", className)}
       {...props}
     />
   );

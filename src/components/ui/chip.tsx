@@ -7,11 +7,11 @@ interface ChipProps extends React.HTMLAttributes<HTMLSpanElement> {
 }
 
 const variantClasses: Record<ChipVariant, string> = {
-  default: "border-black/[0.1] bg-black/[0.04] text-gray-600",
-  accent:  "border-[#f2ff59] bg-[#f2ff59]/40 text-gray-800",
-  success: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  danger:  "border-red-200 bg-red-50 text-red-600",
-  warning: "border-amber-200 bg-amber-50 text-amber-700",
+  default: "border-white/[0.12] bg-white/[0.08] text-white/55",
+  accent:  "border-[#f2ff59]/50 bg-[#f2ff59]/15 text-[#f2ff59]",
+  success: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
+  danger:  "border-red-500/30 bg-red-500/10 text-red-400",
+  warning: "border-amber-500/30 bg-amber-500/10 text-amber-400",
 };
 
 /** Rounded pill badge — used for status indicators, tags, and platform labels */

@@ -49,11 +49,11 @@ export function ViewOptions({
       </Button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-52 rounded-xl border border-black/[0.08] bg-white/95 p-4 shadow-xl backdrop-blur-xl">
+        <div className="absolute right-0 top-full z-50 mt-2 w-52 rounded-xl border border-white/[0.1] bg-[#3e3f38] p-4 shadow-xl backdrop-blur-xl">
           <div className="space-y-4">
             {/* Layout */}
             <div>
-              <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+              <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-white/30">
                 Layout
               </h4>
               <div className="space-y-0.5">
@@ -67,18 +67,18 @@ export function ViewOptions({
                     className={cn(
                       "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors",
                       layout === value
-                        ? "bg-[#f2ff59]/40 text-gray-900 font-medium"
-                        : "text-gray-600 hover:bg-black/[0.04] hover:text-gray-900"
+                        ? "bg-[#f2ff59]/15 text-[#f2ff59] font-medium"
+                        : "text-white/60 hover:bg-white/[0.06] hover:text-white/90"
                     )}
                   >
                     <div
                       className={cn(
                         "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2",
-                        layout === value ? "border-gray-900 bg-gray-900" : "border-gray-300"
+                        layout === value ? "border-[#f2ff59] bg-[#f2ff59]" : "border-white/25"
                       )}
                     >
                       {layout === value && (
-                        <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                        <div className="h-1.5 w-1.5 rounded-full bg-[#1c1b18]" />
                       )}
                     </div>
                     <Icon className="h-3.5 w-3.5" />
@@ -90,7 +90,7 @@ export function ViewOptions({
 
             {/* Image Size */}
             <div>
-              <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+              <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-white/30">
                 Grid size
               </h4>
               <div className="space-y-0.5">
@@ -101,18 +101,18 @@ export function ViewOptions({
                     className={cn(
                       "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm capitalize transition-colors",
                       imageSize === size
-                        ? "bg-[#f2ff59]/40 text-gray-900 font-medium"
-                        : "text-gray-600 hover:bg-black/[0.04] hover:text-gray-900"
+                        ? "bg-[#f2ff59]/15 text-[#f2ff59] font-medium"
+                        : "text-white/60 hover:bg-white/[0.06] hover:text-white/90"
                     )}
                   >
                     <div
                       className={cn(
                         "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2",
-                        imageSize === size ? "border-gray-900 bg-gray-900" : "border-gray-300"
+                        imageSize === size ? "border-[#f2ff59] bg-[#f2ff59]" : "border-white/25"
                       )}
                     >
                       {imageSize === size && (
-                        <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                        <div className="h-1.5 w-1.5 rounded-full bg-[#1c1b18]" />
                       )}
                     </div>
                     {size}

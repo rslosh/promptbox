@@ -51,10 +51,10 @@ const platformLabels: Record<string, string> = {
 };
 
 const platformColors: Record<string, string> = {
-  pinterest: "text-rose-600 bg-rose-50 border-rose-200",
-  are_na: "text-blue-600 bg-blue-50 border-blue-200",
-  tumblr: "text-cyan-700 bg-cyan-50 border-cyan-200",
-  manual: "text-gray-500 bg-black/[0.04] border-black/[0.1]",
+  pinterest: "text-rose-400 bg-rose-500/10 border-rose-500/25",
+  are_na: "text-blue-400 bg-blue-500/10 border-blue-500/25",
+  tumblr: "text-cyan-400 bg-cyan-500/10 border-cyan-500/25",
+  manual: "text-white/45 bg-white/[0.06] border-white/[0.1]",
 };
 
 export default function CollectionPage({
@@ -321,13 +321,13 @@ export default function CollectionPage({
         <main className="flex-1 pl-64">
           <div className="flex h-full min-h-screen items-center justify-center">
             <div className="text-center">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-black/[0.1] bg-black/[0.04]">
-                <ImageIcon className="h-5 w-5 text-gray-400" />
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-white/[0.12] bg-white/[0.08]">
+                <ImageIcon className="h-5 w-5 text-white/35" />
               </div>
-              <h2 className="text-base font-medium text-gray-800">{error}</h2>
+              <h2 className="text-base font-medium text-white/75">{error}</h2>
               <Link
                 href="/"
-                className="mt-3 inline-block text-sm text-gray-400 transition-colors hover:text-gray-700"
+                className="mt-3 inline-block text-sm text-white/35 transition-colors hover:text-white/65"
               >
                 ← Back to Gallery
               </Link>
@@ -401,7 +401,7 @@ export default function CollectionPage({
 
                   {/* External link */}
                   <a href={collection.source_url} target="_blank" rel="noopener noreferrer">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-gray-700">
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
                       <ExternalLink className="h-3.5 w-3.5" />
                     </Button>
                   </a>
@@ -417,8 +417,8 @@ export default function CollectionPage({
                     className={cn(
                       "h-8 w-8 transition-colors",
                       confirmDelete
-                        ? "bg-red-50 text-red-500"
-                        : "text-gray-400 hover:text-red-500 hover:bg-red-50"
+                        ? "bg-red-500/15 text-red-400"
+                        : "text-white/30 hover:text-red-400 hover:bg-red-500/10"
                     )}
                     onClick={() => setConfirmDelete((v) => !v)}
                     disabled={isDeleting}
@@ -432,14 +432,14 @@ export default function CollectionPage({
 
                   {/* Confirmation popover */}
                   {confirmDelete && (
-                    <div className="absolute right-0 top-[calc(100%+6px)] z-50 w-60 rounded-xl border border-black/[0.08] bg-white/95 p-4 shadow-xl backdrop-blur-xl">
+                    <div className="absolute right-0 top-[calc(100%+6px)] z-50 w-60 rounded-xl border border-white/[0.1] bg-[#3e3f38] p-4 shadow-2xl backdrop-blur-xl">
                       <div className="mb-3 flex items-start gap-2.5">
-                        <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-50 border border-red-200">
-                          <AlertTriangle className="h-3 w-3 text-red-500" />
+                        <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-500/15 border border-red-500/25">
+                          <AlertTriangle className="h-3 w-3 text-red-400" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-900">Delete collection?</p>
-                          <p className="mt-0.5 text-xs leading-relaxed text-gray-500">
+                          <p className="text-sm font-medium text-white/85">Delete collection?</p>
+                          <p className="mt-0.5 text-xs leading-relaxed text-white/40">
                             Images stay in your gallery. This can&rsquo;t be undone.
                           </p>
                         </div>
@@ -447,7 +447,7 @@ export default function CollectionPage({
                       <div className="flex gap-2">
                         <button
                           onClick={() => setConfirmDelete(false)}
-                          className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border border-black/[0.1] text-xs text-gray-600 transition-colors hover:bg-black/[0.04] hover:text-gray-800"
+                          className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/[0.1] text-xs text-white/55 transition-colors hover:bg-white/[0.07] hover:text-white/80"
                         >
                           <X className="h-3 w-3" />
                           Cancel
@@ -455,7 +455,7 @@ export default function CollectionPage({
                         <button
                           onClick={handleDelete}
                           disabled={isDeleting}
-                          className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50 text-xs text-red-600 transition-colors hover:bg-red-100 disabled:opacity-50"
+                          className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/15 text-xs text-red-400 transition-colors hover:bg-red-500/25 disabled:opacity-50"
                         >
                           {isDeleting ? (
                             <Loader2 className="h-3 w-3 animate-spin" />
@@ -510,7 +510,7 @@ export default function CollectionPage({
 
               {/* Last synced */}
               {collection.last_synced_at && (
-                <span className="flex items-center gap-1.5 text-xs text-gray-400">
+                <span className="flex items-center gap-1.5 text-xs text-white/35">
                   <Clock className="h-3 w-3" />
                   {formatDate(collection.last_synced_at)}
                 </span>
@@ -519,8 +519,8 @@ export default function CollectionPage({
               {/* Description */}
               {collection.description && (
                 <>
-                  <span className="text-gray-300">·</span>
-                  <p className="text-xs text-gray-400">{collection.description}</p>
+                  <span className="text-white/20">·</span>
+                  <p className="text-xs text-white/40">{collection.description}</p>
                 </>
               )}
 
@@ -565,7 +565,7 @@ export default function CollectionPage({
               {Array.from({ length: 12 }).map((_, i) => (
                 <div
                   key={i}
-                  className="aspect-square animate-pulse rounded-xl bg-black/[0.06]"
+                  className="aspect-square animate-pulse rounded-xl bg-white/[0.07]"
                   style={{ animationDelay: `${i * 40}ms` }}
                 />
               ))}
@@ -598,8 +598,8 @@ export default function CollectionPage({
                 <IconWell size="xl" variant="accent" className="opacity-40" />
                 <Loader2 className="absolute inset-0 m-auto h-6 w-6 animate-spin text-gray-400" />
               </div>
-              <p className="text-sm font-medium text-gray-500">Downloading images&hellip;</p>
-              <p className="mt-1 text-xs text-gray-400">Large boards may take a moment</p>
+              <p className="text-sm font-medium text-white/55">Downloading images&hellip;</p>
+              <p className="mt-1 text-xs text-white/30">Large boards may take a moment</p>
             </div>
           ) : (
             /* Empty state */

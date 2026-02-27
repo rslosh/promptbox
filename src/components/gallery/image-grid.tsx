@@ -126,11 +126,11 @@ export function ImageGrid({
           <div
             key={image.id}
             className={cn(
-              "group relative overflow-hidden rounded-xl border bg-black/[0.03]",
+              "group relative overflow-hidden rounded-xl border bg-white/[0.05]",
               selectable && "cursor-pointer",
               isSelected
-                ? "border-gray-900 ring-2 ring-gray-900/20"
-                : "border-black/[0.08] hover:border-black/[0.18]",
+                ? "border-[#f2ff59]/60 ring-2 ring-[#f2ff59]/20"
+                : "border-white/[0.08] hover:border-white/[0.18]",
               isDeleting && "opacity-50 pointer-events-none"
             )}
             onClick={() => selectable && handleSelect(image.id)}
@@ -160,11 +160,11 @@ export function ImageGrid({
                   className={cn(
                     "absolute left-2 top-2 z-20 flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors",
                     isSelected
-                      ? "border-gray-900 bg-gray-900"
+                      ? "border-[#f2ff59] bg-[#f2ff59]"
                       : "border-white/70 bg-black/30 opacity-0 group-hover:opacity-100"
                   )}
                 >
-                  {isSelected && <Check className="h-3 w-3 text-white" />}
+                  {isSelected && <Check className="h-3 w-3 text-[#1c1b18]" />}
                 </div>
               )}
 
@@ -253,7 +253,7 @@ export function ImageGrid({
             {/* Footer - hide on small size */}
             {imageSize !== "small" && (
               <div className="px-2.5 py-2">
-                <p className="text-[11px] text-gray-400">
+                <p className="text-[11px] text-white/35">
                   {formatRelativeTime(image.created_at)}
                 </p>
               </div>
