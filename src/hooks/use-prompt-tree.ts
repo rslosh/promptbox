@@ -168,33 +168,50 @@ export function usePromptTree({
   useEffect(() => {
     if (!initialLoadCompleteRef.current) return;
 
+    // Recursively flatten a JSON object into { type (dot-path), value } pairs
+    function flattenJson(
+      obj: Record<string, unknown>,
+      prefix = ""
+    ): { type: string; value: string }[] {
+      const results: { type: string; value: string }[] = [];
+      for (const [key, val] of Object.entries(obj)) {
+        const path = prefix ? `${prefix}.${key}` : key;
+        if (typeof val === "string" && val.trim()) {
+          results.push({ type: path, value: val.trim() });
+        } else if (typeof val === "number" && !Number.isNaN(val)) {
+          results.push({ type: path, value: String(val) });
+        } else if (Array.isArray(val)) {
+          val.forEach((item, i) => {
+            if (typeof item === "string" && item.trim()) {
+              results.push({ type: path, value: item.trim() });
+            } else if (item && typeof item === "object" && !Array.isArray(item)) {
+              flattenJson(item as Record<string, unknown>, path).forEach((r) =>
+                results.push(r)
+              );
+            }
+          });
+        } else if (val && typeof val === "object" && !Array.isArray(val)) {
+          flattenJson(val as Record<string, unknown>, path).forEach((r) =>
+            results.push(r)
+          );
+        }
+      }
+      return results;
+    }
+
     const components: PromptComponent[] = [];
     selectedImages.forEach((image, imageIndex) => {
       const prompt = image.prompts?.[0];
       if (!prompt?.json_prompt) return;
       const json = prompt.json_prompt as Record<string, unknown>;
-      Object.entries(json).forEach(([key, value]) => {
-        if (typeof value === "string" && value.trim()) {
-          components.push({
-            id: `${image.id}-${key}`,
-            type: key,
-            value,
-            imageIndex,
-            imageId: image.id,
-          });
-        } else if (Array.isArray(value)) {
-          value.forEach((item, index) => {
-            if (typeof item === "string" && item.trim()) {
-              components.push({
-                id: `${image.id}-${key}-${index}`,
-                type: key,
-                value: item,
-                imageIndex,
-                imageId: image.id,
-              });
-            }
-          });
-        }
+      flattenJson(json).forEach(({ type, value }, idx) => {
+        components.push({
+          id: `${image.id}-${type}-${idx}`,
+          type,
+          value,
+          imageIndex,
+          imageId: image.id,
+        });
       });
     });
 
