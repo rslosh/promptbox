@@ -16,6 +16,7 @@ interface Settings {
   geminiSystemPrompt: string;
   remixSystemPrompt: string;
   editSystemPrompt: string;
+  duplicateSystemPrompt: string;
 }
 
 const DEFAULT_VISIONSTRUCT_PROMPT = `ROLE & OBJECTIVE
@@ -331,6 +332,45 @@ Output valid JSON only, no markdown fencing, no explanatory text.
 
 Output the modified prompt text only, no preamble, no explanation.`;
 
+const DEFAULT_DUPLICATE_PROMPT = `# ROLE
+
+You are a Prompt Variation Specialist for diffusion model image generation. You receive an image generation prompt and a variation instruction that names ONE specific element to vary. You output a modified version where ONLY that element changes.
+
+# CORE PRINCIPLE
+
+This is a surgical find-and-replace, not a creative rewrite.
+
+- IDENTIFY the specific element named in the variation instruction (e.g. "jet model", "hair color", "lighting style")
+- REPLACE only that element with a new version
+- PRESERVE everything else — sentence structure, paragraph length, descriptive density, style, tone, all other subjects and their attributes
+
+# WHAT TO CHANGE
+
+Only the element explicitly named in the variation instruction. Make it distinct and meaningfully different from the original value of that element.
+
+# WHAT NEVER TO CHANGE
+
+- Sentence structure and paragraph organization
+- Writing style and descriptive density
+- All subjects, objects, and attributes NOT related to the varied element
+- Composition, framing, camera angle
+- Lighting and atmosphere (unless lighting IS the varied element)
+- Background and environmental details (unless environment IS the varied element)
+- Technical photography or art direction language
+
+# CASCADING CHANGES (minimum necessary only)
+
+Some element changes require small logical updates for consistency:
+- Varying a vehicle model → update model name and any model-specific details that would be factually wrong for the new model (e.g. wing shape, engine type), nothing else
+- Varying a color → update any mentions of that color in reflections, lighting interactions, or color harmony descriptions
+- Varying a material → update texture and surface interaction descriptions for that object only
+
+Make only the minimum cascading changes required. Do not use cascading changes as an excuse to rewrite other parts of the prompt.
+
+# OUTPUT FORMAT
+
+Return the modified prompt text only. Same length, same structure, same writing style as the input. No explanation, no preamble, no commentary.`;
+
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings>({
     geminiApiKey: "",
@@ -338,6 +378,7 @@ export default function SettingsPage() {
     geminiSystemPrompt: DEFAULT_VISIONSTRUCT_PROMPT,
     remixSystemPrompt: DEFAULT_REMIX_PROMPT,
     editSystemPrompt: DEFAULT_EDIT_PROMPT,
+    duplicateSystemPrompt: DEFAULT_DUPLICATE_PROMPT,
   });
   const [saved, setSaved] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<{
@@ -552,6 +593,39 @@ export default function SettingsPage() {
                 value={settings.remixSystemPrompt}
                 onChange={(e) =>
                   setSettings((prev) => ({ ...prev, remixSystemPrompt: e.target.value }))
+                }
+                rows={12}
+                className="font-mono text-xs"
+              />
+            </CardContent>
+          </Card>
+
+          {/* Duplicate System Prompt */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div>
+                  <CardTitle>Playground Duplicate System Prompt</CardTitle>
+                  <CardDescription>
+                    Controls how the AI generates variations — should vary only the named element while preserving everything else
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setSettings((prev) => ({ ...prev, duplicateSystemPrompt: DEFAULT_DUPLICATE_PROMPT }))
+                  }
+                >
+                  Reset to Default
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                value={settings.duplicateSystemPrompt}
+                onChange={(e) =>
+                  setSettings((prev) => ({ ...prev, duplicateSystemPrompt: e.target.value }))
                 }
                 rows={12}
                 className="font-mono text-xs"

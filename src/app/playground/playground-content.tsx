@@ -26,14 +26,17 @@ import { usePromptTree } from "@/hooks/use-prompt-tree";
 import { getImageNodePositions } from "@/lib/playground-layout";
 import { getImageColor, getImageLabel } from "@/lib/constants/colors";
 import type { PromptTreeNode } from "@/lib/playground-types";
-import { Loader2, ChevronDown, X, Copy, Check } from "lucide-react";
+import { Loader2, ChevronDown, X, Copy, Check, GitCompare } from "lucide-react";
 import { DEFAULT_SYSTEM_PROMPT } from "@/lib/remix-prompts";
+import { computeWordDiff, type DiffToken } from "@/lib/diff";
+import { PlaygroundHistoryContext } from "@/contexts/playground-history-context";
 
 interface Settings {
   geminiApiKey: string;
   secondaryLlmApiKey: string;
   remixSystemPrompt: string;
   editSystemPrompt: string;
+  duplicateSystemPrompt: string;
 }
 
 interface PlaygroundContentProps {
@@ -126,6 +129,217 @@ function RequestPreviewModal({ isOpen, onClose, systemPrompt, userMessage }: Req
   );
 }
 
+// ── Lineage modal ──────────────────────────────────────────────────────────────
+
+type NodeMode = "generate" | "edit" | "duplicate";
+
+interface AncestorEntry {
+  mode: NodeMode;
+  instruction: string;
+  content: string;
+  model?: string;
+  createdAt: string;
+  isCurrent: boolean;
+}
+
+const LINEAGE_MODE_STYLES: Record<
+  NodeMode,
+  { badge: string; label: string; dot: string }
+> = {
+  generate: {
+    badge: "bg-gray-100 text-gray-600 border border-gray-200",
+    label: "Generate",
+    dot: "bg-gray-400",
+  },
+  edit: {
+    badge: "bg-blue-50 text-blue-700 border border-blue-200",
+    label: "Edit",
+    dot: "bg-blue-400",
+  },
+  duplicate: {
+    badge: "bg-violet-50 text-violet-700 border border-violet-200",
+    label: "Variation",
+    dot: "bg-violet-400",
+  },
+};
+
+function LineageDiffTokens({ tokens }: { tokens: DiffToken[] }) {
+  return (
+    <>
+      {tokens.map((token, i) => {
+        if (/^\s+$/.test(token.text)) return <span key={i}>{token.text}</span>;
+        if (token.type === "add")
+          return (
+            <span key={i} className="rounded bg-green-100 text-green-700">
+              {token.text}
+            </span>
+          );
+        if (token.type === "remove")
+          return (
+            <span key={i} className="rounded bg-red-50 text-red-400 line-through">
+              {token.text}
+            </span>
+          );
+        return <span key={i}>{token.text}</span>;
+      })}
+    </>
+  );
+}
+
+function LineageModal({
+  ancestry,
+  onClose,
+}: {
+  ancestry: AncestorEntry[];
+  onClose: () => void;
+}) {
+  const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
+  const [diffSteps, setDiffSteps] = useState<Set<number>>(new Set());
+
+  function toggleExpand(i: number) {
+    setExpandedSteps((prev) => {
+      const next = new Set(prev);
+      next.has(i) ? next.delete(i) : next.add(i);
+      return next;
+    });
+  }
+
+  function toggleDiff(i: number) {
+    setDiffSteps((prev) => {
+      const next = new Set(prev);
+      next.has(i) ? next.delete(i) : next.add(i);
+      return next;
+    });
+  }
+
+  const stepCount = ancestry.length;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="relative flex w-full max-w-xl flex-col rounded-2xl border border-gray-200 bg-white shadow-2xl"
+        style={{ maxHeight: "85vh" }}
+      >
+        {/* Header */}
+        <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-5 py-4">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">Prompt Lineage</h2>
+            <p className="mt-0.5 text-xs text-gray-400">
+              {stepCount} {stepCount === 1 ? "step" : "steps"} to this prompt
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Timeline */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          {ancestry.map((entry, i) => {
+            const style = LINEAGE_MODE_STYLES[entry.mode];
+            const isExpanded = expandedSteps.has(i);
+            const isDiff = diffSteps.has(i);
+            const hasPrev = i > 0;
+            const prevContent = hasPrev ? ancestry[i - 1].content : null;
+            const diffTokens =
+              isDiff && prevContent ? computeWordDiff(prevContent, entry.content) : null;
+            const isLong = entry.content.length > 240;
+
+            return (
+              <div key={i} className="relative flex gap-4">
+                {/* Left column: dot + connector */}
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white ${style.dot}`}
+                  >
+                    {i + 1}
+                  </div>
+                  {i < stepCount - 1 && (
+                    <div className="mt-1 w-px flex-1 bg-gray-200" style={{ minHeight: 20 }} />
+                  )}
+                </div>
+
+                {/* Right column: content */}
+                <div className={`flex-1 ${i < stepCount - 1 ? "pb-6" : "pb-2"}`}>
+                  {/* Mode badge + current indicator */}
+                  <div className="mb-1.5 flex items-center gap-2">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${style.badge}`}
+                    >
+                      {style.label}
+                    </span>
+                    {entry.isCurrent && (
+                      <span className="text-[10px] text-gray-400">current</span>
+                    )}
+                    {entry.model && (
+                      <span className="font-mono text-[9px] text-gray-300">{entry.model}</span>
+                    )}
+                  </div>
+
+                  {/* Instruction */}
+                  {entry.instruction ? (
+                    <p className="mb-2 text-[11px] italic text-gray-400">
+                      "{entry.instruction}"
+                    </p>
+                  ) : (
+                    <p className="mb-2 text-[11px] italic text-gray-300">
+                      No instruction
+                    </p>
+                  )}
+
+                  {/* Prompt content box */}
+                  <div className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+                    <div
+                      className={`text-[11px] leading-relaxed text-gray-700 ${
+                        !isExpanded ? "line-clamp-4" : ""
+                      }`}
+                    >
+                      {diffTokens ? (
+                        <LineageDiffTokens tokens={diffTokens} />
+                      ) : (
+                        entry.content
+                      )}
+                    </div>
+
+                    {/* Footer: expand + diff controls */}
+                    <div className="mt-2 flex items-center gap-3">
+                      {isLong && (
+                        <button
+                          onClick={() => toggleExpand(i)}
+                          className="text-[10px] text-gray-400 hover:text-gray-600"
+                        >
+                          {isExpanded ? "Show less" : "Show full prompt"}
+                        </button>
+                      )}
+                      {hasPrev && (
+                        <button
+                          onClick={() => toggleDiff(i)}
+                          className={`flex items-center gap-1 text-[10px] transition-colors ${
+                            isDiff
+                              ? "text-amber-600"
+                              : "text-gray-400 hover:text-gray-600"
+                          }`}
+                        >
+                          <GitCompare className="h-2.5 w-2.5" />
+                          {isDiff ? "Hide diff" : "Diff vs previous"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PlaygroundCanvas({
   remixId,
   initialImageIds,
@@ -139,6 +353,7 @@ function PlaygroundCanvas({
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [showRemixList, setShowRemixList] = useState(!remixId && !initialImageIds?.length);
   const [showPreview, setShowPreview] = useState(false);
+  const [lineageAncestry, setLineageAncestry] = useState<AncestorEntry[] | null>(null);
   const floatingBarRef = useRef<FloatingBarHandle>(null);
 
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState<Node>([]);
@@ -147,6 +362,9 @@ function PlaygroundCanvas({
   const reactFlowRef = useRef<HTMLDivElement>(null);
   const initialFitDoneRef = useRef(false);
   const { fitView } = useReactFlow();
+
+  // Stable ref so the history handler doesn't need promptNodes in its dep array
+  const promptNodesRef = useRef<PromptTreeNode[]>([]);
 
   const {
     remixId: currentRemixId,
@@ -171,6 +389,28 @@ function PlaygroundCanvas({
     saveAsNew,
     autoSave,
   } = usePromptTree({ initialRemixId: remixId, initialImageIds });
+
+  // Keep ref in sync so the history handler always sees fresh nodes
+  promptNodesRef.current = promptNodes;
+
+  // Stable handler — builds ancestry chain on demand from the ref
+  const handleShowHistory = useCallback((nodeId: string) => {
+    const byId = new Map(promptNodesRef.current.map((n) => [n.id, n]));
+    const chain: AncestorEntry[] = [];
+    let current = byId.get(nodeId);
+    while (current) {
+      chain.unshift({
+        mode: current.mode,
+        instruction: current.instruction,
+        content: current.content,
+        model: current.model,
+        createdAt: current.createdAt,
+        isCurrent: current.id === nodeId,
+      });
+      current = current.parentId ? byId.get(current.parentId) : undefined;
+    }
+    setLineageAncestry(chain);
+  }, []);
 
   // Load settings
   useEffect(() => {
@@ -233,6 +473,8 @@ function PlaygroundCanvas({
       const currentPositions = new Map<string, { x: number; y: number }>(
         prev.filter((n) => n.type === "promptNode").map((n) => [n.id, n.position])
       );
+      // Build a lookup for parent content (used for diff view in child nodes)
+      const contentById = new Map(promptNodes.map((n) => [n.id, n.content]));
       const promptRfNodes: Node[] = promptNodes.map((pn) => ({
         id: pn.id,
         type: "promptNode",
@@ -243,6 +485,7 @@ function PlaygroundCanvas({
           mode: pn.mode,
           instruction: pn.instruction,
           model: pn.model,
+          parentContent: pn.parentId ? contentById.get(pn.parentId) : undefined,
         },
         draggable: true,
       }));
@@ -365,6 +608,7 @@ function PlaygroundCanvas({
           selectedPrompt: selectedNode?.content,
           count: duplicateCount,
           apiKey: settings?.secondaryLlmApiKey || settings?.geminiApiKey,
+          duplicateSystemPrompt: settings?.duplicateSystemPrompt,
         };
       }
 
@@ -478,6 +722,7 @@ function PlaygroundCanvas({
   }
 
   return (
+    <PlaygroundHistoryContext.Provider value={handleShowHistory}>
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
 
@@ -595,7 +840,15 @@ function PlaygroundCanvas({
         onConfirm={addImages}
         initialSelectedIds={selectedImages.map((i) => i.id)}
       />
+
+      {lineageAncestry && (
+        <LineageModal
+          ancestry={lineageAncestry}
+          onClose={() => setLineageAncestry(null)}
+        />
+      )}
     </div>
+    </PlaygroundHistoryContext.Provider>
   );
 }
 

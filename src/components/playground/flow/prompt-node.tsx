@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Handle, Position } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import { copyToClipboard } from "@/lib/utils";
-import { Copy, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { computeWordDiff } from "@/lib/diff";
+import { useHistoryHandler } from "@/contexts/playground-history-context";
+import { Copy, Check, ChevronDown, ChevronUp, GitCompare, History } from "lucide-react";
 
 type NodeMode = "generate" | "edit" | "duplicate";
 
@@ -13,7 +15,7 @@ interface PromptNodeData {
   mode: NodeMode;
   instruction: string;
   model?: string;
-  selected?: boolean;
+  parentContent?: string;
 }
 
 const MODE_STYLES: Record<NodeMode, { badge: string; label: string }> = {
@@ -31,20 +33,78 @@ const MODE_STYLES: Record<NodeMode, { badge: string; label: string }> = {
   },
 };
 
-const CLAMP_THRESHOLD = 320; // chars before "show more" appears
+const CLAMP_THRESHOLD = 320;
+
+// ── Diff renderer ──────────────────────────────────────────────────────────────
+
+function DiffContent({
+  oldText,
+  newText,
+  expanded,
+  isLong,
+}: {
+  oldText: string;
+  newText: string;
+  expanded: boolean;
+  isLong: boolean;
+}) {
+  const tokens = useMemo(
+    () => computeWordDiff(oldText, newText),
+    [oldText, newText]
+  );
+
+  return (
+    <div
+      className={cn(
+        "text-xs leading-relaxed",
+        !expanded && isLong ? "line-clamp-6" : ""
+      )}
+    >
+      {tokens.map((token, i) => {
+        if (/^\s+$/.test(token.text)) return <span key={i}>{token.text}</span>;
+        if (token.type === "add")
+          return (
+            <span key={i} className="rounded bg-green-100 text-green-700">
+              {token.text}
+            </span>
+          );
+        if (token.type === "remove")
+          return (
+            <span key={i} className="rounded bg-red-50 text-red-400 line-through">
+              {token.text}
+            </span>
+          );
+        return (
+          <span key={i} className="text-gray-800">
+            {token.text}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Main node ──────────────────────────────────────────────────────────────────
 
 export function PromptNode({
+  id,
   data,
   selected,
 }: {
+  id: string;
   data: PromptNodeData;
   selected?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showDiff, setShowDiff] = useState(false);
+
+  const onShowHistory = useHistoryHandler();
 
   const modeStyle = MODE_STYLES[data.mode] || MODE_STYLES.generate;
-  const isLong = data.content && data.content.length > CLAMP_THRESHOLD;
+  const hasDiff = !!data.parentContent && data.mode !== "generate";
+  const hasHistory = data.mode !== "generate";
+  const isLong = !!(data.content && data.content.length > CLAMP_THRESHOLD);
 
   async function handleCopy(e: React.MouseEvent) {
     e.stopPropagation();
@@ -74,15 +134,53 @@ export function PromptNode({
 
       {/* Header */}
       <div className="flex items-center justify-between px-3 pt-3 pb-2">
-        <span
-          className={cn(
-            "rounded-full px-2 py-0.5 text-[10px] font-medium",
-            modeStyle.badge
+        <div className="flex items-center gap-1.5">
+          <span
+            className={cn(
+              "rounded-full px-2 py-0.5 text-[10px] font-medium",
+              modeStyle.badge
+            )}
+          >
+            {modeStyle.label}
+          </span>
+
+          {/* Diff toggle — only for edit/duplicate nodes */}
+          {hasDiff && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowDiff((v) => !v);
+              }}
+              title={showDiff ? "Show original text" : "Show changes vs parent"}
+              className={cn(
+                "flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium transition-all",
+                showDiff
+                  ? "border-amber-200 bg-amber-50 text-amber-700"
+                  : "border-gray-200 bg-white text-gray-400 hover:border-gray-300 hover:text-gray-600"
+              )}
+            >
+              <GitCompare className="h-2.5 w-2.5" />
+              Diff
+            </button>
           )}
-        >
-          {modeStyle.label}
-        </span>
-        {/* Copy button — labelled, in header */}
+
+          {/* History button — edit/duplicate nodes */}
+          {hasHistory && onShowHistory && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onShowHistory(id);
+              }}
+              title="View prompt lineage"
+              className="flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-medium text-gray-400 transition-all hover:border-gray-300 hover:text-gray-600"
+            >
+              <History className="h-2.5 w-2.5" />
+              Lineage
+            </button>
+          )}
+        </div>
+
+        {/* Copy button */}
         <button
           onClick={handleCopy}
           className={cn(
@@ -113,16 +211,25 @@ export function PromptNode({
         </p>
       )}
 
-      {/* Content */}
+      {/* Content / Diff */}
       <div className="px-3 pb-2">
-        <p
-          className={cn(
-            "text-xs text-gray-800 leading-relaxed",
-            !expanded && isLong ? "line-clamp-6" : ""
-          )}
-        >
-          {data.content}
-        </p>
+        {showDiff && hasDiff ? (
+          <DiffContent
+            oldText={data.parentContent!}
+            newText={data.content}
+            expanded={expanded}
+            isLong={isLong}
+          />
+        ) : (
+          <p
+            className={cn(
+              "text-xs text-gray-800 leading-relaxed",
+              !expanded && isLong ? "line-clamp-6" : ""
+            )}
+          >
+            {data.content}
+          </p>
+        )}
       </div>
 
       {/* Model label */}
@@ -132,7 +239,7 @@ export function PromptNode({
         </div>
       )}
 
-      {/* Expand / collapse — full-width bar */}
+      {/* Expand / collapse */}
       {isLong && (
         <button
           onClick={(e) => {

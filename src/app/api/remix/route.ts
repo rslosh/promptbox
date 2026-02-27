@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
       apiKey,
       systemPrompt,
       editSystemPrompt,
+      duplicateSystemPrompt,
     } = body;
 
     const geminiKey = apiKey || process.env.GEMINI_API_KEY || process.env.SECONDARY_LLM_API_KEY;
@@ -179,9 +180,10 @@ Generate variation ${i + 1} of ${numVariations}. Make it meaningfully different 
 
 Return only the variation prompt:`;
 
+      const activeDuplicateSystemPrompt = duplicateSystemPrompt || DUPLICATE_SYSTEM_PROMPT;
       const results = await Promise.all(
         Array.from({ length: numVariations }, (_, i) =>
-          callModel(ai, DUPLICATE_SYSTEM_PROMPT, variationMessage(i))
+          callModel(ai, activeDuplicateSystemPrompt, variationMessage(i))
         )
       );
 
