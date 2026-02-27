@@ -81,7 +81,7 @@ export function FilterBar({
       <div className="flex flex-wrap items-center gap-1.5">
 
         {/* Source pills */}
-        <div className="flex items-center rounded-lg border border-white/8 bg-white/3 p-0.5">
+        <div className="flex items-center rounded-lg border border-black/[0.08] bg-black/[0.03] p-0.5">
           {(
             [
               { value: "all", label: "All" },
@@ -95,8 +95,8 @@ export function FilterBar({
               className={cn(
                 "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
                 sourceFilter === value
-                  ? "bg-white/10 text-white"
-                  : "text-white/40 hover:text-white/70"
+                  ? "bg-white shadow-sm text-gray-800"
+                  : "text-gray-500 hover:text-gray-700"
               )}
             >
               {label}
@@ -104,7 +104,7 @@ export function FilterBar({
           ))}
         </div>
 
-        <div className="h-4 w-px bg-white/10" />
+        <div className="h-4 w-px bg-black/[0.08]" />
 
         {/* Collections dropdown */}
         {collections.length > 0 && onCollectionsChange && (
@@ -112,10 +112,10 @@ export function FilterBar({
             <button
               onClick={() => setShowCollectionDropdown((v) => !v)}
               className={cn(
-                "flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-xs transition-colors",
+                "flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors",
                 selectedCollections.length > 0
-                  ? "border-purple-500/40 bg-purple-500/10 text-purple-300"
-                  : "border-white/8 bg-white/3 text-white/50 hover:border-white/15 hover:text-white/80"
+                  ? "border-[#f2ff59] bg-[#f2ff59]/30 text-gray-800"
+                  : "border-black/[0.08] bg-black/[0.03] text-gray-500 hover:border-black/[0.14] hover:text-gray-700"
               )}
             >
               <FolderOpen className="h-3 w-3" />
@@ -133,7 +133,7 @@ export function FilterBar({
             </button>
 
             {showCollectionDropdown && (
-              <div className="absolute left-0 top-full z-50 mt-1.5 min-w-[200px] max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-[#111] py-1 shadow-2xl backdrop-blur-xl">
+              <div className="absolute left-0 top-full z-50 mt-1.5 min-w-[200px] max-h-72 overflow-y-auto rounded-xl border border-black/[0.08] bg-white/95 py-1 shadow-lg backdrop-blur-xl">
                 {collections.map((col) => {
                   const active = selectedCollections.includes(col.id);
                   return (
@@ -143,33 +143,33 @@ export function FilterBar({
                       className={cn(
                         "flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors",
                         active
-                          ? "bg-purple-500/10 text-white"
-                          : "text-white/60 hover:bg-white/5 hover:text-white"
+                          ? "bg-[#f2ff59]/20 text-gray-900"
+                          : "text-gray-600 hover:bg-black/[0.04] hover:text-gray-900"
                       )}
                     >
                       <div
                         className={cn(
                           "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
-                          active ? "border-purple-500 bg-purple-500" : "border-white/20"
+                          active ? "border-gray-900 bg-gray-900" : "border-black/[0.15]"
                         )}
                       >
                         {active && <Check className="h-2.5 w-2.5 text-white" />}
                       </div>
                       <span className="flex-1 truncate">{col.name}</span>
-                      <span className="tabular-nums text-xs text-white/30">{col.image_count}</span>
+                      <span className="tabular-nums text-xs text-gray-400">{col.image_count}</span>
                     </button>
                   );
                 })}
 
                 {selectedCollections.length > 0 && (
                   <>
-                    <div className="my-1 mx-2 h-px bg-white/8" />
+                    <div className="my-1 mx-2 h-px bg-black/[0.06]" />
                     <button
                       onClick={() => {
                         onCollectionsChange([]);
                         setShowCollectionDropdown(false);
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-white/5"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-500 hover:bg-red-50 transition-colors"
                     >
                       <X className="h-3 w-3" />
                       Clear
@@ -185,7 +185,7 @@ export function FilterBar({
         <div className="relative" ref={sortRef}>
           <button
             onClick={() => setShowSortDropdown((v) => !v)}
-            className="flex h-7 items-center gap-1.5 rounded-lg border border-white/8 bg-white/3 px-2.5 text-xs text-white/50 transition-colors hover:border-white/15 hover:text-white/80"
+            className="flex h-7 items-center gap-1.5 rounded-lg border border-black/[0.08] bg-black/[0.03] px-2.5 text-xs font-medium text-gray-500 transition-colors hover:border-black/[0.14] hover:text-gray-700"
           >
             <ArrowUpDown className="h-3 w-3" />
             {sortBy === "newest" ? "Newest" : "Oldest"}
@@ -195,7 +195,7 @@ export function FilterBar({
           </button>
 
           {showSortDropdown && (
-            <div className="absolute left-0 top-full z-50 mt-1.5 w-36 rounded-xl border border-white/10 bg-[#111] py-1 shadow-2xl backdrop-blur-xl">
+            <div className="absolute left-0 top-full z-50 mt-1.5 w-36 rounded-xl border border-black/[0.08] bg-white/95 py-1 shadow-lg backdrop-blur-xl">
               {(["newest", "oldest"] as const).map((s) => (
                 <button
                   key={s}
@@ -206,11 +206,11 @@ export function FilterBar({
                   className={cn(
                     "flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors capitalize",
                     sortBy === s
-                      ? "text-white"
-                      : "text-white/50 hover:bg-white/5 hover:text-white"
+                      ? "text-gray-900 font-medium"
+                      : "text-gray-500 hover:bg-black/[0.04] hover:text-gray-800"
                   )}
                 >
-                  {sortBy === s && <Check className="h-3 w-3 text-purple-400" />}
+                  {sortBy === s && <Check className="h-3 w-3 text-gray-700" />}
                   {sortBy !== s && <span className="w-3" />}
                   {s} first
                 </button>
@@ -222,10 +222,10 @@ export function FilterBar({
         {/* Active filter count + clear */}
         {hasActiveFilters && (
           <>
-            <div className="h-4 w-px bg-white/10" />
+            <div className="h-4 w-px bg-black/[0.08]" />
             <button
               onClick={clearAllFilters}
-              className="flex h-7 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 text-xs text-white/50 transition-colors hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400"
+              className="flex h-7 items-center gap-1.5 rounded-lg border border-black/[0.1] bg-black/[0.04] px-2.5 text-xs font-medium text-gray-500 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500"
             >
               <X className="h-3 w-3" />
               {activeFilterCount} filter{activeFilterCount !== 1 ? "s" : ""}
@@ -244,10 +244,10 @@ export function FilterBar({
                 key={tag}
                 onClick={() => toggleTag(tag)}
                 className={cn(
-                  "flex h-6 items-center gap-1 rounded-full border px-2.5 text-xs transition-colors",
+                  "flex h-6 items-center gap-1 rounded-full border px-2.5 text-xs font-medium transition-colors",
                   active
-                    ? "border-purple-500/50 bg-purple-500/15 text-purple-300"
-                    : "border-white/8 bg-white/3 text-white/40 hover:border-white/15 hover:text-white/70"
+                    ? "border-[#f2ff59] bg-[#f2ff59]/40 text-gray-800"
+                    : "border-black/[0.08] bg-black/[0.03] text-gray-500 hover:border-black/[0.14] hover:text-gray-700"
                 )}
               >
                 {tag}
@@ -259,7 +259,7 @@ export function FilterBar({
           {tags.length > 14 && (
             <button
               onClick={() => setShowAllTags((v) => !v)}
-              className="flex h-6 items-center rounded-full border border-white/8 bg-white/3 px-2.5 text-xs text-white/30 transition-colors hover:text-white/60"
+              className="flex h-6 items-center rounded-full border border-black/[0.08] bg-black/[0.03] px-2.5 text-xs text-gray-400 transition-colors hover:text-gray-600"
             >
               {showAllTags ? "Less" : `+${tags.length - 14}`}
             </button>

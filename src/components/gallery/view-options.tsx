@@ -49,82 +49,66 @@ export function ViewOptions({
       </Button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-white/10 bg-black/95 p-4 shadow-xl backdrop-blur-xl">
+        <div className="absolute right-0 top-full z-50 mt-2 w-52 rounded-xl border border-black/[0.08] bg-white/95 p-4 shadow-xl backdrop-blur-xl">
           <div className="space-y-4">
             {/* Layout */}
             <div>
-              <h4 className="mb-2 text-xs font-medium uppercase tracking-wider text-white/40">
+              <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
                 Layout
               </h4>
-              <div className="space-y-1">
-                <button
-                  onClick={() => onLayoutChange("square")}
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                    layout === "square"
-                      ? "bg-purple-600/20 text-purple-300"
-                      : "text-white/70 hover:bg-white/5 hover:text-white"
-                  )}
-                >
-                  <div
+              <div className="space-y-0.5">
+                {([
+                  { value: "square" as const, icon: Square, label: "Square crop" },
+                  { value: "full" as const, icon: LayoutGrid, label: "Full image" },
+                ]).map(({ value, icon: Icon, label }) => (
+                  <button
+                    key={value}
+                    onClick={() => onLayoutChange(value)}
                     className={cn(
-                      "flex h-4 w-4 items-center justify-center rounded-full border-2",
-                      layout === "square" ? "border-purple-500 bg-purple-500" : "border-white/30"
+                      "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors",
+                      layout === value
+                        ? "bg-[#f2ff59]/40 text-gray-900 font-medium"
+                        : "text-gray-600 hover:bg-black/[0.04] hover:text-gray-900"
                     )}
                   >
-                    {layout === "square" && (
-                      <div className="h-1.5 w-1.5 rounded-full bg-white" />
-                    )}
-                  </div>
-                  <Square className="h-4 w-4" />
-                  Square
-                </button>
-                <button
-                  onClick={() => onLayoutChange("full")}
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                    layout === "full"
-                      ? "bg-purple-600/20 text-purple-300"
-                      : "text-white/70 hover:bg-white/5 hover:text-white"
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "flex h-4 w-4 items-center justify-center rounded-full border-2",
-                      layout === "full" ? "border-purple-500 bg-purple-500" : "border-white/30"
-                    )}
-                  >
-                    {layout === "full" && (
-                      <div className="h-1.5 w-1.5 rounded-full bg-white" />
-                    )}
-                  </div>
-                  <LayoutGrid className="h-4 w-4" />
-                  Full
-                </button>
+                    <div
+                      className={cn(
+                        "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2",
+                        layout === value ? "border-gray-900 bg-gray-900" : "border-gray-300"
+                      )}
+                    >
+                      {layout === value && (
+                        <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                      )}
+                    </div>
+                    <Icon className="h-3.5 w-3.5" />
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
 
             {/* Image Size */}
             <div>
-              <h4 className="mb-2 text-xs font-medium uppercase tracking-wider text-white/40">
-                Image Size
+              <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                Grid size
               </h4>
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {(["small", "medium", "large"] as const).map((size) => (
                   <button
                     key={size}
                     onClick={() => onImageSizeChange(size)}
                     className={cn(
-                      "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm capitalize transition-colors",
+                      "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm capitalize transition-colors",
                       imageSize === size
-                        ? "bg-purple-600/20 text-purple-300"
-                        : "text-white/70 hover:bg-white/5 hover:text-white"
+                        ? "bg-[#f2ff59]/40 text-gray-900 font-medium"
+                        : "text-gray-600 hover:bg-black/[0.04] hover:text-gray-900"
                     )}
                   >
                     <div
                       className={cn(
-                        "flex h-4 w-4 items-center justify-center rounded-full border-2",
-                        imageSize === size ? "border-purple-500 bg-purple-500" : "border-white/30"
+                        "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2",
+                        imageSize === size ? "border-gray-900 bg-gray-900" : "border-gray-300"
                       )}
                     >
                       {imageSize === size && (

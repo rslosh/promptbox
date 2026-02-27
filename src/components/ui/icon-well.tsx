@@ -17,10 +17,10 @@ const sizeClasses: Record<IconWellSize, string> = {
 };
 
 const variantClasses: Record<IconWellVariant, string> = {
-  default: "border border-white/10 bg-white/5 text-white/30",
-  accent:  "border border-purple-500/30 bg-purple-500/10 text-purple-400",
-  danger:  "border border-red-500/30 bg-red-500/10 text-red-400",
-  success: "border border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
+  default: "border border-black/[0.08] bg-black/[0.04] text-gray-500",
+  accent:  "border border-[#f2ff59] bg-[#f2ff59]/30 text-gray-800",
+  danger:  "border border-red-200 bg-red-50 text-red-500",
+  success: "border border-emerald-200 bg-emerald-50 text-emerald-600",
 };
 
 /** Centered icon container used for empty states, section headers, and status indicators */

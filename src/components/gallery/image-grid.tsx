@@ -110,16 +110,15 @@ export function ImageGrid({
   }
 
   return (
-    <div className={cn("grid gap-4", sizeClasses[imageSize])}>
+    <div className={cn("grid gap-3", sizeClasses[imageSize])}>
       {images.map((image) => {
         const isSelected = selectedIds.includes(image.id);
         const firstPrompt = image.prompts?.[0];
         const isDeleting = deletingId === image.id;
         const isConfirmingDelete = confirmDeleteId === image.id;
-        
-        // Use thumbnail if available, fallback to original image
+
         const useFallback = failedImages.has(image.id);
-        const imageUrl = useFallback 
+        const imageUrl = useFallback
           ? getImageUrl(image.storage_path)
           : getThumbnailUrl(image.storage_path);
 
@@ -127,24 +126,22 @@ export function ImageGrid({
           <div
             key={image.id}
             className={cn(
-              "group relative overflow-hidden rounded-xl border bg-white/5",
+              "group relative overflow-hidden rounded-xl border bg-black/[0.03]",
               selectable && "cursor-pointer",
               isSelected
-                ? "border-purple-500 ring-2 ring-purple-500/50"
-                : "border-white/10 hover:border-white/20",
+                ? "border-gray-900 ring-2 ring-gray-900/20"
+                : "border-black/[0.08] hover:border-black/[0.18]",
               isDeleting && "opacity-50 pointer-events-none"
             )}
             onClick={() => selectable && handleSelect(image.id)}
           >
-            {/* Image container - always 1:1 aspect ratio */}
+            {/* Image container */}
             <div className="relative w-full aspect-square">
               <Image
                 src={imageUrl}
                 alt=""
                 fill
                 className={cn(
-                  // Square layout: fill the container, crop if needed
-                  // Full layout: contain within container, show native aspect ratio
                   layout === "square" ? "object-cover" : "object-contain"
                 )}
                 sizes={
@@ -161,13 +158,13 @@ export function ImageGrid({
               {selectable && (
                 <div
                   className={cn(
-                    "absolute left-2 top-2 z-20 flex h-6 w-6 items-center justify-center rounded-full border-2 transition-colors",
+                    "absolute left-2 top-2 z-20 flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors",
                     isSelected
-                      ? "border-purple-500 bg-purple-500"
-                      : "border-white/50 bg-black/50 opacity-0 group-hover:opacity-100"
+                      ? "border-gray-900 bg-gray-900"
+                      : "border-white/70 bg-black/30 opacity-0 group-hover:opacity-100"
                   )}
                 >
-                  {isSelected && <Check className="h-3.5 w-3.5 text-white" />}
+                  {isSelected && <Check className="h-3 w-3 text-white" />}
                 </div>
               )}
 
@@ -175,30 +172,30 @@ export function ImageGrid({
               <button
                 onClick={(e) => handleDeleteClick(image.id, e)}
                 className={cn(
-                  "absolute right-2 top-2 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white/60 transition-all hover:bg-red-500/80 hover:text-white",
+                  "absolute right-2 top-2 z-20 flex h-5 w-5 items-center justify-center rounded-full bg-black/40 text-white/80 transition-all hover:bg-red-500 hover:text-white",
                   isConfirmingDelete ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                 )}
               >
-                <Trash2 className="h-3 w-3" />
+                <Trash2 className="h-2.5 w-2.5" />
               </button>
 
               {/* Inline delete confirm overlay */}
               {isConfirmingDelete && (
                 <div
-                  className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 bg-black/75 backdrop-blur-sm"
+                  className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 bg-black/60 backdrop-blur-sm"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <p className="text-xs font-medium text-white">Delete image?</p>
                   <div className="flex gap-1.5">
                     <button
                       onClick={handleDeleteCancel}
-                      className="rounded-lg border border-white/20 bg-white/10 px-3 py-1 text-xs text-white/70 transition-colors hover:bg-white/20"
+                      className="rounded-lg border border-white/20 bg-white/10 px-3 py-1 text-xs text-white/80 transition-colors hover:bg-white/20"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={(e) => handleDeleteConfirm(image.id, e)}
-                      className="rounded-lg border border-red-500/40 bg-red-500/25 px-3 py-1 text-xs text-red-300 transition-colors hover:bg-red-500/40"
+                      className="rounded-lg border border-red-400/40 bg-red-500/30 px-3 py-1 text-xs text-red-200 transition-colors hover:bg-red-500/50"
                     >
                       Delete
                     </button>
@@ -207,18 +204,18 @@ export function ImageGrid({
               )}
 
               {/* Hover overlay */}
-              <div className="absolute inset-0 z-10 flex flex-col justify-end bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100">
+              <div className="absolute inset-0 z-10 flex flex-col justify-end bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 transition-opacity group-hover:opacity-100">
                 <div className="p-3">
                   {/* Tags */}
                   {image.tags && image.tags.length > 0 && imageSize !== "small" && (
                     <div className="mb-2 flex flex-wrap gap-1">
                       {image.tags.slice(0, 3).map((tag) => (
-                        <Badge key={tag.id} variant="secondary" className="text-[10px]">
+                        <Badge key={tag.id} variant="secondary" className="text-[10px] border-white/20 bg-white/15 text-white/90">
                           {tag.tag}
                         </Badge>
                       ))}
                       {image.tags.length > 3 && (
-                        <Badge variant="secondary" className="text-[10px]">
+                        <Badge variant="secondary" className="text-[10px] border-white/20 bg-white/15 text-white/90">
                           +{image.tags.length - 3}
                         </Badge>
                       )}
@@ -228,7 +225,7 @@ export function ImageGrid({
                   {/* Actions */}
                   <div className="flex items-center gap-2">
                     <Link href={`/image/${image.id}`} onClick={(e) => e.stopPropagation()}>
-                      <Button size="sm" variant="secondary" className="h-7 text-xs">
+                      <Button size="sm" variant="secondary" className="h-7 text-xs bg-white/15 text-white hover:bg-white/25 border-0">
                         <Eye className="mr-1 h-3 w-3" />
                         {imageSize === "small" ? "" : "View"}
                       </Button>
@@ -237,7 +234,7 @@ export function ImageGrid({
                       <Button
                         size="sm"
                         variant="secondary"
-                        className="h-7 text-xs"
+                        className="h-7 text-xs bg-white/15 text-white hover:bg-white/25 border-0"
                         onClick={(e) => handleCopyPrompt(firstPrompt, e)}
                       >
                         {copiedId === firstPrompt.id ? (
@@ -255,8 +252,8 @@ export function ImageGrid({
 
             {/* Footer - hide on small size */}
             {imageSize !== "small" && (
-              <div className="p-2">
-                <p className="text-xs text-white/40">
+              <div className="px-2.5 py-2">
+                <p className="text-[11px] text-gray-400">
                   {formatRelativeTime(image.created_at)}
                 </p>
               </div>

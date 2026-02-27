@@ -57,18 +57,18 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-white/10 bg-black/50 backdrop-blur-xl">
+    <aside className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-black/[0.06] bg-white/80 backdrop-blur-2xl">
       {/* Logo */}
-      <div className="flex h-16 items-center gap-3 border-b border-white/10 px-6">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
-          <Sparkles className="h-4 w-4 text-white" />
+      <div className="flex h-14 items-center gap-2.5 border-b border-black/[0.06] px-5">
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#f2ff59]">
+          <Sparkles className="h-3.5 w-3.5 text-gray-900" />
         </div>
-        <span className="text-lg font-semibold text-white">Promptbox</span>
+        <span className="text-[15px] font-semibold tracking-tight text-gray-900">Promptbox</span>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto p-4">
-        <div className="space-y-1">
+      <nav className="flex-1 overflow-y-auto p-3">
+        <div className="space-y-0.5">
           {navigation.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -76,13 +76,13 @@ export function Sidebar() {
                 key={item.name}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                   isActive
-                    ? "bg-purple-600/20 text-purple-300"
-                    : "text-white/60 hover:bg-white/5 hover:text-white"
+                    ? "bg-[#f2ff59] text-gray-900"
+                    : "text-gray-500 hover:bg-black/[0.04] hover:text-gray-800"
                 )}
               >
-                <item.icon className="h-5 w-5" />
+                <item.icon className="h-4 w-4 shrink-0" />
                 {item.name}
               </Link>
             );
@@ -90,32 +90,30 @@ export function Sidebar() {
         </div>
 
         {/* Collections Section */}
-        <div className="mt-6">
+        <div className="mt-5">
           <button
             onClick={() => setCollectionsExpanded(!collectionsExpanded)}
-            className="flex w-full items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider text-white/40 hover:text-white/60"
+            className="flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-gray-400 hover:text-gray-600 transition-colors"
           >
-            <span className="flex items-center gap-2">
-              <FolderHeart className="h-4 w-4" />
+            <span className="flex items-center gap-1.5">
+              <FolderHeart className="h-3.5 w-3.5" />
               Collections
             </span>
             {collectionsExpanded ? (
-              <ChevronDown className="h-4 w-4" />
+              <ChevronDown className="h-3.5 w-3.5" />
             ) : (
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-3.5 w-3.5" />
             )}
           </button>
 
           {collectionsExpanded && (
-            <div className="mt-1 space-y-1">
+            <div className="mt-1 space-y-0.5">
               {isLoading ? (
                 <div className="px-3 py-2">
-                  <div className="h-4 w-24 animate-pulse rounded bg-white/10" />
+                  <div className="h-3.5 w-24 animate-pulse rounded-md bg-black/[0.07]" />
                 </div>
               ) : collections.length === 0 ? (
-                <p className="px-3 py-2 text-xs text-white/30">
-                  No collections yet
-                </p>
+                <p className="px-3 py-2 text-xs text-gray-400">No collections yet</p>
               ) : (
                 collections.map((collection) => {
                   const isActive = pathname === `/collections/${collection.slug}`;
@@ -124,17 +122,17 @@ export function Sidebar() {
                       key={collection.id}
                       href={`/collections/${collection.slug}`}
                       className={cn(
-                        "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
+                        "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors",
                         isActive
-                          ? "bg-purple-600/20 text-purple-300"
-                          : "text-white/60 hover:bg-white/5 hover:text-white"
+                          ? "bg-[#f2ff59] text-gray-900 font-medium"
+                          : "text-gray-500 hover:bg-black/[0.04] hover:text-gray-800"
                       )}
                     >
-                      <span className="text-base">
+                      <span className="text-base leading-none">
                         {platformIcons[collection.platform]}
                       </span>
                       <span className="flex-1 truncate">{collection.name}</span>
-                      <span className="text-xs text-white/30">
+                      <span className={cn("tabular-nums text-xs", isActive ? "text-gray-700" : "text-gray-400")}>
                         {collection.image_count}
                       </span>
                     </Link>
@@ -145,10 +143,10 @@ export function Sidebar() {
               {/* Add Collection Link */}
               <Link
                 href="/upload"
-                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-white/40 hover:bg-white/5 hover:text-white/60"
+                className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-gray-400 transition-colors hover:bg-black/[0.04] hover:text-gray-600"
               >
-                <Plus className="h-4 w-4" />
-                <span>Add Collection</span>
+                <Plus className="h-3.5 w-3.5" />
+                <span>Add collection</span>
               </Link>
             </div>
           )}
@@ -156,12 +154,10 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-white/10 p-4">
-        <div className="rounded-lg bg-white/5 p-3">
-          <p className="text-xs text-white/40">
-            Organize, tag, and remix your AI prompts
-          </p>
-        </div>
+      <div className="border-t border-black/[0.06] p-4">
+        <p className="text-[11px] leading-relaxed text-gray-400">
+          Organize, tag, and remix your AI prompts
+        </p>
       </div>
     </aside>
   );

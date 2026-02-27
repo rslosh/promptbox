@@ -14,20 +14,20 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         className={cn(
           "inline-flex items-center justify-center rounded-lg font-medium transition-colors",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-          "disabled:pointer-events-none disabled:opacity-50",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f2ff59]/60 focus-visible:ring-offset-2",
+          "disabled:pointer-events-none disabled:opacity-40",
           {
-            "bg-purple-600 text-white hover:bg-purple-700": variant === "default",
-            "bg-white/10 text-white hover:bg-white/20": variant === "secondary",
-            "hover:bg-white/10 text-white": variant === "ghost",
-            "border border-white/20 bg-transparent text-white hover:bg-white/10": variant === "outline",
-            "bg-red-600 text-white hover:bg-red-700": variant === "destructive",
+            "bg-gray-900 text-white hover:bg-gray-800": variant === "default",
+            "bg-black/[0.06] text-gray-700 hover:bg-black/[0.1]": variant === "secondary",
+            "text-gray-600 hover:bg-black/[0.05] hover:text-gray-900": variant === "ghost",
+            "border border-black/[0.12] bg-transparent text-gray-700 hover:bg-black/[0.04] hover:text-gray-900": variant === "outline",
+            "bg-red-500 text-white hover:bg-red-600": variant === "destructive",
           },
           {
             "h-8 px-3 text-sm": size === "sm",
-            "h-10 px-4 text-sm": size === "md",
-            "h-12 px-6 text-base": size === "lg",
-            "h-10 w-10": size === "icon",
+            "h-9 px-4 text-sm": size === "md",
+            "h-11 px-6 text-base": size === "lg",
+            "h-9 w-9": size === "icon",
           },
           className
         )}

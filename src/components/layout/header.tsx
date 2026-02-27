@@ -1,8 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Search, Bell, Command } from "lucide-react";
+import { Search, Command } from "lucide-react";
 
 interface HeaderProps {
   title: string;
@@ -12,35 +11,31 @@ interface HeaderProps {
 
 export function Header({ title, description, actions }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-white/10 bg-black/80 px-6 backdrop-blur-xl">
-      <div>
-        <h1 className="text-lg font-semibold text-white">{title}</h1>
+    <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-black/[0.06] bg-white/80 px-6 backdrop-blur-xl">
+      <div className="min-w-0">
+        <h1 className="text-[15px] font-semibold text-gray-900 leading-tight">{title}</h1>
         {description && (
-          <p className="text-sm text-white/60">{description}</p>
+          <p className="text-xs text-gray-400 leading-tight">{description}</p>
         )}
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 ml-4">
         {/* Search */}
         <div className="relative hidden md:block">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
           <Input
             type="search"
-            placeholder="Search images..."
-            className="w-64 pl-10 pr-12"
+            placeholder="Search…"
+            className="w-52 pl-8 pr-10 text-[13px] h-8"
           />
-          <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1">
-            <kbd className="flex h-5 items-center gap-0.5 rounded border border-white/20 bg-white/5 px-1.5 text-[10px] text-white/40">
+          <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+            <kbd className="flex h-5 items-center gap-0.5 rounded border border-black/[0.1] bg-black/[0.04] px-1.5 text-[10px] text-gray-400 font-sans">
               <Command className="h-2.5 w-2.5" />K
             </kbd>
           </div>
         </div>
 
         {actions}
-
-        <Button variant="ghost" size="icon">
-          <Bell className="h-5 w-5" />
-        </Button>
       </div>
     </header>
   );

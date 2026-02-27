@@ -185,15 +185,15 @@ export default function UploadPage() {
         <div className="p-6 space-y-5 max-w-3xl">
 
           {/* ── Upload section ── */}
-          <section className="rounded-2xl border border-white/8 bg-white/[0.02] overflow-hidden">
+          <section className="rounded-2xl border border-black/[0.07] bg-white/65 backdrop-blur-sm overflow-hidden">
             {/* Dropzone */}
             <div
               {...getRootProps()}
               className={cn(
                 "group relative flex cursor-pointer flex-col items-center justify-center gap-4 px-8 py-14 transition-all",
                 isDragActive
-                  ? "bg-purple-500/8 border-b border-purple-500/30"
-                  : "border-b border-white/6 hover:bg-white/[0.02]"
+                  ? "bg-[#f2ff59]/10 border-b border-[#f2ff59]"
+                  : "border-b border-black/[0.06] hover:bg-black/[0.02]"
               )}
             >
               <input {...getInputProps()} />
@@ -204,17 +204,17 @@ export default function UploadPage() {
                 variant={isDragActive ? "accent" : "default"}
                 className={cn(
                   "transition-colors",
-                  !isDragActive && "group-hover:border-white/20 group-hover:text-white/50"
+                  !isDragActive && "group-hover:border-black/[0.14] group-hover:text-gray-600"
                 )}
               >
                 <FolderOpen className="h-5 w-5" />
               </IconWell>
 
               <div className="text-center">
-                <p className={cn("text-sm font-medium", isDragActive ? "text-purple-300" : "text-white/60")}>
+                <p className={cn("text-sm font-medium", isDragActive ? "text-gray-800" : "text-gray-500")}>
                   {isDragActive ? "Drop to add" : "Drag images here"}
                 </p>
-                <p className="mt-0.5 text-xs text-white/25">
+                <p className="mt-0.5 text-xs text-gray-400">
                   or click to browse — PNG, JPG, GIF, WebP
                 </p>
               </div>
@@ -225,30 +225,30 @@ export default function UploadPage() {
               <div className="p-4 space-y-4">
                 <div className="grid grid-cols-4 gap-3 sm:grid-cols-5 md:grid-cols-6">
                   {files.map((file) => (
-                    <div key={file.id} className="group relative overflow-hidden rounded-xl border border-white/8 bg-white/5 aspect-square">
+                    <div key={file.id} className="group relative overflow-hidden rounded-xl border border-black/[0.08] bg-black/[0.04] aspect-square">
                       <img src={file.preview} alt="" className="h-full w-full object-cover" />
 
                       {/* Status overlay */}
                       <div
                         className={cn(
                           "absolute inset-0 flex flex-col items-center justify-center transition-colors",
-                          file.status === "uploading" && "bg-black/60",
-                          file.status === "processing" && "bg-black/60",
-                          file.status === "complete" && "bg-black/50",
-                          file.status === "error" && "bg-red-950/70"
+                          file.status === "uploading" && "bg-black/50",
+                          file.status === "processing" && "bg-black/50",
+                          file.status === "complete" && "bg-black/40",
+                          file.status === "error" && "bg-red-900/60"
                         )}
                       >
                         {file.status === "uploading" && (
-                          <Loader2 className="h-5 w-5 animate-spin text-white/70" />
+                          <Loader2 className="h-5 w-5 animate-spin text-white/80" />
                         )}
                         {file.status === "processing" && (
                           <div className="flex flex-col items-center gap-1">
-                            <Loader2 className="h-4 w-4 animate-spin text-purple-400" />
-                            <span className="text-[10px] text-white/60">Tagging</span>
+                            <Loader2 className="h-4 w-4 animate-spin text-[#f2ff59]" />
+                            <span className="text-[10px] text-white/70">Tagging</span>
                           </div>
                         )}
                         {file.status === "complete" && (
-                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/80 backdrop-blur-sm">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 shadow-sm">
                             <Check className="h-3.5 w-3.5 text-white" />
                           </div>
                         )}
@@ -261,7 +261,7 @@ export default function UploadPage() {
                       {file.status === "pending" && (
                         <button
                           onClick={() => removeFile(file.id)}
-                          className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/80"
+                          className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/70"
                         >
                           <X className="h-3 w-3 text-white" />
                         </button>
@@ -271,8 +271,8 @@ export default function UploadPage() {
                 </div>
 
                 {/* Upload controls */}
-                <div className="flex items-center justify-between border-t border-white/6 pt-4">
-                  <p className="text-xs text-white/30">
+                <div className="flex items-center justify-between border-t border-black/[0.06] pt-4">
+                  <p className="text-xs text-gray-400">
                     {completeCount > 0
                       ? `${completeCount} of ${files.length} uploaded`
                       : `${files.length} file${files.length !== 1 ? "s" : ""} queued`}
@@ -280,7 +280,7 @@ export default function UploadPage() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setFiles([])}
-                      className="text-xs text-white/30 transition-colors hover:text-white/60"
+                      className="text-xs text-gray-400 transition-colors hover:text-gray-600"
                     >
                       Clear all
                     </button>
@@ -290,8 +290,8 @@ export default function UploadPage() {
                       className={cn(
                         "flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-colors",
                         pendingCount === 0 || isUploading
-                          ? "cursor-not-allowed bg-white/5 text-white/20"
-                          : "bg-purple-600 text-white hover:bg-purple-500"
+                          ? "cursor-not-allowed bg-black/[0.05] text-gray-400"
+                          : "bg-gray-900 text-white hover:bg-gray-800"
                       )}
                     >
                       {isUploading ? (
@@ -320,8 +320,8 @@ export default function UploadPage() {
                 <Link2 className="h-3.5 w-3.5" />
               </IconWell>
               <div>
-                <p className="text-sm font-medium text-white/80">Import Collection</p>
-                <p className="text-xs text-white/35 mt-0.5">
+                <p className="text-sm font-medium text-gray-800">Import Collection</p>
+                <p className="text-xs text-gray-400 mt-0.5">
                   Paste a board or channel URL to create a synced collection.
                 </p>
               </div>
@@ -344,8 +344,8 @@ export default function UploadPage() {
                 className={cn(
                   "flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3.5 text-sm font-medium transition-colors",
                   !galleryDlUrl.trim() || isCreatingCollection
-                    ? "cursor-not-allowed bg-white/5 text-white/20"
-                    : "bg-purple-600 text-white hover:bg-purple-500"
+                    ? "cursor-not-allowed bg-black/[0.05] text-gray-400"
+                    : "bg-gray-900 text-white hover:bg-gray-800"
                 )}
               >
                 {isCreatingCollection ? (
@@ -364,16 +364,16 @@ export default function UploadPage() {
 
             {/* Inline error */}
             {collectionError && (
-              <div className="flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/8 px-3 py-2">
-                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-400" />
-                <p className="text-xs text-red-400">{collectionError}</p>
+              <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-500" />
+                <p className="text-xs text-red-600">{collectionError}</p>
               </div>
             )}
 
             {/* Platform badges */}
             <div className="flex items-center gap-2">
-              <span className="text-xs text-white/20">Supported</span>
-              <div className="h-3 w-px bg-white/10" />
+              <span className="text-xs text-gray-400">Supported</span>
+              <div className="h-3 w-px bg-black/[0.08]" />
               <div className="flex gap-1.5">
                 {platformMeta.map(({ emoji, label }) => (
                   <Chip key={label} className="gap-1 px-2">
@@ -392,8 +392,8 @@ export default function UploadPage() {
                 <ImageIcon className="h-3.5 w-3.5" />
               </IconWell>
               <div>
-                <p className="text-sm font-medium text-white/80">Import from URL</p>
-                <p className="text-xs text-white/35 mt-0.5">
+                <p className="text-sm font-medium text-gray-800">Import from URL</p>
+                <p className="text-xs text-gray-400 mt-0.5">
                   Import images from a single URL without creating a collection.
                 </p>
               </div>
@@ -411,10 +411,10 @@ export default function UploadPage() {
                 onClick={handleGalleryDl}
                 disabled={!singleUrl.trim()}
                 className={cn(
-                  "flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-3.5 text-sm transition-colors",
+                  "flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-3.5 text-sm font-medium transition-colors",
                   !singleUrl.trim()
-                    ? "cursor-not-allowed border-white/8 text-white/20"
-                    : "border-white/15 text-white/60 hover:border-white/25 hover:text-white"
+                    ? "cursor-not-allowed border-black/[0.08] text-gray-400"
+                    : "border-black/[0.12] text-gray-700 hover:border-black/[0.2] hover:text-gray-900"
                 )}
               >
                 <ArrowRight className="h-3.5 w-3.5" />
