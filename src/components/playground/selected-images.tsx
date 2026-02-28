@@ -37,7 +37,9 @@ export function SelectedImages({
 
       {images.length > 0 ? (
         <div>
-          <div className="grid grid-cols-2 gap-2">
+          {/* Capped at ~2 images tall, scrollable beyond that */}
+          <div className="max-h-[352px] overflow-y-auto rounded-xl">
+          <div className="grid grid-cols-1 gap-2">
             {images.map((image, index) => {
               const color = getImageColor(index);
               const label = getImageLabel(index);
@@ -45,14 +47,14 @@ export function SelectedImages({
               return (
                 <div
                   key={image.id}
-                  className="group relative aspect-square overflow-hidden rounded-xl bg-gray-100"
+                  className="group relative h-40 overflow-hidden rounded-xl bg-gray-100"
                 >
                   <Image
                     src={getThumbnailUrl(image.storage_path)}
                     alt=""
                     fill
                     className="object-cover"
-                    sizes="100px"
+                    sizes="340px"
                   />
 
                   {/* Label badge */}
@@ -74,14 +76,16 @@ export function SelectedImages({
               );
             })}
 
-            {/* Add more — same grid cell size */}
-            <button
-              onClick={onAddClick}
-              className="flex aspect-square items-center justify-center rounded-xl border-2 border-dashed border-gray-200 text-gray-400 transition-colors hover:border-gray-300 hover:text-gray-600"
-            >
-              <Plus className="h-5 w-5" />
-            </button>
           </div>
+          </div>
+
+          <button
+            onClick={onAddClick}
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 py-2.5 text-xs text-gray-400 transition-colors hover:border-gray-300 hover:text-gray-600"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add more images
+          </button>
         </div>
       ) : (
         <button
