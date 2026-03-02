@@ -4,7 +4,6 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Check, Eye, Copy, Trash2 } from "lucide-react";
 import type { ImageAsset, AssetTag, Prompt } from "@/lib/supabase/types";
@@ -206,20 +205,11 @@ export function ImageGrid({
               {/* Hover overlay */}
               <div className="absolute inset-0 z-10 flex flex-col justify-end bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 transition-opacity group-hover:opacity-100">
                 <div className="p-3">
-                  {/* Tags */}
-                  {image.tags && image.tags.length > 0 && imageSize !== "small" && (
-                    <div className="mb-2 flex flex-wrap gap-1">
-                      {image.tags.slice(0, 3).map((tag) => (
-                        <Badge key={tag.id} variant="secondary" className="text-[10px] border-white/20 bg-white/15 text-white/90">
-                          {tag.tag}
-                        </Badge>
-                      ))}
-                      {image.tags.length > 3 && (
-                        <Badge variant="secondary" className="text-[10px] border-white/20 bg-white/15 text-white/90">
-                          +{image.tags.length - 3}
-                        </Badge>
-                      )}
-                    </div>
+                  {/* natural_prompt preview */}
+                  {firstPrompt?.natural_prompt && imageSize !== "small" && (
+                    <p className="mb-2 line-clamp-2 text-[10px] leading-relaxed text-white/85">
+                      {firstPrompt.natural_prompt}
+                    </p>
                   )}
 
                   {/* Actions */}

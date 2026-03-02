@@ -11,7 +11,7 @@ interface HeaderProps {
 
 export function Header({ title, description, actions }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-black/[0.06] bg-white/80 px-6 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-black/[0.06] bg-white/80 px-6 backdrop-blur-xl">
       <div className="min-w-0">
         <h1 className="text-[15px] font-semibold text-gray-900 leading-tight">{title}</h1>
         {description && (
