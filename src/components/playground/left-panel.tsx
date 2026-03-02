@@ -50,6 +50,7 @@ export function LeftPanel({
                 images={images}
                 onAddClick={onAddClick}
                 onRemoveImage={onRemoveImage}
+                onInsertToken={onInsertToken}
               />
               <PromptComponents
                 components={components}
