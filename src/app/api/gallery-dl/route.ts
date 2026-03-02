@@ -14,6 +14,28 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.
 // Using untyped client for server-side operations to avoid strict type constraints
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+function cosmosSlugify(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function cosmosExtractName(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    const pathParts = urlObj.pathname.split("/").filter(Boolean);
+    if (pathParts.length >= 2) {
+      return pathParts[1].replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    }
+    return "Cosmos Collection";
+  } catch {
+    return "Cosmos Collection";
+  }
+}
+
 const VISIONSTRUCT_SYSTEM_INSTRUCTION = `ROLE & OBJECTIVE
 
 You are VisionStruct, an advanced Computer Vision & Data Serialization Engine. Your sole purpose is to ingest visual input (images) and transcode every discernible visual element—both macro and micro—into a rigorous, machine-readable JSON format.
@@ -69,6 +91,54 @@ async function processGalleryDl(jobId: string, url: string, autoTag: boolean) {
     .update({ status: "running" })
     .eq("id", jobId);
 
+  // For Cosmos URLs, ensure a collection exists before processing
+  let cosmosCollectionId: string | null = null;
+  if (url.includes("cosmos.so")) {
+    try {
+      const { data: existing } = await supabase
+        .from("collections")
+        .select("id")
+        .eq("source_url", url)
+        .limit(1);
+
+      if (existing && existing.length > 0) {
+        cosmosCollectionId = existing[0].id;
+        console.log(`[gallery-dl] Using existing Cosmos collection: ${cosmosCollectionId}`);
+      } else {
+        const name = cosmosExtractName(url);
+        const baseSlug = cosmosSlugify(name);
+
+        const { data: existingSlugs } = await supabase
+          .from("collections")
+          .select("slug")
+          .like("slug", `${baseSlug}%`);
+
+        let slug = baseSlug;
+        if (existingSlugs && existingSlugs.length > 0) {
+          const existingSet = new Set(existingSlugs.map((c: { slug: string }) => c.slug));
+          let counter = 1;
+          while (existingSet.has(slug)) {
+            slug = `${baseSlug}-${counter}`;
+            counter++;
+          }
+        }
+
+        const { data: collection } = await supabase
+          .from("collections")
+          .insert({ name, slug, platform: "cosmos", source_url: url })
+          .select("id")
+          .single();
+
+        if (collection) {
+          cosmosCollectionId = collection.id;
+          console.log(`[gallery-dl] Created Cosmos collection "${name}": ${cosmosCollectionId}`);
+        }
+      }
+    } catch (err) {
+      console.error("[gallery-dl] Failed to create Cosmos collection:", err);
+    }
+  }
+
   // Create temp directory for downloads
   const tempDir = path.join(os.tmpdir(), `gallery-dl-${jobId}`);
   await fs.mkdir(tempDir, { recursive: true });
@@ -83,7 +153,7 @@ async function processGalleryDl(jobId: string, url: string, autoTag: boolean) {
       await runGalleryDl(url, tempDir);
       files = await findImages(tempDir);
     }
-    
+
     console.log(`[gallery-dl] Found ${files.length} images to process`);
 
     // Process each image and collect asset IDs for tagging
@@ -96,6 +166,14 @@ async function processGalleryDl(jobId: string, url: string, autoTag: boolean) {
     }
 
     console.log(`[gallery-dl] Uploaded ${assetIds.length} new images`);
+
+    // Link new assets to the Cosmos collection
+    if (cosmosCollectionId && assetIds.length > 0) {
+      await supabase.from("collection_assets").insert(
+        assetIds.map((id) => ({ collection_id: cosmosCollectionId, asset_id: id }))
+      );
+      console.log(`[gallery-dl] Linked ${assetIds.length} assets to Cosmos collection`);
+    }
 
     // Auto-tag images if enabled and API key is available
     if (autoTag && assetIds.length > 0) {

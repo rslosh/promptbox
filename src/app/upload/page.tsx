@@ -34,6 +34,7 @@ const platformMeta = [
   { emoji: "📌", label: "Pinterest" },
   { emoji: "🔲", label: "Are.na" },
   { emoji: "📝", label: "Tumblr" },
+  { emoji: "✦", label: "Cosmos" },
 ];
 
 export default function UploadPage() {
@@ -330,7 +331,7 @@ export default function UploadPage() {
             <div className="flex gap-2">
               <Input
                 type="url"
-                placeholder="https://pinterest.com/username/board-name"
+                placeholder="https://cosmos.so/username/cluster or pinterest.com/…/board"
                 value={galleryDlUrl}
                 onChange={(e) => {
                   setGalleryDlUrl(e.target.value);
