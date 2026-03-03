@@ -22,7 +22,7 @@ async function callModel(
   systemPrompt: string,
   userMessage: string
 ): Promise<{ text: string; model: string }> {
-  const models = ["gemini-3-flash-preview", "gemini-2.5-flash"];
+  const models = ["gemini-3.1-flash-lite-preview", "gemini-3-flash-preview"];
   let lastError: Error | null = null;
 
   for (const model of models) {
@@ -49,6 +49,76 @@ async function callModel(
   }
 
   throw lastError || new Error("All models failed");
+}
+
+// Single-call batch variation generation using flash models.
+// Asks the model to return all N variations as a JSON array in one round trip.
+async function callDuplicateFlash(
+  ai: GoogleGenAI,
+  systemPrompt: string,
+  selectedPrompt: string,
+  instruction: string,
+  count: number
+): Promise<{ texts: string[]; model: string }> {
+  const flashModels = ["gemini-3.1-flash-lite-preview", "gemini-3-flash-preview"];
+
+  const userMessage = `ORIGINAL PROMPT:
+${selectedPrompt}
+
+---
+
+VARIATION INSTRUCTION:
+${instruction || "Create distinct creative variations of this prompt."}
+
+Generate exactly ${count} distinct variations. Each must be meaningfully different from the original and from each other.
+
+Return ONLY a JSON array of ${count} strings with no other text, markdown, or explanation:
+["variation 1...", "variation 2...", ...]`;
+
+  for (const model of flashModels) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: userMessage,
+        config: { systemInstruction: systemPrompt },
+      });
+
+      const raw = (response.text || "").trim();
+      // Strip markdown code fences if present
+      const jsonStr = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
+      const parsed: unknown = JSON.parse(jsonStr);
+
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return { texts: parsed.map((t) => String(t).trim()).filter(Boolean), model };
+      }
+      throw new Error("Unexpected response shape");
+    } catch (err) {
+      const msg = (err as Error).message || "";
+      // Rate-limit / not-found → try next model
+      if (
+        msg.includes("429") ||
+        msg.includes("RESOURCE_EXHAUSTED") ||
+        msg.includes("404") ||
+        msg.includes("NOT_FOUND")
+      ) {
+        continue;
+      }
+      // JSON parse error or shape mismatch → fall through to parallel fallback below
+      break;
+    }
+  }
+
+  // Fallback: parallel individual calls (original behaviour)
+  const results = await Promise.all(
+    Array.from({ length: count }, (_, i) =>
+      callModel(
+        ai,
+        systemPrompt,
+        `ORIGINAL PROMPT:\n${selectedPrompt}\n\n---\n\nVARIATION INSTRUCTION:\n${instruction || "Create a distinct creative variation of this prompt."}\n\nGenerate variation ${i + 1} of ${count}. Make it meaningfully different from the original and from other variations.\n\nReturn only the variation prompt:`
+      )
+    )
+  );
+  return { texts: results.map((r) => r.text), model: results[0]?.model ?? "unknown" };
 }
 
 export async function POST(request: NextRequest) {
@@ -167,30 +237,17 @@ Return the revised prompt now:`;
       }
 
       const numVariations = Math.max(1, Math.min(10, Number(count) || 3));
-
-      const variationMessage = (i: number) => `ORIGINAL PROMPT:
-${selectedPrompt}
-
----
-
-VARIATION INSTRUCTION:
-${instruction || "Create a distinct creative variation of this prompt."}
-
-Generate variation ${i + 1} of ${numVariations}. Make it meaningfully different from the original and from other variations.
-
-Return only the variation prompt:`;
-
       const activeDuplicateSystemPrompt = duplicateSystemPrompt || DUPLICATE_SYSTEM_PROMPT;
-      const results = await Promise.all(
-        Array.from({ length: numVariations }, (_, i) =>
-          callModel(ai, activeDuplicateSystemPrompt, variationMessage(i))
-        )
+
+      const { texts, model } = await callDuplicateFlash(
+        ai,
+        activeDuplicateSystemPrompt,
+        selectedPrompt,
+        instruction || "",
+        numVariations
       );
 
-      const prompts = results.map((r) => r.text);
-      const model = results[0]?.model || "unknown";
-
-      return NextResponse.json({ prompts, model });
+      return NextResponse.json({ prompts: texts, model });
     }
 
     return NextResponse.json({ error: "Invalid mode" }, { status: 400 });

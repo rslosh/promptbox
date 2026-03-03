@@ -29,7 +29,7 @@ import { usePromptTree } from "@/hooks/use-prompt-tree";
 import { getImageNodePositions } from "@/lib/playground-layout";
 import { getImageColor, getImageLabel } from "@/lib/constants/colors";
 import type { PromptTreeNode } from "@/lib/playground-types";
-import { Loader2, ChevronDown, X, Copy, Check, GitCompare, Combine } from "lucide-react";
+import { Loader2, ChevronDown, X, Copy, Check, GitCompare, Combine, Bookmark } from "lucide-react";
 import { DEFAULT_SYSTEM_PROMPT } from "@/lib/remix-prompts";
 import { computeWordDiff, type DiffToken } from "@/lib/diff";
 import { PlaygroundHistoryContext } from "@/contexts/playground-history-context";
@@ -343,6 +343,102 @@ function LineageModal({
   );
 }
 
+// ── Save to library modal ───────────────────────────────────────────────────────
+
+type LibraryPromptType = "image_gen" | "image_edit" | "video_gen";
+
+function SaveToLibraryModal({
+  content,
+  imageIds,
+  onClose,
+  onSaved,
+}: {
+  content: string;
+  imageIds: string[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [type, setType] = useState<LibraryPromptType>("image_gen");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const TYPE_BUTTONS: { value: LibraryPromptType; label: string }[] = [
+    { value: "image_gen", label: "Image Gen" },
+    { value: "image_edit", label: "Image Edit" },
+    { value: "video_gen", label: "Video Gen" },
+  ];
+
+  async function handleSave() {
+    setIsSaving(true);
+    try {
+      await fetch("/api/prompt-library", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content,
+          type,
+          source: "playground_node",
+          source_image_ids: imageIds,
+        }),
+      });
+      onSaved();
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative flex w-full max-w-sm flex-col rounded-2xl border border-gray-200 bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+          <h2 className="text-sm font-semibold text-gray-900">Save to Prompt Library</h2>
+          <button onClick={onClose} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="space-y-4 px-5 py-4">
+          <div>
+            <label className="mb-2 block text-xs font-medium text-gray-700">Type</label>
+            <div className="flex gap-1.5">
+              {TYPE_BUTTONS.map(({ value, label }) => (
+                <button
+                  key={value}
+                  onClick={() => setType(value)}
+                  className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${
+                    type === value
+                      ? "border-gray-900 bg-gray-900 text-white"
+                      : "border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="text-xs text-gray-400">Title will be auto-generated.</p>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 border-t border-gray-100 px-5 py-4">
+          <button
+            onClick={onClose}
+            className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
+          >
+            {isSaving ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PlaygroundCanvas({
   remixId,
   initialImageIds,
@@ -357,6 +453,8 @@ function PlaygroundCanvas({
   const [showRemixList, setShowRemixList] = useState(!remixId && !initialImageIds?.length);
   const [showPreview, setShowPreview] = useState(false);
   const [lineageAncestry, setLineageAncestry] = useState<AncestorEntry[] | null>(null);
+  const [saveModal, setSaveModal] = useState<{ content: string; imageIds: string[] } | null>(null);
+  const [savedFlash, setSavedFlash] = useState(false);
   const floatingBarRef = useRef<FloatingBarHandle>(null);
 
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState<Node>([]);
@@ -430,6 +528,10 @@ function PlaygroundCanvas({
       current = current.parentId ? byId.get(current.parentId) : undefined;
     }
     setLineageAncestry(chain);
+  }, []);
+
+  const handleSaveToLibrary = useCallback((content: string, imageIds: string[]) => {
+    setSaveModal({ content, imageIds });
   }, []);
 
   // Load settings
@@ -508,6 +610,8 @@ function PlaygroundCanvas({
           instruction: pn.instruction,
           model: pn.model,
           parentContent: pn.parentId ? contentById.get(pn.parentId) : undefined,
+          imageIds: pn.imageIds,
+          onSaveToLibrary: handleSaveToLibrary,
         },
         draggable: true,
       }));
@@ -884,6 +988,30 @@ function PlaygroundCanvas({
           ancestry={lineageAncestry}
           onClose={() => setLineageAncestry(null)}
         />
+      )}
+
+      {/* Save to library modal */}
+      {saveModal && (
+        <SaveToLibraryModal
+          content={saveModal.content}
+          imageIds={saveModal.imageIds}
+          onClose={() => setSaveModal(null)}
+          onSaved={() => {
+            setSaveModal(null);
+            setSavedFlash(true);
+            setTimeout(() => setSavedFlash(false), 2500);
+          }}
+        />
+      )}
+
+      {/* Saved flash banner */}
+      {savedFlash && (
+        <div className="pointer-events-none fixed bottom-28 left-1/2 z-50 -translate-x-1/2">
+          <div className="flex items-center gap-2 rounded-full border border-green-200 bg-green-50 px-4 py-2 text-sm font-medium text-green-700 shadow-lg">
+            <Bookmark className="h-4 w-4" />
+            Saved to Prompt Library
+          </div>
+        </div>
       )}
     </div>
     </PlaygroundHistoryContext.Provider>

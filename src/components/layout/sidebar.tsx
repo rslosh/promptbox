@@ -15,12 +15,14 @@ import {
   ChevronRight,
   FolderHeart,
   Plus,
+  BookOpen,
 } from "lucide-react";
 
 const navigation = [
   { name: "Gallery", href: "/", icon: Images },
   { name: "Upload", href: "/upload", icon: Upload },
   { name: "Playground", href: "/playground", icon: Sparkles },
+  { name: "Prompts", href: "/prompts", icon: BookOpen },
   { name: "Jobs", href: "/jobs", icon: FolderOpen },
   { name: "Settings", href: "/settings", icon: Settings },
 ];

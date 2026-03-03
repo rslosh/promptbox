@@ -193,6 +193,37 @@ export interface Database {
         };
         Relationships: [];
       };
+      prompt_library: {
+        Row: {
+          id: string;
+          title: string;
+          content: string;
+          type: "image_gen" | "image_edit" | "video_gen";
+          source: "manual" | "playground_node";
+          source_image_ids: string[];
+          is_favorite: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          content: string;
+          type: "image_gen" | "image_edit" | "video_gen";
+          source?: "manual" | "playground_node";
+          source_image_ids?: string[];
+          is_favorite?: boolean;
+        };
+        Update: {
+          title?: string;
+          content?: string;
+          type?: "image_gen" | "image_edit" | "video_gen";
+          source_image_ids?: string[];
+          is_favorite?: boolean;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       collections: {
         Row: {
           id: string;
@@ -280,6 +311,7 @@ export type IngestionJob = Database["public"]["Tables"]["ingestion_jobs"]["Row"]
 export type PlaygroundRemix = Database["public"]["Tables"]["playground_remixes"]["Row"];
 export type Collection = Database["public"]["Tables"]["collections"]["Row"];
 export type CollectionAsset = Database["public"]["Tables"]["collection_assets"]["Row"];
+export type PromptLibrary = Database["public"]["Tables"]["prompt_library"]["Row"];
 
 // Prompt component type for playground
 export interface PromptComponent {

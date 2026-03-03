@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { copyToClipboard } from "@/lib/utils";
 import { computeWordDiff } from "@/lib/diff";
 import { useHistoryHandler } from "@/contexts/playground-history-context";
-import { Copy, Check, ChevronDown, ChevronUp, GitCompare, History } from "lucide-react";
+import { Copy, Check, ChevronDown, ChevronUp, GitCompare, History, Bookmark } from "lucide-react";
 
 type NodeMode = "generate" | "edit" | "duplicate";
 
@@ -16,6 +16,8 @@ interface PromptNodeData {
   instruction: string;
   model?: string;
   parentContent?: string;
+  imageIds?: string[];
+  onSaveToLibrary?: (content: string, imageIds: string[]) => void;
 }
 
 const MODE_STYLES: Record<NodeMode, { badge: string; label: string }> = {
@@ -180,28 +182,44 @@ export function PromptNode({
           )}
         </div>
 
-        {/* Copy button */}
-        <button
-          onClick={handleCopy}
-          className={cn(
-            "flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-all",
-            copied
-              ? "border-green-200 bg-green-50 text-green-700"
-              : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800"
+        <div className="flex items-center gap-1.5">
+          {/* Save to library button */}
+          {data.onSaveToLibrary && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                data.onSaveToLibrary!(data.content, data.imageIds ?? []);
+              }}
+              className="flex items-center gap-1 rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors"
+            >
+              <Bookmark className="h-2.5 w-2.5" />
+              Save
+            </button>
           )}
-        >
-          {copied ? (
-            <>
-              <Check className="h-3 w-3" />
-              Copied!
-            </>
-          ) : (
-            <>
-              <Copy className="h-3 w-3" />
-              Copy
-            </>
-          )}
-        </button>
+
+          {/* Copy button */}
+          <button
+            onClick={handleCopy}
+            className={cn(
+              "flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-all",
+              copied
+                ? "border-green-200 bg-green-50 text-green-700"
+                : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800"
+            )}
+          >
+            {copied ? (
+              <>
+                <Check className="h-3 w-3" />
+                Copied!
+              </>
+            ) : (
+              <>
+                <Copy className="h-3 w-3" />
+                Copy
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Instruction */}
