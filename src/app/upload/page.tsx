@@ -44,6 +44,7 @@ export default function UploadPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isCreatingCollection, setIsCreatingCollection] = useState(false);
   const [collectionError, setCollectionError] = useState<string | null>(null);
+  const [importLimit, setImportLimit] = useState<string>("");
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newFiles = acceptedFiles.map((file) => ({
@@ -152,10 +153,11 @@ export default function UploadPage() {
 
       const collection = await createResponse.json();
 
+      const limitNum = importLimit.trim() ? parseInt(importLimit, 10) : null;
       const syncResponse = await fetch(`/api/collections/${collection.id}/sync`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ autoTag: true }),
+        body: JSON.stringify({ autoTag: true, ...(limitNum ? { limit: limitNum } : {}) }),
       });
 
       let jobId = "";
@@ -338,6 +340,15 @@ export default function UploadPage() {
                   if (collectionError) setCollectionError(null);
                 }}
                 onKeyDown={(e) => e.key === "Enter" && handleCreateCollection()}
+              />
+              <Input
+                type="number"
+                min={1}
+                placeholder="Limit"
+                value={importLimit}
+                onChange={(e) => setImportLimit(e.target.value)}
+                className="w-20 shrink-0 text-center"
+                title="Max number of images to import (leave blank for no limit)"
               />
               <button
                 onClick={handleCreateCollection}

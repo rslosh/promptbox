@@ -84,7 +84,10 @@ export default function CollectionPage({
   const [error, setError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [syncPopoverOpen, setSyncPopoverOpen] = useState(false);
+  const [syncLimit, setSyncLimit] = useState("");
   const deleteRef = useRef<HTMLDivElement>(null);
+  const syncRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const prevImageCount = useRef<number>(0);
   const syncStartAssetIds = useRef<Set<string>>(new Set());
@@ -104,6 +107,18 @@ export default function CollectionPage({
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [confirmDelete]);
+
+  // Close sync popover on outside click
+  useEffect(() => {
+    if (!syncPopoverOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (syncRef.current && !syncRef.current.contains(e.target as Node)) {
+        setSyncPopoverOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [syncPopoverOpen]);
 
   const fetchCollection = useCallback(async () => {
     try {
@@ -249,12 +264,14 @@ export default function CollectionPage({
     };
   }, [isSyncing, fetchCollection, jobId, slug]);
 
-  async function handleSync() {
+  async function handleSync(limitOverride?: number) {
     if (!collection) return;
 
     syncStartAssetIds.current = new Set(collection.assets?.map((a) => a.id) || []);
     prevImageCount.current = collection.assets?.length || 0;
 
+    setSyncPopoverOpen(false);
+    setSyncLimit("");
     setIsSyncing(true);
     setSyncProgress({
       status: "downloading",
@@ -264,10 +281,13 @@ export default function CollectionPage({
     });
 
     try {
+      const body: Record<string, unknown> = { autoTag: true };
+      if (limitOverride) body.limit = limitOverride;
+
       const response = await fetch(`/api/collections/${collection.id}/sync`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ autoTag: true }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) throw new Error("Sync failed");
@@ -375,31 +395,72 @@ export default function CollectionPage({
 
               {collection?.source_url && (
                 <>
-                  {/* Sync button */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleSync}
-                    disabled={isSyncing}
-                    className="gap-1.5"
-                  >
-                    {isSyncing ? (
-                      <>
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        Syncing
-                      </>
-                    ) : syncProgress.status === "complete" && syncProgress.imagesFound > 0 ? (
-                      <>
-                        <Check className="h-3.5 w-3.5 text-emerald-400" />
-                        Synced
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="h-3.5 w-3.5" />
-                        Sync
-                      </>
+                  {/* Sync button + popover */}
+                  <div ref={syncRef} className="relative">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (isSyncing) return;
+                        setSyncPopoverOpen((v) => !v);
+                      }}
+                      disabled={isSyncing}
+                      className="gap-1.5"
+                    >
+                      {isSyncing ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Syncing
+                        </>
+                      ) : syncProgress.status === "complete" && syncProgress.imagesFound > 0 ? (
+                        <>
+                          <Check className="h-3.5 w-3.5 text-emerald-400" />
+                          Synced
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-3.5 w-3.5" />
+                          Sync
+                        </>
+                      )}
+                    </Button>
+
+                    {syncPopoverOpen && (
+                      <div className="absolute right-0 top-[calc(100%+6px)] z-50 w-56 rounded-xl border border-black/[0.08] bg-white/95 p-4 shadow-xl backdrop-blur-xl">
+                        <p className="mb-2.5 text-xs font-medium text-gray-700">
+                          Import limit
+                        </p>
+                        <input
+                          type="number"
+                          min={1}
+                          value={syncLimit}
+                          onChange={(e) => setSyncLimit(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              const n = syncLimit.trim() ? parseInt(syncLimit, 10) : undefined;
+                              handleSync(n);
+                            }
+                          }}
+                          placeholder="No limit"
+                          autoFocus
+                          className="mb-3 w-full rounded-lg border border-black/[0.1] bg-white px-3 py-1.5 text-sm text-gray-800 placeholder-gray-400 focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-200"
+                        />
+                        <p className="mb-3 text-[11px] leading-relaxed text-gray-500">
+                          Max new images to add. Duplicates are always skipped.
+                        </p>
+                        <button
+                          onClick={() => {
+                            const n = syncLimit.trim() ? parseInt(syncLimit, 10) : undefined;
+                            handleSync(n);
+                          }}
+                          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-gray-900 py-1.5 text-xs font-medium text-white transition-colors hover:bg-gray-800"
+                        >
+                          <RefreshCw className="h-3 w-3" />
+                          {syncLimit.trim() ? `Sync up to ${syncLimit}` : "Sync all new"}
+                        </button>
+                      </div>
                     )}
-                  </Button>
+                  </div>
 
                   {/* External link */}
                   <a href={collection.source_url} target="_blank" rel="noopener noreferrer">

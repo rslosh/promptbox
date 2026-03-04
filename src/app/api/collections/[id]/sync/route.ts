@@ -6,7 +6,7 @@ import path from "path";
 import os from "os";
 import crypto from "crypto";
 import { GoogleGenAI } from "@google/genai";
-import { fetchCosmosClusterImages, downloadCosmosImage } from "@/lib/cosmos";
+import { fetchCosmosClusterImages, downloadCosmosImage, fetchArenaChannelImages, downloadArenaImage } from "@/lib/cosmos";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -33,6 +33,7 @@ export async function POST(
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
     const autoTag = body.autoTag !== false;
+    const limit: number | null = body.limit ? Math.max(1, Number(body.limit)) : null;
 
     // Get the collection
     const { data: collection, error: collectionError } = await supabase
@@ -68,7 +69,7 @@ export async function POST(
     }
 
     // Start sync in background
-    syncCollection(job.id, collection.id, collection.source_url, autoTag, collection.platform ?? null).catch(console.error);
+    syncCollection(job.id, collection.id, collection.source_url, autoTag, collection.platform ?? null, limit).catch(console.error);
 
     return NextResponse.json({
       message: "Sync started",
@@ -86,7 +87,8 @@ async function syncCollection(
   collectionId: string,
   sourceUrl: string,
   autoTag: boolean,
-  platform: string | null = null
+  platform: string | null = null,
+  limit: number | null = null
 ) {
   // Update job status to running
   await supabase
@@ -123,24 +125,16 @@ async function syncCollection(
       await supabase.from("collections").update({ platform: "cosmos" }).eq("id", collectionId);
     }
 
-    // Fetch images: cosmos clusters via HTML scraping, everything else via gallery-dl
-    let files: string[];
-    if (platform === "cosmos" || resolvedUrl.includes("cosmos.so")) {
-      const imageUrls = await fetchCosmosClusterImages(resolvedUrl);
-      console.log(`[sync] Found ${imageUrls.length} Cosmos image URLs`);
-      const downloaded = await Promise.all(imageUrls.map((u) => downloadCosmosImage(u, tempDir)));
-      files = downloaded.filter((f): f is string => f !== null);
-    } else {
-      await runGalleryDl(resolvedUrl, tempDir);
-      files = await findImages(tempDir);
-    }
-    console.log(`[sync] Found ${files.length} images to process`);
-
-    // Process each image
+    // Fetch + process images. For URL-based platforms (Cosmos, Are.na) we download
+    // lazily one-at-a-time so we can stop as soon as `limit` NEW (non-duplicate)
+    // images have been added — avoiding wasteful downloads of images that will just
+    // be skipped as duplicates.
+    // For gallery-dl we pass --range since it handles its own sequencing.
     const newAssetIds: string[] = [];
     let position = existingHashes.size;
+    let addedCount = 0;
 
-    for (const filePath of files) {
+    async function processFile(filePath: string): Promise<void> {
       const result = await processImageForCollection(
         filePath,
         sourceUrl,
@@ -148,11 +142,45 @@ async function syncCollection(
         existingHashes,
         position
       );
-
       if (result) {
         newAssetIds.push(result.assetId);
         existingHashes.add(result.hash);
         position++;
+        addedCount++;
+      }
+    }
+
+    if (platform === "cosmos" || resolvedUrl.includes("cosmos.so")) {
+      const imageUrls = await fetchCosmosClusterImages(resolvedUrl);
+      console.log(`[sync] Found ${imageUrls.length} Cosmos image URLs`);
+      for (const url of imageUrls) {
+        if (limit !== null && addedCount >= limit) break;
+        const filePath = await downloadCosmosImage(url, tempDir);
+        if (filePath) await processFile(filePath);
+      }
+    } else if (platform === "are_na" || resolvedUrl.includes("are.na")) {
+      const imageUrls = await fetchArenaChannelImages(resolvedUrl);
+      console.log(`[sync] Found ${imageUrls.length} Are.na image URLs`);
+      for (const url of imageUrls) {
+        if (limit !== null && addedCount >= limit) break;
+        const filePath = await downloadArenaImage(url, tempDir);
+        if (filePath) await processFile(filePath);
+      }
+    } else {
+      // For gallery-dl: when syncing incrementally (existing images present) fetch
+      // a generous batch to account for duplicates; on a fresh collection the limit
+      // is tight because there are no dupes to skip.
+      const dlLimit = limit === null
+        ? null
+        : existingHashes.size === 0
+          ? limit
+          : limit * 4;
+      await runGalleryDl(resolvedUrl, tempDir, dlLimit);
+      const files = await findImages(tempDir);
+      console.log(`[sync] Found ${files.length} images to process`);
+      for (const filePath of files) {
+        if (limit !== null && addedCount >= limit) break;
+        await processFile(filePath);
       }
     }
 
@@ -213,9 +241,11 @@ async function resolveUrl(url: string): Promise<string> {
   return url;
 }
 
-function runGalleryDl(url: string, outputDir: string): Promise<string> {
+function runGalleryDl(url: string, outputDir: string, limit: number | null = null): Promise<string> {
   return new Promise((resolve, reject) => {
-    const args = ["--dest", outputDir, "--no-mtime", url];
+    const args = ["--dest", outputDir, "--no-mtime"];
+    if (limit !== null) args.push("--range", `1-${limit}`);
+    args.push(url);
 
     const proc = spawn("gallery-dl", args);
     let stdout = "";
