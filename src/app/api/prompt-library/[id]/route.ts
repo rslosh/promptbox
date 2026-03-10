@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
-const ALLOWED_PATCH_FIELDS = ["is_favorite", "title", "content", "type"] as const;
+const ALLOWED_PATCH_FIELDS = ["is_favorite", "title", "content", "type", "output_image_id", "source_url"] as const;
 
 export async function PATCH(
   request: NextRequest,

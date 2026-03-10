@@ -50,7 +50,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { content, type, source, source_image_ids, title: providedTitle } = body;
+    const { content, type, source, source_image_ids, output_image_id, title: providedTitle } = body;
 
     if (!content || !type) {
       return NextResponse.json({ error: "content and type are required" }, { status: 400 });
@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
         type,
         source: source || "manual",
         source_image_ids: source_image_ids || [],
+        output_image_id: output_image_id || null,
       })
       .select()
       .single();

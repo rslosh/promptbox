@@ -200,7 +200,9 @@ export interface Database {
           content: string;
           type: "image_gen" | "image_edit" | "video_gen";
           source: "manual" | "playground_node";
+          source_url: string | null;
           source_image_ids: string[];
+          output_image_id: string | null;
           is_favorite: boolean;
           created_at: string;
           updated_at: string;
@@ -211,14 +213,18 @@ export interface Database {
           content: string;
           type: "image_gen" | "image_edit" | "video_gen";
           source?: "manual" | "playground_node";
+          source_url?: string | null;
           source_image_ids?: string[];
+          output_image_id?: string | null;
           is_favorite?: boolean;
         };
         Update: {
           title?: string;
           content?: string;
           type?: "image_gen" | "image_edit" | "video_gen";
+          source_url?: string | null;
           source_image_ids?: string[];
+          output_image_id?: string | null;
           is_favorite?: boolean;
           updated_at?: string;
         };
@@ -230,7 +236,7 @@ export interface Database {
           name: string;
           slug: string;
           description: string | null;
-          platform: "pinterest" | "are_na" | "tumblr" | "manual" | "cosmos";
+          platform: "pinterest" | "are_na" | "tumblr" | "manual" | "cosmos" | "shotdeck";
           source_url: string | null;
           cover_image_url: string | null;
           last_synced_at: string | null;
@@ -244,7 +250,7 @@ export interface Database {
           name: string;
           slug: string;
           description?: string | null;
-          platform: "pinterest" | "are_na" | "tumblr" | "manual" | "cosmos";
+          platform: "pinterest" | "are_na" | "tumblr" | "manual" | "cosmos" | "shotdeck";
           source_url?: string | null;
           cover_image_url?: string | null;
           last_synced_at?: string | null;
@@ -258,7 +264,7 @@ export interface Database {
           name?: string;
           slug?: string;
           description?: string | null;
-          platform?: "pinterest" | "are_na" | "tumblr" | "manual" | "cosmos";
+          platform?: "pinterest" | "are_na" | "tumblr" | "manual" | "cosmos" | "shotdeck";
           source_url?: string | null;
           cover_image_url?: string | null;
           last_synced_at?: string | null;
