@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useDropzone } from "react-dropzone";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
@@ -9,6 +10,7 @@ import { IconWell } from "@/components/ui/icon-well";
 import { Input } from "@/components/ui/input";
 import { Chip } from "@/components/ui/chip";
 import { cn } from "@/lib/utils";
+import type { Collection } from "@/lib/supabase/types";
 import {
   Upload,
   FolderOpen,
@@ -20,13 +22,14 @@ import {
   Image as ImageIcon,
   FolderPlus,
   ArrowRight,
+  ChevronDown,
 } from "lucide-react";
 
 interface UploadFile {
   id: string;
   file: File;
   preview: string;
-  status: "pending" | "uploading" | "processing" | "complete" | "error";
+  status: "pending" | "uploading" | "complete" | "error";
   error?: string;
 }
 
@@ -35,9 +38,22 @@ const platformMeta = [
   { emoji: "🔲", label: "Are.na" },
   { emoji: "📝", label: "Tumblr" },
   { emoji: "✦", label: "Cosmos" },
+  { emoji: "🎬", label: "Shotdeck" },
+  { emoji: "🌀", label: "Midjourney" },
 ];
 
+const PLATFORM_EMOJI: Record<string, string> = {
+  pinterest: "📌",
+  are_na: "🔲",
+  tumblr: "📝",
+  cosmos: "✦",
+  shotdeck: "🎬",
+  midjourney: "🌀",
+  manual: "📁",
+};
+
 export default function UploadPage() {
+  const router = useRouter();
   const [files, setFiles] = useState<UploadFile[]>([]);
   const [galleryDlUrl, setGalleryDlUrl] = useState("");
   const [singleUrl, setSingleUrl] = useState("");
@@ -45,6 +61,18 @@ export default function UploadPage() {
   const [isCreatingCollection, setIsCreatingCollection] = useState(false);
   const [collectionError, setCollectionError] = useState<string | null>(null);
   const [importLimit, setImportLimit] = useState<string>("");
+
+  // Collection picker state
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string>("");
+  const [newCollectionName, setNewCollectionName] = useState("");
+
+  useEffect(() => {
+    fetch("/api/collections")
+      .then((r) => r.json())
+      .then((data) => setCollections(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newFiles = acceptedFiles.map((file) => ({
@@ -75,6 +103,8 @@ export default function UploadPage() {
     if (files.length === 0) return;
     setIsUploading(true);
 
+    const uploadedAssetIds: string[] = [];
+
     for (const uploadFile of files) {
       if (uploadFile.status !== "pending") continue;
 
@@ -89,15 +119,15 @@ export default function UploadPage() {
         const response = await fetch("/api/upload", { method: "POST", body: formData });
         if (!response.ok) throw new Error("Upload failed");
 
-        setFiles((prev) =>
-          prev.map((f) => (f.id === uploadFile.id ? { ...f, status: "processing" } : f))
-        );
-
         const data = await response.json();
-        await fetch("/api/tag", {
+        uploadedAssetIds.push(data.asset.id);
+
+        // Fire tagging in the background — don't await so we can redirect immediately
+        fetch("/api/tag", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ assetId: data.asset.id }),
+          keepalive: true,
         });
 
         setFiles((prev) =>
@@ -112,7 +142,44 @@ export default function UploadPage() {
       }
     }
 
+    // Resolve target collection (create new if needed)
+    let targetCollectionId = selectedCollectionId;
+    if (selectedCollectionId === "__new__" && newCollectionName.trim()) {
+      const createRes = await fetch("/api/collections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newCollectionName.trim() }),
+      });
+      if (createRes.ok) {
+        const col = await createRes.json();
+        targetCollectionId = col.id;
+      }
+    }
+
+    // Add uploaded assets to the collection
+    if (targetCollectionId && targetCollectionId !== "__new__" && uploadedAssetIds.length > 0) {
+      try {
+        const linkRes = await fetch(`/api/collections/${targetCollectionId}/assets`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ asset_ids: uploadedAssetIds }),
+        });
+        if (!linkRes.ok) {
+          const err = await linkRes.json().catch(() => ({}));
+          console.error("Failed to link assets to collection:", linkRes.status, err);
+        }
+      } catch (err) {
+        console.error("Failed to link assets to collection:", err);
+      }
+    }
+
     setIsUploading(false);
+    if (targetCollectionId && targetCollectionId !== "__new__") {
+      const col = collections.find((c) => c.id === targetCollectionId);
+      router.push(col ? `/collections/${col.slug}` : "/");
+    } else {
+      router.push("/");
+    }
   };
 
   const handleGalleryDl = async () => {
@@ -201,7 +268,6 @@ export default function UploadPage() {
             >
               <input {...getInputProps()} />
 
-              {/* Icon */}
               <IconWell
                 size="lg"
                 variant={isDragActive ? "accent" : "default"}
@@ -223,7 +289,7 @@ export default function UploadPage() {
               </div>
             </div>
 
-            {/* File list */}
+            {/* File list + controls */}
             {files.length > 0 && (
               <div className="p-4 space-y-4">
                 <div className="grid grid-cols-4 gap-3 sm:grid-cols-5 md:grid-cols-6">
@@ -231,24 +297,16 @@ export default function UploadPage() {
                     <div key={file.id} className="group relative overflow-hidden rounded-xl border border-black/[0.08] bg-black/[0.04] aspect-square">
                       <img src={file.preview} alt="" className="h-full w-full object-cover" />
 
-                      {/* Status overlay */}
                       <div
                         className={cn(
                           "absolute inset-0 flex flex-col items-center justify-center transition-colors",
                           file.status === "uploading" && "bg-black/50",
-                          file.status === "processing" && "bg-black/50",
                           file.status === "complete" && "bg-black/40",
                           file.status === "error" && "bg-red-900/60"
                         )}
                       >
                         {file.status === "uploading" && (
                           <Loader2 className="h-5 w-5 animate-spin text-white/80" />
-                        )}
-                        {file.status === "processing" && (
-                          <div className="flex flex-col items-center gap-1">
-                            <Loader2 className="h-4 w-4 animate-spin text-[#f2ff59]" />
-                            <span className="text-[10px] text-white/70">Tagging</span>
-                          </div>
                         )}
                         {file.status === "complete" && (
                           <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 shadow-sm">
@@ -260,7 +318,6 @@ export default function UploadPage() {
                         )}
                       </div>
 
-                      {/* Remove button (pending only) */}
                       {file.status === "pending" && (
                         <button
                           onClick={() => removeFile(file.id)}
@@ -271,6 +328,40 @@ export default function UploadPage() {
                       )}
                     </div>
                   ))}
+                </div>
+
+                {/* Collection picker */}
+                <div className="flex items-center gap-2.5 border-t border-black/[0.06] pt-4">
+                  <FolderPlus className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                  <span className="shrink-0 text-xs text-gray-500">Add to collection</span>
+                  <div className="relative flex-1">
+                    <select
+                      value={selectedCollectionId}
+                      onChange={(e) => {
+                        setSelectedCollectionId(e.target.value);
+                        setNewCollectionName("");
+                      }}
+                      className="w-full appearance-none rounded-lg border border-black/[0.08] bg-white px-2.5 py-1.5 pr-7 text-xs text-gray-700 focus:border-black/[0.2] focus:outline-none focus:ring-1 focus:ring-gray-300"
+                    >
+                      <option value="">No collection</option>
+                      {collections.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {PLATFORM_EMOJI[c.platform] ?? "📁"} {c.name}
+                        </option>
+                      ))}
+                      <option value="__new__">+ New collection…</option>
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400" />
+                  </div>
+                  {selectedCollectionId === "__new__" && (
+                    <Input
+                      value={newCollectionName}
+                      onChange={(e) => setNewCollectionName(e.target.value)}
+                      placeholder="Collection name"
+                      className="flex-1 h-[30px] text-xs"
+                      autoFocus
+                    />
+                  )}
                 </div>
 
                 {/* Upload controls */}
@@ -332,7 +423,7 @@ export default function UploadPage() {
 
             <div className="flex gap-2">
               <Input
-                type="url"
+                type="text"
                 placeholder="https://cosmos.so/username/cluster or pinterest.com/…/board"
                 value={galleryDlUrl}
                 onChange={(e) => {
@@ -374,7 +465,6 @@ export default function UploadPage() {
               </button>
             </div>
 
-            {/* Inline error */}
             {collectionError && (
               <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
                 <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-500" />
@@ -382,7 +472,6 @@ export default function UploadPage() {
               </div>
             )}
 
-            {/* Platform badges */}
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-600">Supported</span>
               <div className="h-3 w-px bg-black/[0.08]" />
