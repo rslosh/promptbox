@@ -236,7 +236,7 @@ export interface Database {
           name: string;
           slug: string;
           description: string | null;
-          platform: "pinterest" | "are_na" | "tumblr" | "manual" | "cosmos" | "shotdeck";
+          platform: "pinterest" | "are_na" | "tumblr" | "manual" | "cosmos" | "shotdeck" | "midjourney";
           source_url: string | null;
           cover_image_url: string | null;
           last_synced_at: string | null;
@@ -250,7 +250,7 @@ export interface Database {
           name: string;
           slug: string;
           description?: string | null;
-          platform: "pinterest" | "are_na" | "tumblr" | "manual" | "cosmos" | "shotdeck";
+          platform: "pinterest" | "are_na" | "tumblr" | "manual" | "cosmos" | "shotdeck" | "midjourney";
           source_url?: string | null;
           cover_image_url?: string | null;
           last_synced_at?: string | null;
@@ -264,7 +264,7 @@ export interface Database {
           name?: string;
           slug?: string;
           description?: string | null;
-          platform?: "pinterest" | "are_na" | "tumblr" | "manual" | "cosmos" | "shotdeck";
+          platform?: "pinterest" | "are_na" | "tumblr" | "manual" | "cosmos" | "shotdeck" | "midjourney";
           source_url?: string | null;
           cover_image_url?: string | null;
           last_synced_at?: string | null;

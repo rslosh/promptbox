@@ -6,6 +6,22 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+function normalizeUrl(raw: string): string {
+  let s = raw.trim();
+  // Auto-prefix protocol if missing
+  if (s && !s.includes("://")) s = "https://" + s;
+  try {
+    const url = new URL(s);
+    url.hostname = url.hostname.toLowerCase();
+    if (url.pathname !== "/" && url.pathname.endsWith("/")) {
+      url.pathname = url.pathname.slice(0, -1);
+    }
+    return url.toString();
+  } catch {
+    return s;
+  }
+}
+
 function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -15,11 +31,13 @@ function slugify(text: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-function detectPlatform(url: string): "pinterest" | "are_na" | "tumblr" | "manual" | "cosmos" {
+function detectPlatform(url: string): "pinterest" | "are_na" | "tumblr" | "manual" | "cosmos" | "shotdeck" | "midjourney" {
   if (url.includes("pinterest.com")) return "pinterest";
   if (url.includes("are.na")) return "are_na";
   if (url.includes("tumblr.com")) return "tumblr";
   if (url.includes("cosmos.so")) return "cosmos";
+  if (url.includes("shotdeck.com")) return "shotdeck";
+  if (url.includes("midjourney.com")) return "midjourney";
   return "manual";
 }
 
@@ -52,6 +70,16 @@ function extractBoardName(url: string): string {
     // Cosmos: cosmos.so/{username}/{cluster-slug}
     if (urlObj.hostname.includes("cosmos.so") && pathParts.length >= 2) {
       return pathParts[1].replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    }
+
+    // Midjourney: midjourney.com/explore?tab=likes, /likes, /{username}/likes, etc.
+    if (urlObj.hostname.includes("midjourney.com")) {
+      const tab = urlObj.searchParams.get("tab");
+      if (tab) return `MJ ${tab.charAt(0).toUpperCase() + tab.slice(1)}`;
+      const label = pathParts.find((p) => ["likes", "liked", "archive", "feed", "explore"].includes(p));
+      if (label && label !== "explore") return `MJ ${label.charAt(0).toUpperCase() + label.slice(1)}`;
+      if (pathParts.length >= 1) return `MJ ${pathParts[pathParts.length - 1].replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}`;
+      return "Midjourney";
     }
 
     return "Untitled Collection";
@@ -90,8 +118,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const platform = source_url ? detectPlatform(source_url) : "manual";
-    const collectionName = name || extractBoardName(source_url);
+    const normalizedSourceUrl = source_url ? normalizeUrl(source_url) : null;
+
+    // Return existing collection if source_url already imported
+    if (normalizedSourceUrl) {
+      const { data: existing } = await supabase
+        .from("collections")
+        .select("*")
+        .eq("source_url", normalizedSourceUrl)
+        .maybeSingle();
+      if (existing) return NextResponse.json(existing, { status: 200 });
+    }
+
+    const platform = normalizedSourceUrl ? detectPlatform(normalizedSourceUrl) : "manual";
+    const collectionName = name || extractBoardName(normalizedSourceUrl ?? "");
     const baseSlug = slugify(collectionName);
 
     // Ensure unique slug
@@ -117,7 +157,7 @@ export async function POST(request: NextRequest) {
         slug,
         description: description || null,
         platform,
-        source_url: source_url || null,
+        source_url: normalizedSourceUrl || null,
       })
       .select()
       .single();

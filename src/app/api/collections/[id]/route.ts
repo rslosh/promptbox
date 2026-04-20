@@ -108,6 +108,57 @@ export async function DELETE(
   try {
     const { id } = await params;
 
+    // Find all asset IDs in this collection
+    const { data: collectionAssets } = await supabase
+      .from("collection_assets")
+      .select("asset_id")
+      .eq("collection_id", id);
+
+    const assetIds = collectionAssets?.map((a) => a.asset_id) ?? [];
+
+    if (assetIds.length > 0) {
+      // Find which of those assets appear in OTHER collections
+      const { data: sharedAssets } = await supabase
+        .from("collection_assets")
+        .select("asset_id")
+        .in("asset_id", assetIds)
+        .neq("collection_id", id);
+
+      const sharedIds = new Set(sharedAssets?.map((a) => a.asset_id) ?? []);
+      const exclusiveIds = assetIds.filter((aid) => !sharedIds.has(aid));
+
+      if (exclusiveIds.length > 0) {
+        // Fetch storage paths for exclusive assets
+        const { data: assetsToDelete } = await supabase
+          .from("image_assets")
+          .select("id, storage_path")
+          .in("id", exclusiveIds);
+
+        if (assetsToDelete && assetsToDelete.length > 0) {
+          const mainPaths = assetsToDelete.map((a) => a.storage_path);
+          const thumbPaths = assetsToDelete.map((a) =>
+            a.storage_path.replace(/(\.[^./]+)$/, "_thumb$1")
+          );
+
+          // Delete from both storage buckets (best-effort)
+          await Promise.all([
+            supabase.storage.from("image_assets").remove(mainPaths),
+            supabase.storage.from("image_thumbs").remove(thumbPaths),
+          ]);
+
+          // Delete collection_assets rows for exclusive assets (all collections)
+          await supabase.from("collection_assets").delete().in("asset_id", exclusiveIds);
+
+          // Delete image_asset records (also cascades to asset_tags, prompts)
+          await supabase.from("image_assets").delete().in("id", exclusiveIds);
+        }
+      }
+    }
+
+    // Delete any remaining collection_assets for this collection (shared assets not yet removed)
+    await supabase.from("collection_assets").delete().eq("collection_id", id);
+
+    // Delete the collection
     const { error } = await supabase
       .from("collections")
       .delete()

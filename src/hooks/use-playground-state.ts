@@ -231,6 +231,7 @@ export function usePlaygroundState({
 
       const newRemix = await response.json();
       setRemixId(newRemix.id);
+      if (newRemix.name) setRemixName(newRemix.name);
       setHasUnsavedChanges(false);
 
       // Update URL without full navigation

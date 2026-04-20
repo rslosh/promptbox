@@ -1,5 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { GoogleGenAI } from "@google/genai";
+
+async function generateRemixTitle(generatedPrompt: string, promptComponents: unknown[]): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return "Untitled Remix";
+
+  try {
+    const context = generatedPrompt ||
+      (promptComponents as { value?: string }[]).slice(0, 5).map((c) => c.value).filter(Boolean).join(", ");
+    if (!context) return "Untitled Remix";
+
+    const ai = new GoogleGenAI({ apiKey });
+    const response = await ai.models.generateContent({
+      model: "gemini-3.1-flash-lite-preview",
+      contents: [{ role: "user", parts: [{ text: `Give this creative project an evocative title (8-12 words, no quotes, no punctuation). Base it on: ${context.slice(0, 500)}` }] }],
+    });
+    const title = response.text?.trim().replace(/['"]/g, "").slice(0, 120);
+    return title || "Untitled Remix";
+  } catch {
+    return "Untitled Remix";
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,11 +42,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const resolvedName = name || await generateRemixTitle(generated_prompt, prompt_components);
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabaseAdmin as any)
       .from("playground_remixes")
       .insert({
-        name,
+        name: resolvedName,
         image_ids,
         prompt_components,
         edit_instructions,
