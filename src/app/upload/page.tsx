@@ -123,10 +123,16 @@ export default function UploadPage() {
         uploadedAssetIds.push(data.asset.id);
 
         // Fire tagging in the background — don't await so we can redirect immediately
+        const stored = localStorage.getItem("promptbox_settings");
+        const { geminiApiKey, geminiSystemPrompt } = stored ? JSON.parse(stored) : {};
         fetch("/api/tag", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ assetId: data.asset.id }),
+          body: JSON.stringify({
+            assetId: data.asset.id,
+            apiKey: geminiApiKey,
+            systemPrompt: geminiSystemPrompt,
+          }),
           keepalive: true,
         });
 

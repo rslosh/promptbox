@@ -381,6 +381,7 @@ export default function SettingsPage() {
     duplicateSystemPrompt: DEFAULT_DUPLICATE_PROMPT,
   });
   const [saved, setSaved] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<{
     gemini: "untested" | "success" | "error";
     secondary: "untested" | "success" | "error";
@@ -399,13 +400,18 @@ export default function SettingsPage() {
         console.error("Failed to parse settings:", e);
       }
     }
+    setIsLoaded(true);
   }, []);
 
-  function handleSave() {
-    localStorage.setItem("promptbox_settings", JSON.stringify(settings));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  }
+  useEffect(() => {
+    if (!isLoaded) return;
+    const t = setTimeout(() => {
+      localStorage.setItem("promptbox_settings", JSON.stringify(settings));
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1500);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [settings, isLoaded]);
 
   async function testGeminiConnection() {
     if (!settings.geminiApiKey) return;
@@ -464,6 +470,16 @@ export default function SettingsPage() {
         <Header title="Settings" description="Configure API keys and preferences" />
 
         <div className="p-6 space-y-6 max-w-2xl">
+          <div className="flex h-5 items-center text-xs text-gray-500">
+            {saved ? (
+              <span className="flex items-center gap-1 text-emerald-600">
+                <Check className="h-3.5 w-3.5" />
+                Saved
+              </span>
+            ) : (
+              <span>Changes save automatically</span>
+            )}
+          </div>
           {/* API Keys */}
           <Card>
             <CardHeader>
@@ -679,19 +695,6 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Save button */}
-          <div className="flex justify-end">
-            <Button onClick={handleSave} className="w-32">
-              {saved ? (
-                <>
-                  <Check className="mr-2 h-4 w-4" />
-                  Saved
-                </>
-              ) : (
-                "Save Settings"
-              )}
-            </Button>
-          </div>
         </div>
       </main>
     </div>

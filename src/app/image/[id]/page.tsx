@@ -130,10 +130,16 @@ export default function ImageDetailPage({
   async function handleRetag() {
     setIsRetagging(true);
     try {
+      const stored = localStorage.getItem("promptbox_settings");
+      const { geminiApiKey, geminiSystemPrompt } = stored ? JSON.parse(stored) : {};
       await fetch("/api/tag", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assetId: id }),
+        body: JSON.stringify({
+          assetId: id,
+          apiKey: geminiApiKey,
+          systemPrompt: geminiSystemPrompt,
+        }),
       });
       await fetchImageDetails();
     } catch (error) {
