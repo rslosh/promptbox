@@ -76,6 +76,7 @@ export interface Database {
           asset_id: string;
           json_prompt: Json;
           natural_prompt: string;
+          scene_prompt: Json;
           model_name: string;
           model_params: Json;
           created_at: string;
@@ -85,6 +86,7 @@ export interface Database {
           asset_id: string;
           json_prompt: Json;
           natural_prompt: string;
+          scene_prompt?: Json;
           model_name: string;
           model_params?: Json;
           created_at?: string;
@@ -94,6 +96,7 @@ export interface Database {
           asset_id?: string;
           json_prompt?: Json;
           natural_prompt?: string;
+          scene_prompt?: Json;
           model_name?: string;
           model_params?: Json;
           created_at?: string;
@@ -106,6 +109,7 @@ export interface Database {
           version_index: number;
           json_prompt: Json;
           natural_prompt: string;
+          scene_prompt: Json;
           edit_source: "manual" | "llm" | "voice";
           created_at: string;
         };
@@ -115,6 +119,7 @@ export interface Database {
           version_index: number;
           json_prompt: Json;
           natural_prompt: string;
+          scene_prompt?: Json;
           edit_source: "manual" | "llm" | "voice";
           created_at?: string;
         };
@@ -124,6 +129,7 @@ export interface Database {
           version_index?: number;
           json_prompt?: Json;
           natural_prompt?: string;
+          scene_prompt?: Json;
           edit_source?: "manual" | "llm" | "voice";
           created_at?: string;
         };

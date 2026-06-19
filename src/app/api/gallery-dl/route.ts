@@ -5,8 +5,8 @@ import { promises as fs } from "fs";
 import path from "path";
 import os from "os";
 import crypto from "crypto";
-import { GoogleGenAI } from "@google/genai";
 import { fetchCosmosClusterImages, downloadCosmosImage } from "@/lib/cosmos";
+import { runTagger } from "@/lib/tagger";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -36,17 +36,6 @@ function cosmosExtractName(url: string): string {
   }
 }
 
-const VISIONSTRUCT_SYSTEM_INSTRUCTION = `ROLE & OBJECTIVE
-
-You are VisionStruct, an advanced Computer Vision & Data Serialization Engine. Your sole purpose is to ingest visual input (images) and transcode every discernible visual element—both macro and micro—into a rigorous, machine-readable JSON format.
-
-CORE DIRECTIVE
-Do not summarize. Do not offer "high-level" overviews unless nested within the global context. You must capture 100% of the visual data available in the image. If a detail exists in pixels, it must exist in your JSON output. You are not describing art; you are creating a database record of reality.
-
-OUTPUT FORMAT (STRICT)
-You must return ONLY a single valid JSON object. Do not include markdown fencing. Use the schema with: meta, global_context, color_palette, composition, objects[], text_ocr, semantic_relationships[], and natural_prompt.
-
-IMPORTANT: Always include a "natural_prompt" field at the root level containing a flowing, descriptive paragraph suitable for AI image generation.`;
 
 export async function POST(request: NextRequest) {
   try {
@@ -207,11 +196,8 @@ async function processGalleryDl(jobId: string, url: string, autoTag: boolean) {
 }
 
 async function tagImages(assetIds: string[], apiKey: string) {
-  const ai = new GoogleGenAI({ apiKey });
-
   for (const assetId of assetIds) {
     try {
-      // Get the asset
       const { data: asset, error: assetError } = await supabase
         .from("image_assets")
         .select("*")
@@ -223,7 +209,6 @@ async function tagImages(assetIds: string[], apiKey: string) {
         continue;
       }
 
-      // Download the image
       const { data: imageData, error: imageError } = await supabase.storage
         .from("image_assets")
         .download(asset.storage_path);
@@ -233,109 +218,25 @@ async function tagImages(assetIds: string[], apiKey: string) {
         continue;
       }
 
-      // Convert to base64
       const buffer = Buffer.from(await imageData.arrayBuffer());
       const base64Image = buffer.toString("base64");
       const mimeType = `image/${asset.format}`;
 
-      // Call Gemini
-      const response = await ai.models.generateContent({
-        model: "gemini-3.1-flash-lite-preview",
-        contents: [
-          {
-            role: "user",
-            parts: [
-              {
-                inlineData: {
-                  mimeType,
-                  data: base64Image,
-                },
-              },
-              {
-                text: "Analyze this image and generate the complete JSON output.",
-              },
-            ],
-          },
-        ],
-        config: {
-          systemInstruction: VISIONSTRUCT_SYSTEM_INSTRUCTION,
-        },
+      const {
+        jsonPrompt,
+        naturalPrompt,
+        scenePrompt: sceneJson,
+        tags,
+        modelParams,
+      } = await runTagger({
+        base64Image,
+        mimeType,
+        apiKey,
       });
 
-      const text = response.text || "";
-
-      // Parse the response
-      let jsonPrompt: Record<string, unknown> = {};
-      let naturalPrompt = "";
-
-      try {
-        let cleanedText = text.trim();
-        if (cleanedText.startsWith("```json")) cleanedText = cleanedText.slice(7);
-        if (cleanedText.startsWith("```")) cleanedText = cleanedText.slice(3);
-        if (cleanedText.endsWith("```")) cleanedText = cleanedText.slice(0, -3);
-        cleanedText = cleanedText.trim();
-
-        const parsed = JSON.parse(cleanedText);
-        jsonPrompt = parsed;
-        naturalPrompt = parsed.natural_prompt || parsed.global_context?.scene_description || "";
-      } catch {
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          try {
-            const parsed = JSON.parse(jsonMatch[0]);
-            jsonPrompt = parsed;
-            naturalPrompt = parsed.natural_prompt || parsed.global_context?.scene_description || "";
-          } catch {
-            naturalPrompt = text;
-            jsonPrompt = { raw_response: text };
-          }
-        } else {
-          naturalPrompt = text;
-          jsonPrompt = { raw_response: text };
-        }
-      }
-
-      // Extract and save tags
-      const tags: { tag: string; confidence: number }[] = [];
-      
-      if (Array.isArray(jsonPrompt.objects)) {
-        jsonPrompt.objects.forEach((obj: Record<string, unknown>, index: number) => {
-          if (obj.label && typeof obj.label === "string") {
-            tags.push({ tag: obj.label, confidence: 1.0 - index * 0.02 });
-          }
-          if (obj.category && typeof obj.category === "string") {
-            tags.push({ tag: obj.category, confidence: 0.9 - index * 0.02 });
-          }
-        });
-      }
-
-      const composition = jsonPrompt.composition as Record<string, unknown> | undefined;
-      if (composition) {
-        if (composition.camera_angle && typeof composition.camera_angle === "string") {
-          tags.push({ tag: composition.camera_angle, confidence: 0.85 });
-        }
-        if (composition.framing && typeof composition.framing === "string") {
-          tags.push({ tag: composition.framing, confidence: 0.85 });
-        }
-      }
-
-      const meta = jsonPrompt.meta as Record<string, unknown> | undefined;
-      if (meta?.image_type && typeof meta.image_type === "string") {
-        tags.push({ tag: meta.image_type, confidence: 0.95 });
-      }
-
-      // Deduplicate tags
-      const uniqueTags = tags.reduce((acc: typeof tags, tag) => {
-        if (!acc.find(t => t.tag.toLowerCase() === tag.tag.toLowerCase())) {
-          acc.push(tag);
-        }
-        return acc;
-      }, []);
-
-      // Save tags
-      if (uniqueTags.length > 0) {
+      if (tags.length > 0) {
         await supabase.from("asset_tags").insert(
-          uniqueTags.map((t) => ({
+          tags.map((t) => ({
             asset_id: assetId,
             tag: t.tag,
             confidence: t.confidence,
@@ -343,15 +244,15 @@ async function tagImages(assetIds: string[], apiKey: string) {
         );
       }
 
-      // Save prompt
       const { data: prompt } = await supabase
         .from("prompts")
         .insert({
           asset_id: assetId,
           json_prompt: jsonPrompt,
           natural_prompt: naturalPrompt,
-          model_name: "gemini-3.1-flash-lite-preview",
-          model_params: { system_instruction: "visionstruct" },
+          scene_prompt: sceneJson,
+          model_name: modelParams.vision_model,
+          model_params: modelParams,
         })
         .select()
         .single();
@@ -362,6 +263,7 @@ async function tagImages(assetIds: string[], apiKey: string) {
           version_index: 1,
           json_prompt: jsonPrompt,
           natural_prompt: naturalPrompt,
+          scene_prompt: sceneJson,
           edit_source: "llm",
         });
       }

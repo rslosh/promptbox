@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Check, Eye, Copy, Trash2 } from "lucide-react";
+import { Check, Eye, Copy, Trash2, Braces } from "lucide-react";
 import type { ImageAsset, AssetTag, Prompt } from "@/lib/supabase/types";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getThumbnailUrl, getImageUrl } from "@/lib/supabase/client";
@@ -67,6 +67,16 @@ export function ImageGrid({
     }
   };
 
+  const handleCopySceneJson = async (prompt: Prompt, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const success = await copyToClipboard(JSON.stringify(prompt.scene_prompt, null, 2));
+    if (success) {
+      setCopiedId(`scene-${prompt.id}`);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
+  };
+
   const handleDeleteClick = (id: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -113,6 +123,8 @@ export function ImageGrid({
       {images.map((image) => {
         const isSelected = selectedIds.includes(image.id);
         const firstPrompt = image.prompts?.[0];
+        const sceneJson = firstPrompt?.scene_prompt as Record<string, unknown> | null | undefined;
+        const hasScene = !!sceneJson && Object.keys(sceneJson).length > 0;
         const isDeleting = deletingId === image.id;
         const isConfirmingDelete = confirmDeleteId === image.id;
 
@@ -213,7 +225,7 @@ export function ImageGrid({
                   )}
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Link href={`/image/${image.id}`} onClick={(e) => e.stopPropagation()}>
                       <Button size="sm" variant="secondary" className="h-7 text-xs bg-white/15 text-white hover:bg-white/25 border-0">
                         <Eye className="mr-1 h-3 w-3" />
@@ -233,6 +245,22 @@ export function ImageGrid({
                           <Copy className="mr-1 h-3 w-3" />
                         )}
                         Copy
+                      </Button>
+                    )}
+                    {firstPrompt && hasScene && imageSize !== "small" && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="h-7 text-xs bg-white/15 text-white hover:bg-white/25 border-0"
+                        onClick={(e) => handleCopySceneJson(firstPrompt, e)}
+                        title="Copy Ideogram (scene composition) JSON"
+                      >
+                        {copiedId === `scene-${firstPrompt.id}` ? (
+                          <Check className="mr-1 h-3 w-3" />
+                        ) : (
+                          <Braces className="mr-1 h-3 w-3" />
+                        )}
+                        Ideogram
                       </Button>
                     )}
                   </div>

@@ -12,6 +12,7 @@ import { Chip } from "@/components/ui/chip";
 import { cn } from "@/lib/utils";
 import { copyToClipboard, formatDate } from "@/lib/utils";
 import { supabase, getImageUrl } from "@/lib/supabase/client";
+import { reorderForDisplay } from "@/lib/tagger";
 import type { ImageAsset, AssetTag, Prompt, PromptVersion } from "@/lib/supabase/types";
 import {
   ArrowLeft,
@@ -26,6 +27,7 @@ import {
   Clock,
   Code,
   FileText,
+  Download,
 } from "lucide-react";
 
 interface PromptWithVersions extends Prompt {
@@ -69,7 +71,9 @@ export default function ImageDetailPage({
   const [editedPrompt, setEditedPrompt] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isRetagging, setIsRetagging] = useState(false);
+  const [retagError, setRetagError] = useState<string | null>(null);
   const [showJson, setShowJson] = useState(false);
+  const [jsonView, setJsonView] = useState<"visstruct" | "ideogram">("ideogram");
 
   useEffect(() => {
     fetchImageDetails();
@@ -127,23 +131,60 @@ export default function ImageDetailPage({
     }
   }
 
+  async function handleDownload() {
+    if (!image) return;
+    try {
+      const res = await fetch(imageUrl);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `promptbox-${image.id.slice(0, 8)}.${image.format}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Download error:", error);
+    }
+  }
+
   async function handleRetag() {
     setIsRetagging(true);
+    setRetagError(null);
     try {
       const stored = localStorage.getItem("promptbox_settings");
-      const { geminiApiKey, geminiSystemPrompt } = stored ? JSON.parse(stored) : {};
-      await fetch("/api/tag", {
+      const {
+        geminiApiKey,
+        geminiSystemPrompt,
+        geminiProsePrompt,
+        geminiScenePrompt,
+        visionModel,
+        proseModel,
+        sceneModel,
+      } = stored ? JSON.parse(stored) : {};
+      const res = await fetch("/api/tag", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           assetId: id,
           apiKey: geminiApiKey,
           systemPrompt: geminiSystemPrompt,
+          prosePrompt: geminiProsePrompt,
+          scenePrompt: geminiScenePrompt,
+          visionModel,
+          proseModel,
+          sceneModel,
         }),
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Tagging failed (${res.status})`);
+      }
       await fetchImageDetails();
     } catch (error) {
       console.error("Retag error:", error);
+      setRetagError(error instanceof Error ? error.message : "Tagging failed");
     }
     setIsRetagging(false);
   }
@@ -211,6 +252,10 @@ export default function ImageDetailPage({
                   Back
                 </Button>
               </Link>
+              <Button variant="outline" size="sm" onClick={handleDownload}>
+                <Download className="mr-1.5 h-3.5 w-3.5" />
+                Download
+              </Button>
               <Link href={`/playground?images=${id}`}>
                 <Button size="sm">
                   <Sparkles className="mr-1.5 h-3.5 w-3.5" />
@@ -287,14 +332,6 @@ export default function ImageDetailPage({
               <Panel className="overflow-hidden">
                 <div className="flex items-center justify-between border-b border-black/[0.06] px-5 py-3.5">
                   <p className="text-sm font-medium text-gray-800">Tags</p>
-                  <button
-                    onClick={handleRetag}
-                    disabled={isRetagging}
-                    className="flex h-6 w-6 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-black/[0.05] hover:text-gray-700 disabled:opacity-40"
-                    aria-label="Re-tag image"
-                  >
-                    <RefreshCw className={cn("h-3.5 w-3.5", isRetagging && "animate-spin")} />
-                  </button>
                 </div>
                 <div className="p-5">
                   {tags.length > 0 ? (
@@ -319,6 +356,31 @@ export default function ImageDetailPage({
 
             {/* ── Right column ── */}
             <div className="space-y-4">
+
+              {/* Prompts header — always visible when at least one prompt exists */}
+              {prompts.length > 0 && (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">Prompts</p>
+                    {retagError && (
+                      <p className="mt-1 text-xs text-red-600">{retagError}</p>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleRetag}
+                    disabled={isRetagging}
+                  >
+                    {isRetagging ? (
+                      <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                    )}
+                    {isRetagging ? "Regenerating…" : "Regenerate prompt"}
+                  </Button>
+                </div>
+              )}
 
               {/* Prompt selector (multiple prompts) */}
               {prompts.length > 1 && (
@@ -410,40 +472,72 @@ export default function ImageDetailPage({
                   </Panel>
 
                   {/* JSON prompt */}
-                  <Panel className="overflow-hidden">
-                    <div className="flex items-center justify-between border-b border-black/[0.06] px-5 py-3.5">
-                      <p className="flex items-center gap-2 text-sm font-medium text-gray-800">
-                        <Code className="h-3.5 w-3.5 text-gray-500" />
-                        JSON Prompt
-                      </p>
-                      <div className="flex items-center gap-0.5">
-                        <button
-                          onClick={() => setShowJson(!showJson)}
-                          className="flex h-7 items-center rounded-md px-2.5 text-xs font-medium text-gray-600 transition-colors hover:bg-black/[0.05] hover:text-gray-800"
-                        >
-                          {showJson ? "Hide" : "Show"}
-                        </button>
-                        <button
-                          onClick={() => handleCopy(JSON.stringify(selectedPrompt.json_prompt, null, 2), `json-${selectedPrompt.id}`)}
-                          className="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-black/[0.05] hover:text-gray-700"
-                          aria-label="Copy JSON"
-                        >
-                          {copiedId === `json-${selectedPrompt.id}` ? (
-                            <Check className="h-3.5 w-3.5 text-emerald-500" />
-                          ) : (
-                            <Copy className="h-3.5 w-3.5" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                    {showJson && (
-                      <div className="p-5">
-                        <pre className="overflow-x-auto rounded-lg border border-black/[0.06] bg-gray-50 p-4 text-xs text-gray-700">
-                          {JSON.stringify(selectedPrompt.json_prompt, null, 2)}
-                        </pre>
-                      </div>
-                    )}
-                  </Panel>
+                  {(() => {
+                    const scenePrompt = selectedPrompt.scene_prompt as Record<string, unknown> | null;
+                    const hasScene = !!scenePrompt && Object.keys(scenePrompt).length > 0;
+                    const activeView = hasScene ? jsonView : "visstruct";
+                    const activeJson =
+                      activeView === "ideogram"
+                        ? scenePrompt!
+                        : reorderForDisplay(selectedPrompt.json_prompt as Record<string, unknown>);
+                    const activeJsonText = JSON.stringify(activeJson, null, 2);
+                    return (
+                      <Panel className="overflow-hidden">
+                        <div className="flex items-center justify-between border-b border-black/[0.06] px-5 py-3.5">
+                          <p className="flex items-center gap-2 text-sm font-medium text-gray-800">
+                            <Code className="h-3.5 w-3.5 text-gray-500" />
+                            JSON Prompt
+                          </p>
+                          <div className="flex items-center gap-0.5">
+                            <button
+                              onClick={() => setShowJson(!showJson)}
+                              className="flex h-7 items-center rounded-md px-2.5 text-xs font-medium text-gray-600 transition-colors hover:bg-black/[0.05] hover:text-gray-800"
+                            >
+                              {showJson ? "Hide" : "Show"}
+                            </button>
+                            <button
+                              onClick={() => handleCopy(activeJsonText, `json-${selectedPrompt.id}`)}
+                              className="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-black/[0.05] hover:text-gray-700"
+                              aria-label="Copy JSON"
+                            >
+                              {copiedId === `json-${selectedPrompt.id}` ? (
+                                <Check className="h-3.5 w-3.5 text-emerald-500" />
+                              ) : (
+                                <Copy className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                        {showJson && (
+                          <div className="space-y-3 p-5">
+                            {hasScene && (
+                              <div className="inline-flex rounded-lg border border-black/[0.06] bg-gray-50 p-0.5">
+                                {[
+                                  { key: "ideogram" as const, label: "Ideogram" },
+                                  { key: "visstruct" as const, label: "VisStruct" },
+                                ].map((view) => (
+                                  <button
+                                    key={view.key}
+                                    onClick={() => setJsonView(view.key)}
+                                    className={`flex h-7 items-center rounded-md px-3 text-xs font-medium transition-colors ${
+                                      activeView === view.key
+                                        ? "bg-white text-gray-800 shadow-sm"
+                                        : "text-gray-500 hover:text-gray-800"
+                                    }`}
+                                  >
+                                    {view.label}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            <pre className="overflow-x-auto rounded-lg border border-black/[0.06] bg-gray-50 p-4 text-xs text-gray-700">
+                              {activeJsonText}
+                            </pre>
+                          </div>
+                        )}
+                      </Panel>
+                    );
+                  })()}
 
                   {/* Version history */}
                   {selectedPrompt.versions && selectedPrompt.versions.length > 0 && (
@@ -480,10 +574,22 @@ export default function ImageDetailPage({
               ) : (
                 <Panel className="py-14 text-center">
                   <p className="text-sm text-gray-400">No prompts generated yet</p>
-                  <Button className="mt-4" size="sm" onClick={handleRetag}>
-                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                    Generate Prompt
+                  <Button
+                    className="mt-4"
+                    size="sm"
+                    onClick={handleRetag}
+                    disabled={isRetagging}
+                  >
+                    {isRetagging ? (
+                      <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                    )}
+                    {isRetagging ? "Generating…" : "Generate Prompt"}
                   </Button>
+                  {retagError && (
+                    <p className="mt-3 text-xs text-red-600">{retagError}</p>
+                  )}
                 </Panel>
               )}
             </div>

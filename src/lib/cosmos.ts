@@ -54,31 +54,77 @@ export async function downloadArenaImage(url: string, destDir: string): Promise<
   }
 }
 
-export async function fetchCosmosClusterImages(clusterUrl: string): Promise<string[]> {
-  const res = await fetch(clusterUrl, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    },
-  });
-  if (!res.ok) throw new Error(`Failed to fetch Cosmos cluster page: ${res.status}`);
-  const html = await res.text();
+const COSMOS_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-  const match = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
-  if (!match) throw new Error("Could not find __NEXT_DATA__ on Cosmos cluster page");
-  const nextData = JSON.parse(match[1]);
+// Only the fields we need. The web app's full query pulls 30+ fields per item.
+const COSMOS_CLUSTER_QUERY =
+  "query GetClusterElements($clusterId:ClusterId$pageCursor:String$pageSize:Int){" +
+  "clusterConnections(clusterId:$clusterId meta:{pageSize:$pageSize pageCursor:$pageCursor}){" +
+  "items{element{__typename" +
+  " ...on MediaElementTile{media{__typename ...on StaticImage{url} ...on AnimatedImage{url}}}" +
+  " ...on ProductElementTile{media{__typename ...on StaticImage{url} ...on AnimatedImage{url}}}" +
+  " ...on WebsiteElementTile{media{__typename ...on StaticImage{url} ...on AnimatedImage{url}}}" +
+  "}}meta{nextPageCursor count}}}";
+
+interface CosmosClusterResponse {
+  data?: {
+    clusterConnections?: {
+      items?: Array<{
+        element?: {
+          media?: { url?: string; __typename?: string };
+        };
+      }>;
+      meta?: { nextPageCursor?: string | null; count?: number };
+    };
+  };
+  errors?: Array<{ message: string }>;
+}
+
+export async function fetchCosmosClusterImages(clusterUrl: string): Promise<string[]> {
+  // Cosmos uses the Next.js App Router (no __NEXT_DATA__) and lazy-loads
+  // elements via GraphQL. Fetch the page only to extract the numeric clusterId,
+  // then paginate api.cosmos.so/graphql to get every element.
+  const pageRes = await fetch(clusterUrl, { headers: { "User-Agent": COSMOS_UA } });
+  if (!pageRes.ok) throw new Error(`Failed to fetch Cosmos cluster page: ${pageRes.status}`);
+  const html = await pageRes.text();
+
+  const idMatch = html.match(/"clusterId":(\d+)/);
+  if (!idMatch) throw new Error("Could not find clusterId on Cosmos cluster page");
+  const clusterId = Number(idMatch[1]);
 
   const urls = new Set<string>();
-  function walk(val: unknown) {
-    if (typeof val === "string" && val.startsWith("https://cdn.cosmos.so/")) {
-      urls.add(val.split("?")[0]);
-    } else if (Array.isArray(val)) {
-      val.forEach(walk);
-    } else if (val && typeof val === "object") {
-      Object.values(val as object).forEach(walk);
+  let pageCursor: string | null = null;
+  for (let page = 0; page < 50; page++) {
+    const gqlRes = await fetch("https://api.cosmos.so/graphql", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": COSMOS_UA,
+        Origin: "https://www.cosmos.so",
+        Referer: "https://www.cosmos.so/",
+      },
+      body: JSON.stringify({
+        operationName: "GetClusterElements",
+        variables: { clusterId, pageSize: 100, pageCursor },
+        query: COSMOS_CLUSTER_QUERY,
+      }),
+    });
+    if (!gqlRes.ok) throw new Error(`Cosmos GraphQL error: ${gqlRes.status}`);
+    const data = (await gqlRes.json()) as CosmosClusterResponse;
+    if (data.errors?.length) throw new Error(`Cosmos GraphQL error: ${data.errors[0].message}`);
+
+    const conn = data.data?.clusterConnections;
+    if (!conn) throw new Error("Unexpected Cosmos API response");
+    for (const item of conn.items ?? []) {
+      const url = item.element?.media?.url;
+      if (typeof url === "string" && url.startsWith("https://cdn.cosmos.so/")) {
+        urls.add(url.split("?")[0]);
+      }
     }
+    pageCursor = conn.meta?.nextPageCursor ?? null;
+    if (!pageCursor) break;
   }
-  walk(nextData);
 
   if (urls.size === 0) throw new Error("No images found in Cosmos cluster — cluster may be empty or private");
   return [...urls];

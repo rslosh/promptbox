@@ -124,7 +124,15 @@ export default function UploadPage() {
 
         // Fire tagging in the background — don't await so we can redirect immediately
         const stored = localStorage.getItem("promptbox_settings");
-        const { geminiApiKey, geminiSystemPrompt } = stored ? JSON.parse(stored) : {};
+        const {
+          geminiApiKey,
+          geminiSystemPrompt,
+          geminiProsePrompt,
+          geminiScenePrompt,
+          visionModel,
+          proseModel,
+          sceneModel,
+        } = stored ? JSON.parse(stored) : {};
         fetch("/api/tag", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -132,6 +140,11 @@ export default function UploadPage() {
             assetId: data.asset.id,
             apiKey: geminiApiKey,
             systemPrompt: geminiSystemPrompt,
+            prosePrompt: geminiProsePrompt,
+            scenePrompt: geminiScenePrompt,
+            visionModel,
+            proseModel,
+            sceneModel,
           }),
           keepalive: true,
         });

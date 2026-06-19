@@ -8,115 +8,30 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Key, Sparkles, Bot, AlertCircle } from "lucide-react";
+import { Check, Key, Sparkles, Bot, AlertCircle, Wand2, Cpu } from "lucide-react";
+import {
+  VISIONSTRUCT_SYSTEM_INSTRUCTION as DEFAULT_VISIONSTRUCT_PROMPT,
+  PROMPTFORGE_SYSTEM_INSTRUCTION as DEFAULT_PROMPTFORGE_PROMPT,
+  SCENECOMPOSE_SYSTEM_INSTRUCTION as DEFAULT_SCENECOMPOSE_PROMPT,
+  GEMINI_MODELS,
+  VISION_MODEL,
+  PROSE_MODEL,
+  SCENE_MODEL,
+} from "@/lib/tagger";
 
 interface Settings {
   geminiApiKey: string;
   secondaryLlmApiKey: string;
   geminiSystemPrompt: string;
+  geminiProsePrompt: string;
+  geminiScenePrompt: string;
+  visionModel: string;
+  proseModel: string;
+  sceneModel: string;
   remixSystemPrompt: string;
   editSystemPrompt: string;
   duplicateSystemPrompt: string;
 }
-
-const DEFAULT_VISIONSTRUCT_PROMPT = `ROLE & OBJECTIVE
-
-You are VisionStruct, an advanced Computer Vision & Data Serialization Engine. Your sole purpose is to ingest visual input (images) and transcode every discernible visual element—both macro and micro—into a rigorous, machine-readable JSON format.
-
-CORE DIRECTIVE
-Do not summarize. Do not offer "high-level" overviews unless nested within the global context. You must capture 100% of the visual data available in the image. If a detail exists in pixels, it must exist in your JSON output. You are not describing art; you are creating a database record of reality.
-
-ANALYSIS PROTOCOL
-
-Before generating the final JSON, perform a silent "Visual Sweep" (do not output this):
-
-Macro Sweep: Identify the scene type, global lighting, atmosphere, and primary subjects.
-
-Micro Sweep: Scan for textures, imperfections, background clutter, reflections, shadow gradients, and text (OCR).
-
-Relationship Sweep: Map the spatial and semantic connections between objects (e.g., "holding," "obscuring," "next to").
-
-OUTPUT FORMAT (STRICT)
-
-You must return ONLY a single valid JSON object. Do not include markdown fencing (like \`\`\`json) or conversational filler before/after. Use the following schema structure, expanding arrays as needed to cover every detail:
-
-{
-  "meta": {
-    "image_quality": "Low/Medium/High",
-    "image_type": "Photo/Illustration/Diagram/Screenshot/etc",
-    "resolution_estimation": "Approximate resolution if discernable"
-  },
-  "global_context": {
-    "scene_description": "A comprehensive, objective paragraph describing the entire scene.",
-    "time_of_day": "Specific time or lighting condition",
-    "weather_atmosphere": "Foggy/Clear/Rainy/Chaotic/Serene",
-    "lighting": {
-      "source": "Sunlight/Artificial/Mixed",
-      "direction": "Top-down/Backlit/etc",
-      "quality": "Hard/Soft/Diffused",
-      "color_temp": "Warm/Cool/Neutral"
-    }
-  },
-  "color_palette": {
-    "dominant_hex_estimates": ["#RRGGBB", "#RRGGBB"],
-    "accent_colors": ["Color name 1", "Color name 2"],
-    "contrast_level": "High/Low/Medium"
-  },
-  "composition": {
-    "camera_angle": "Eye-level/High-angle/Low-angle/Macro",
-    "framing": "Close-up/Wide-shot/Medium-shot",
-    "depth_of_field": "Shallow (blurry background) / Deep (everything in focus)",
-    "focal_point": "The primary element drawing the eye"
-  },
-  "objects": [
-    {
-      "id": "obj_001",
-      "label": "Primary Object Name",
-      "category": "Person/Vehicle/Furniture/etc",
-      "location": "Center/Top-Left/etc",
-      "prominence": "Foreground/Background",
-      "visual_attributes": {
-        "color": "Detailed color description",
-        "texture": "Rough/Smooth/Metallic/Fabric-type",
-        "material": "Wood/Plastic/Skin/etc",
-        "state": "Damaged/New/Wet/Dirty",
-        "dimensions_relative": "Large relative to frame"
-      },
-      "micro_details": [
-        "Scuff mark on left corner",
-        "stitching pattern visible on hem",
-        "reflection of window in surface",
-        "dust particles visible"
-      ],
-      "pose_or_orientation": "Standing/Tilted/Facing away",
-      "text_content": "null or specific text if present on object"
-    }
-  ],
-  "text_ocr": {
-    "present": true,
-    "content": [
-      {
-        "text": "The exact text written",
-        "location": "Sign post/T-shirt/Screen",
-        "font_style": "Serif/Handwritten/Bold",
-        "legibility": "Clear/Partially obscured"
-      }
-    ]
-  },
-  "semantic_relationships": [
-    "Object A is supporting Object B",
-    "Object C is casting a shadow on Object A",
-    "Object D is visually similar to Object E"
-  ]
-}
-
-CRITICAL CONSTRAINTS
-
-Granularity: Never say "a crowd of people." Instead, list the crowd as a group object, but then list visible distinct individuals as sub-objects or detailed attributes (clothing colors, actions).
-
-Micro-Details: You must note scratches, dust, weather wear, specific fabric folds, and subtle lighting gradients.
-
-Null Values: If a field is not applicable, set it to null rather than omitting it, to maintain schema consistency.`;
 
 const DEFAULT_REMIX_PROMPT = `ROLE
 You are a Prompt Architect and Remixer for diffusion model image generation. You receive detailed JSON descriptions for multiple reference images (Image 1, Image 2, Image 3, etc.) and a natural language Remix Request. Your task is to extract specific elements from these sources as requested and synthesize them into a single, seamless, and logically consistent text-to-image prompt.
@@ -376,6 +291,11 @@ export default function SettingsPage() {
     geminiApiKey: "",
     secondaryLlmApiKey: "",
     geminiSystemPrompt: DEFAULT_VISIONSTRUCT_PROMPT,
+    geminiProsePrompt: DEFAULT_PROMPTFORGE_PROMPT,
+    geminiScenePrompt: DEFAULT_SCENECOMPOSE_PROMPT,
+    visionModel: VISION_MODEL,
+    proseModel: PROSE_MODEL,
+    sceneModel: SCENE_MODEL,
     remixSystemPrompt: DEFAULT_REMIX_PROMPT,
     editSystemPrompt: DEFAULT_EDIT_PROMPT,
     duplicateSystemPrompt: DEFAULT_DUPLICATE_PROMPT,
@@ -389,13 +309,43 @@ export default function SettingsPage() {
     gemini: "untested",
     secondary: "untested",
   });
+  const [backfill, setBackfill] = useState<{
+    status: "idle" | "running" | "done" | "error";
+    mode: "missing" | "all" | null;
+    remaining: number | null;
+    total: number | null;
+    processed: number;
+    failed: number;
+    message: string;
+  }>({
+    status: "idle",
+    mode: null,
+    remaining: null,
+    total: null,
+    processed: 0,
+    failed: 0,
+    message: "",
+  });
+  // How many of the most-recent prompts the "Re-run" overwrite flow touches.
+  const [retagCount, setRetagCount] = useState(200);
 
   useEffect(() => {
-    // Load settings from localStorage
+    // Load settings from localStorage, merging with defaults so newly-added
+    // fields populate for users who saved settings before the field existed.
     const stored = localStorage.getItem("promptbox_settings");
     if (stored) {
       try {
-        setSettings(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        // Drop any saved model IDs that are no longer offered (e.g. a model
+        // that was renamed or retired). Falling back to the default avoids
+        // 404s from a stale value persisted before the option list changed.
+        const validModels = new Set<string>(GEMINI_MODELS.map((m) => m.value));
+        const heal = (val: unknown, fallback: string) =>
+          typeof val === "string" && validModels.has(val) ? val : fallback;
+        parsed.visionModel = heal(parsed.visionModel, VISION_MODEL);
+        parsed.proseModel = heal(parsed.proseModel, PROSE_MODEL);
+        parsed.sceneModel = heal(parsed.sceneModel, SCENE_MODEL);
+        setSettings((prev) => ({ ...prev, ...parsed }));
       } catch (e) {
         console.error("Failed to parse settings:", e);
       }
@@ -412,6 +362,110 @@ export default function SettingsPage() {
     }, 300);
     return () => clearTimeout(t);
   }, [settings, isLoaded]);
+
+  // Show how many prompts are missing an Ideogram (scene) prompt, and the
+  // total — used by the missing-fill and overwrite-all actions respectively.
+  useEffect(() => {
+    fetch("/api/backfill-scene")
+      .then((r) => r.json())
+      .then((d) => {
+        setBackfill((p) => ({
+          ...p,
+          remaining: typeof d.remaining === "number" ? d.remaining : p.remaining,
+          total: typeof d.total === "number" ? d.total : p.total,
+        }));
+      })
+      .catch(() => {});
+  }, []);
+
+  async function runBackfill(mode: "missing" | "all" = "missing") {
+    if (backfill.status === "running") return;
+    // For the overwrite flow, only touch the most-recent N prompts.
+    const cap = mode === "all" ? Math.max(1, retagCount || 1) : null;
+    if (
+      mode === "all" &&
+      !window.confirm(
+        `Re-run the Ideogram (SceneCompose) pass for the ${cap} most recent prompt(s)? ` +
+          `This overwrites their existing Ideogram JSON and cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    setBackfill((p) => ({
+      ...p,
+      status: "running",
+      mode,
+      processed: 0,
+      failed: 0,
+      message: "Starting…",
+    }));
+
+    let processed = 0;
+    let failed = 0;
+    let offset = 0;
+    const noun = mode === "all" ? "Re-tagged" : "Backfilled";
+    try {
+      // Drive the work batch by batch until the server reports it's done.
+      // "all" mode walks newest-first via an offset; "missing" mode shrinks as
+      // rows get populated.
+      while (true) {
+        const res = await fetch("/api/backfill-scene", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            apiKey: settings.geminiApiKey,
+            scenePrompt: settings.geminiScenePrompt,
+            sceneModel: settings.sceneModel,
+            limit: 5,
+            mode,
+            offset,
+            cap,
+          }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || `Re-tagging failed (${res.status})`);
+        }
+        const data: {
+          succeeded: number;
+          failed: number;
+          offset?: number;
+          remaining: number;
+          done: boolean;
+        } = await res.json();
+        processed += data.succeeded;
+        failed += data.failed;
+        if (typeof data.offset === "number") offset = data.offset;
+        setBackfill((p) => ({
+          ...p,
+          status: "running",
+          remaining: data.remaining,
+          processed,
+          failed,
+          message: `${noun} ${processed} · ${data.remaining} remaining`,
+        }));
+        if (data.done) break;
+        // In "missing" mode, no progress means the rest can't be processed.
+        // In "all" mode the offset always advances, so we keep going.
+        if (mode === "missing" && data.succeeded === 0) {
+          throw new Error(`Stopped — ${data.remaining} prompt(s) could not be processed`);
+        }
+      }
+      setBackfill((p) => ({
+        ...p,
+        status: "done",
+        remaining: 0,
+        message: `Done — ${noun.toLowerCase()} ${processed} prompt(s)${failed ? `, ${failed} failed` : ""}`,
+      }));
+    } catch (error) {
+      setBackfill((p) => ({
+        ...p,
+        status: "error",
+        message: error instanceof Error ? error.message : "Re-tagging failed",
+      }));
+    }
+  }
 
   async function testGeminiConnection() {
     if (!settings.geminiApiKey) return;
@@ -550,6 +604,151 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
+          {/* Auto-Prompt Models */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Cpu className="h-5 w-5" />
+                Auto-Prompt Models
+              </CardTitle>
+              <CardDescription>
+                Choose which Gemini model runs each pass of auto-tagging. Flash is fast and cheap;
+                Pro is slower but higher quality.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-900">
+                  VisionStruct (image → JSON)
+                </label>
+                <select
+                  value={settings.visionModel}
+                  onChange={(e) =>
+                    setSettings((prev) => ({ ...prev, visionModel: e.target.value }))
+                  }
+                  className="flex h-9 w-full rounded-lg border border-black/[0.1] bg-white/70 px-3 py-2 text-sm text-gray-900 focus:border-[#f2ff59] focus:outline-none focus:ring-2 focus:ring-[#f2ff59]/40 transition-colors"
+                >
+                  {GEMINI_MODELS.map((m) => (
+                    <option key={m.value} value={m.value}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-900">
+                  PromptForge (natural-language prose)
+                </label>
+                <select
+                  value={settings.proseModel}
+                  onChange={(e) =>
+                    setSettings((prev) => ({ ...prev, proseModel: e.target.value }))
+                  }
+                  className="flex h-9 w-full rounded-lg border border-black/[0.1] bg-white/70 px-3 py-2 text-sm text-gray-900 focus:border-[#f2ff59] focus:outline-none focus:ring-2 focus:ring-[#f2ff59]/40 transition-colors"
+                >
+                  {GEMINI_MODELS.map((m) => (
+                    <option key={m.value} value={m.value}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-900">
+                  Ideogram / SceneCompose (scene JSON)
+                </label>
+                <select
+                  value={settings.sceneModel}
+                  onChange={(e) =>
+                    setSettings((prev) => ({ ...prev, sceneModel: e.target.value }))
+                  }
+                  className="flex h-9 w-full rounded-lg border border-black/[0.1] bg-white/70 px-3 py-2 text-sm text-gray-900 focus:border-[#f2ff59] focus:outline-none focus:ring-2 focus:ring-[#f2ff59]/40 transition-colors"
+                >
+                  {GEMINI_MODELS.map((m) => (
+                    <option key={m.value} value={m.value}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Backfill Ideogram (scene) prompts */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Wand2 className="h-5 w-5" />
+                Ideogram Prompts
+              </CardTitle>
+              <CardDescription>
+                Re-runs the Ideogram (scene composition) pass — analyzes each prompt&apos;s image
+                with one Gemini call, no full re-tagging. <strong>Backfill</strong> only fills
+                prompts that are missing it; <strong>Re-run Recent</strong> regenerates the newest N
+                prompts, overwriting their existing Ideogram JSON.
+                {backfill.total !== null && <> ({backfill.total} total)</>}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  onClick={() => runBackfill("missing")}
+                  disabled={backfill.status === "running" || !settings.geminiApiKey}
+                >
+                  {backfill.status === "running" && backfill.mode === "missing"
+                    ? "Backfilling…"
+                    : "Backfill Missing"}
+                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => runBackfill("all")}
+                    disabled={backfill.status === "running" || !settings.geminiApiKey}
+                  >
+                    {backfill.status === "running" && backfill.mode === "all"
+                      ? "Re-running…"
+                      : "Re-run Recent"}
+                  </Button>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={5000}
+                    value={retagCount}
+                    onChange={(e) => setRetagCount(Number(e.target.value))}
+                    disabled={backfill.status === "running"}
+                    className="w-24"
+                    aria-label="Number of most-recent prompts to re-tag"
+                  />
+                </div>
+                {backfill.remaining !== null && backfill.status !== "done" && backfill.status !== "running" && (
+                  <span className="text-sm text-gray-600">
+                    {backfill.remaining} missing
+                  </span>
+                )}
+              </div>
+              {backfill.message && (
+                <p
+                  className={`text-xs ${
+                    backfill.status === "error"
+                      ? "text-red-600"
+                      : backfill.status === "done"
+                        ? "text-emerald-600"
+                        : "text-gray-600"
+                  }`}
+                >
+                  {backfill.message}
+                </p>
+              )}
+              {!settings.geminiApiKey && (
+                <p className="text-xs text-gray-500">
+                  Add your Gemini API key above to enable backfill.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Gemini Vision to JSON System Prompt */}
           <Card>
             <CardHeader>
@@ -557,7 +756,7 @@ export default function SettingsPage() {
                 <div>
                   <CardTitle>Gemini Vision to JSON System Prompt</CardTitle>
                   <CardDescription>
-                    VisionStruct prompt for converting images to structured JSON data
+                    VisionStruct — pass 1 of auto-tagging. Converts images to structured JSON.
                   </CardDescription>
                 </div>
                 <Button
@@ -576,6 +775,73 @@ export default function SettingsPage() {
                 value={settings.geminiSystemPrompt}
                 onChange={(e) =>
                   setSettings((prev) => ({ ...prev, geminiSystemPrompt: e.target.value }))
+                }
+                rows={12}
+                className="font-mono text-xs"
+              />
+            </CardContent>
+          </Card>
+
+          {/* Natural Prompt System Prompt */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div>
+                  <CardTitle>Natural Prompt System Prompt</CardTitle>
+                  <CardDescription>
+                    PromptForge — pass 2 of auto-tagging. Receives the image + VisionStruct JSON and writes the natural-language prose prompt.
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setSettings((prev) => ({ ...prev, geminiProsePrompt: DEFAULT_PROMPTFORGE_PROMPT }))
+                  }
+                >
+                  Reset to Default
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                value={settings.geminiProsePrompt}
+                onChange={(e) =>
+                  setSettings((prev) => ({ ...prev, geminiProsePrompt: e.target.value }))
+                }
+                rows={12}
+                className="font-mono text-xs"
+              />
+            </CardContent>
+          </Card>
+
+          {/* Ideogram / SceneCompose System Prompt */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div>
+                  <CardTitle>Ideogram (Scene Composition) System Prompt</CardTitle>
+                  <CardDescription>
+                    SceneCompose — pass 3 of auto-tagging. Reformats the VisionStruct JSON into the
+                    render-ready scene composition document.
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setSettings((prev) => ({ ...prev, geminiScenePrompt: DEFAULT_SCENECOMPOSE_PROMPT }))
+                  }
+                >
+                  Reset to Default
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                value={settings.geminiScenePrompt}
+                onChange={(e) =>
+                  setSettings((prev) => ({ ...prev, geminiScenePrompt: e.target.value }))
                 }
                 rows={12}
                 className="font-mono text-xs"
