@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import Image from "next/image";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
@@ -10,33 +10,47 @@ import { ViewOptions, type LayoutType, type ImageSize } from "@/components/galle
 import { Button } from "@/components/ui/button";
 import { Sparkles, Upload, X } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { supabase, getThumbnailUrl } from "@/lib/supabase/client";
-import type { ImageAsset, AssetTag, Prompt, Collection } from "@/lib/supabase/types";
-
-interface ImageWithDetails extends ImageAsset {
-  tags?: AssetTag[];
-  prompts?: Prompt[];
-}
+import type { AssetTag, Collection } from "@/lib/supabase/types";
+import {
+  getGalleryCache,
+  updateGalleryCache,
+  setGalleryScroll,
+  type ImageWithDetails,
+} from "@/lib/gallery-cache";
 
 const MAX_VISIBLE_THUMBS = 5;
 
 export default function GalleryPage() {
-  const [images, setImages] = useState<ImageWithDetails[]>([]);
-  const [allImagesCount, setAllImagesCount] = useState(0);
-  const [allTags, setAllTags] = useState<string[]>([]);
-  const [collections, setCollections] = useState<Collection[]>([]);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [selectedCollections, setSelectedCollections] = useState<string[]>([]);
-  const [sourceFilter, setSourceFilter] = useState<"all" | "upload" | "gallery_dl">("all");
-  const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest");
+  // Hydrate from the module cache so a return navigation renders instantly
+  // from memory (full height on the first frame → scroll can be restored).
+  const cached = getGalleryCache();
+  const [images, setImages] = useState<ImageWithDetails[]>(cached.images ?? []);
+  const [allImagesCount, setAllImagesCount] = useState(cached.allImagesCount);
+  const [allTags, setAllTags] = useState<string[]>(cached.tags);
+  const [collections, setCollections] = useState<Collection[]>(cached.collections);
+  const [selectedTags, setSelectedTags] = useState<string[]>(cached.filters.selectedTags);
+  const [selectedCollections, setSelectedCollections] = useState<string[]>(
+    cached.filters.selectedCollections
+  );
+  const [sourceFilter, setSourceFilter] = useState<"all" | "upload" | "gallery_dl">(
+    cached.filters.sourceFilter
+  );
+  const [sortBy, setSortBy] = useState<"newest" | "oldest">(cached.filters.sortBy);
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   // Full objects survive filter changes
   const [selectedImageMap, setSelectedImageMap] = useState<Map<string, ImageWithDetails>>(new Map());
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(cached.images === null);
   const [layout, setLayout] = useState<LayoutType>("full");
-  const [imageSize, setImageSize] = useState<ImageSize>("large");
+  const [imageSize, setImageSize] = useState<ImageSize>("medium");
+
+  const pathname = usePathname();
+  const pathnameRef = useRef(pathname);
+  useEffect(() => { pathnameRef.current = pathname; }, [pathname]);
+  const filtersInitialized = useRef(false);
 
   const hasActiveFilters =
     selectedTags.length > 0 || selectedCollections.length > 0 || sourceFilter !== "all";
@@ -48,8 +62,94 @@ export default function GalleryPage() {
 
   useEffect(() => { fetchCollections(); }, []);
 
+  // Keep the module cache mirroring state so a return navigation can re-render
+  // from memory, and so deletes/uploads/filter changes don't leave it stale.
+  useEffect(() => {
+    updateGalleryCache({
+      images,
+      allImagesCount,
+      tags: allTags,
+      collections,
+      filters: { selectedTags, selectedCollections, sourceFilter, sortBy },
+    });
+  }, [
+    images,
+    allImagesCount,
+    allTags,
+    collections,
+    selectedTags,
+    selectedCollections,
+    sourceFilter,
+    sortBy,
+  ]);
+
+  // Persist scroll position (rAF-throttled) and take scroll restoration away
+  // from the browser/router so it can't reset us to the top. Only save while
+  // we're actually on the gallery route, so scrolling an image page (if this
+  // component stays mounted in the router cache) doesn't clobber the value.
+  useEffect(() => {
+    const prevRestoration = window.history.scrollRestoration;
+    window.history.scrollRestoration = "manual";
+    let ticking = false;
+    const onScroll = () => {
+      if (pathnameRef.current !== "/" || ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        ticking = false;
+        const y = window.scrollY;
+        // A navigation away briefly fires a scroll-to-0 that would otherwise
+        // erase the saved position. Only persist a real top (when the saved
+        // value is already small); ignore the transient reset.
+        if (y === 0 && getGalleryCache().scrollY > 200) return;
+        setGalleryScroll(y);
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.history.scrollRestoration = prevRestoration;
+    };
+  }, []);
+
+  // Restore scroll whenever we (re)arrive at the gallery — keyed on pathname so
+  // it fires on a fresh mount AND when the router keeps this component cached
+  // and just flips the route back to "/". The list is already hydrated from
+  // cache (full height), so the first scrollTo lands; the rAF loop then keeps
+  // re-asserting until it's stable, defeating Next's post-navigation reset, and
+  // stops as soon as the target holds (so it never fights the user).
+  useLayoutEffect(() => {
+    if (pathname !== "/") return;
+    const c = getGalleryCache();
+    if (!c.images || c.images.length === 0 || c.scrollY <= 0) return;
+    const target = c.scrollY;
+    let frame = 0;
+    let stable = 0;
+    let raf = 0;
+    const tick = () => {
+      window.scrollTo(0, target);
+      if (Math.abs(window.scrollY - target) <= 1) stable++;
+      else stable = 0;
+      frame++;
+      if (stable < 3 && frame < 40) raf = requestAnimationFrame(tick);
+    };
+    tick();
+    return () => cancelAnimationFrame(raf);
+  }, [pathname]);
+
+  // A real filter/sort change (not the initial mount) resets to the top.
+  useEffect(() => {
+    if (!filtersInitialized.current) {
+      filtersInitialized.current = true;
+      return;
+    }
+    setGalleryScroll(0);
+    window.scrollTo(0, 0);
+  }, [selectedTags, selectedCollections, sourceFilter, sortBy]);
+
   async function fetchImages() {
-    setIsLoading(true);
+    // Only show the skeleton on a cold load — a warm return or a background
+    // revalidate keeps the existing grid (and its scroll position) on screen.
+    if (images.length === 0) setIsLoading(true);
     let collectionAssetIds: string[] | null = null;
 
     if (selectedCollections.length > 0) {
@@ -61,16 +161,28 @@ export default function GalleryPage() {
       if (collectionAssetIds.length === 0) { setImages([]); setIsLoading(false); return; }
     }
 
-    let query = supabase
-      .from("image_assets")
-      .select(`*, tags:asset_tags(*), prompts:prompts(*)`)
-      .order("created_at", { ascending: sortBy === "oldest" });
+    // Supabase enforces a server-side max-rows cap (1000) per request, so a
+    // single query silently truncates. Page through in chunks until a short
+    // page signals the end, then concatenate.
+    const PAGE = 1000;
+    const all: ImageWithDetails[] = [];
+    for (let from = 0; ; from += PAGE) {
+      let query = supabase
+        .from("image_assets")
+        .select(`*, tags:asset_tags(*), prompts:prompts(*)`)
+        .order("created_at", { ascending: sortBy === "oldest" })
+        .range(from, from + PAGE - 1);
 
-    if (sourceFilter !== "all") query = query.eq("source_type", sourceFilter);
-    if (collectionAssetIds) query = query.in("id", collectionAssetIds);
+      if (sourceFilter !== "all") query = query.eq("source_type", sourceFilter);
+      if (collectionAssetIds) query = query.in("id", collectionAssetIds);
 
-    const { data } = await query;
-    let filtered = (data || []) as ImageWithDetails[];
+      const { data } = await query;
+      const page = (data || []) as ImageWithDetails[];
+      all.push(...page);
+      if (page.length < PAGE) break;
+    }
+
+    let filtered = all;
 
     if (selectedTags.length > 0) {
       filtered = filtered.filter((img) =>

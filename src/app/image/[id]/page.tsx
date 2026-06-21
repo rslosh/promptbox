@@ -246,7 +246,9 @@ export default function ImageDetailPage({
           title="Image Details"
           actions={
             <div className="flex gap-2">
-              <Link href="/">
+              {/* scroll={false}: let the gallery restore its own scroll
+                  position on return instead of Next jumping to the top. */}
+              <Link href="/" scroll={false}>
                 <Button variant="outline" size="sm">
                   <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
                   Back
