@@ -171,6 +171,9 @@ export default function GalleryPage() {
         .from("image_assets")
         .select(`*, tags:asset_tags(*), prompts:prompts(*)`)
         .order("created_at", { ascending: sortBy === "oldest" })
+        // Newest prompt first within each asset, so prompts[0] is the latest
+        // regeneration (the one carrying scene_prompt for the Ideogram button).
+        .order("created_at", { referencedTable: "prompts", ascending: false })
         .range(from, from + PAGE - 1);
 
       if (sourceFilter !== "all") query = query.eq("source_type", sourceFilter);

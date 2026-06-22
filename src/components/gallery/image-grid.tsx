@@ -227,27 +227,28 @@ export function ImageGrid({
                   {/* Actions */}
                   <div className="flex flex-wrap items-center gap-2">
                     <Link href={`/image/${image.id}`} onClick={(e) => e.stopPropagation()}>
-                      <Button size="sm" variant="secondary" className="h-7 text-xs bg-white/15 text-white hover:bg-white/25 border-0">
-                        <Eye className="mr-1 h-3 w-3" />
+                      <Button size="sm" variant="secondary" className="h-7 text-xs bg-white/15 text-white hover:bg-white/25 border-0" title="View image details">
+                        <Eye className={cn("h-3 w-3", imageSize !== "small" && "mr-1")} />
                         {imageSize === "small" ? "" : "View"}
                       </Button>
                     </Link>
-                    {firstPrompt && imageSize !== "small" && (
+                    {firstPrompt && (
                       <Button
                         size="sm"
                         variant="secondary"
                         className="h-7 text-xs bg-white/15 text-white hover:bg-white/25 border-0"
                         onClick={(e) => handleCopyPrompt(firstPrompt, e)}
+                        title="Copy natural-language prompt"
                       >
                         {copiedId === firstPrompt.id ? (
-                          <Check className="mr-1 h-3 w-3" />
+                          <Check className={cn("h-3 w-3", imageSize !== "small" && "mr-1")} />
                         ) : (
-                          <Copy className="mr-1 h-3 w-3" />
+                          <Copy className={cn("h-3 w-3", imageSize !== "small" && "mr-1")} />
                         )}
-                        Copy
+                        {imageSize === "small" ? "" : "Copy"}
                       </Button>
                     )}
-                    {firstPrompt && hasScene && imageSize !== "small" && (
+                    {firstPrompt && hasScene && (
                       <Button
                         size="sm"
                         variant="secondary"
@@ -256,11 +257,11 @@ export function ImageGrid({
                         title="Copy Ideogram (scene composition) JSON"
                       >
                         {copiedId === `scene-${firstPrompt.id}` ? (
-                          <Check className="mr-1 h-3 w-3" />
+                          <Check className={cn("h-3 w-3", imageSize !== "small" && "mr-1")} />
                         ) : (
-                          <Braces className="mr-1 h-3 w-3" />
+                          <Braces className={cn("h-3 w-3", imageSize !== "small" && "mr-1")} />
                         )}
-                        Ideogram
+                        {imageSize === "small" ? "" : "Ideogram"}
                       </Button>
                     )}
                   </div>
