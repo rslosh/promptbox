@@ -7,6 +7,7 @@ import os from "os";
 import crypto from "crypto";
 import { fetchCosmosClusterImages, downloadCosmosImage, fetchArenaChannelImages, downloadArenaImage } from "@/lib/cosmos";
 import { runTagger } from "@/lib/tagger";
+import { fetchMidjourneyImages, downloadMidjourneyImage } from "@/lib/midjourney";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -124,10 +125,11 @@ async function syncCollection(
     console.log(`[sync] Collection has ${existingHashes.size} existing images`);
 
     // Normalize the URL (e.g. Pinterest ?boardId= links → canonical /username/board/)
-    const resolvedUrl = await resolveUrl(sourceUrl);
+    // Skip for sites where query params / hash fragments are load-bearing.
+    const skipResolve = sourceUrl.includes("midjourney.com") || sourceUrl.includes("shotdeck.com");
+    const resolvedUrl = skipResolve ? sourceUrl : await resolveUrl(sourceUrl);
     if (resolvedUrl !== sourceUrl) {
       console.log(`[sync] Resolved URL: ${sourceUrl} → ${resolvedUrl}`);
-      await supabase.from("collections").update({ source_url: resolvedUrl }).eq("id", collectionId);
     }
 
     // Backfill platform if collection was created before cosmos detection was added
@@ -145,18 +147,22 @@ async function syncCollection(
     let addedCount = 0;
 
     async function processFile(filePath: string): Promise<void> {
-      const result = await processImageForCollection(
-        filePath,
-        sourceUrl,
-        collectionId,
-        existingHashes,
-        position
-      );
-      if (result) {
-        newAssetIds.push(result.assetId);
-        existingHashes.add(result.hash);
-        position++;
-        addedCount++;
+      try {
+        const result = await processImageForCollection(
+          filePath,
+          sourceUrl,
+          collectionId,
+          existingHashes,
+          position
+        );
+        if (result) {
+          newAssetIds.push(result.assetId);
+          existingHashes.add(result.hash);
+          position++;
+          addedCount++;
+        }
+      } catch (err) {
+        console.error(`[sync] Skipping ${filePath}: ${err instanceof Error ? err.message : err}`);
       }
     }
 
@@ -174,6 +180,18 @@ async function syncCollection(
       for (const url of imageUrls) {
         if (limit !== null && addedCount >= limit) break;
         const filePath = await downloadArenaImage(url, tempDir);
+        if (filePath) await processFile(filePath);
+      }
+    } else if (platform === "midjourney" || resolvedUrl.includes("midjourney.com")) {
+      // Scroll limit must cover existing images (all duplicates) + desired new ones
+      const scrollLimit = limit !== null
+        ? Math.max(limit * 3, existingHashes.size + limit * 2)
+        : null;
+      const imageUrls = await fetchMidjourneyImages(resolvedUrl, scrollLimit);
+      console.log(`[sync] Found ${imageUrls.length} Midjourney image URLs`);
+      for (const url of imageUrls) {
+        if (limit !== null && addedCount >= limit) break;
+        const filePath = await downloadMidjourneyImage(url, tempDir);
         if (filePath) await processFile(filePath);
       }
     } else {
@@ -359,19 +377,23 @@ async function processImageForCollection(
     };
     const mimeType = mimeTypes[ext] || "image/jpeg";
 
-    // Upload to storage
-    const { error: uploadError } = await supabase.storage
-      .from("image_assets")
-      .upload(storagePath, buffer, {
-        contentType: mimeType,
-        upsert: false,
-      });
-
+    // Upload to storage (retry up to 3 times on transient network errors)
+    let uploadError;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      ({ error: uploadError } = await supabase.storage
+        .from("image_assets")
+        .upload(storagePath, buffer, { contentType: mimeType, upsert: false }));
+      if (!uploadError || uploadError.message.includes("already exists")) break;
+      if (attempt < 3) {
+        console.log(`[sync] Upload attempt ${attempt} failed (${uploadError.message}), retrying...`);
+        await new Promise((r) => setTimeout(r, attempt * 1000));
+      }
+    }
     if (uploadError && !uploadError.message.includes("already exists")) {
       throw new Error(`Failed to upload: ${uploadError.message}`);
     }
 
-    // Upload thumbnail
+    // Upload thumbnail (best-effort, no retry needed)
     const thumbPath = `${hash.slice(0, 2)}/${hash.slice(2, 4)}/${hash}_thumb.${ext}`;
     await supabase.storage
       .from("image_thumbs")

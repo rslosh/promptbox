@@ -27,18 +27,24 @@ const navigation = [
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
-const platformIcons: Record<string, string> = {
-  pinterest: "📌",
-  are_na: "🔲",
-  tumblr: "📝",
-  manual: "📁",
-  cosmos: "🌌",
+const platformMeta: Record<string, { label: string; emoji: string }> = {
+  pinterest:   { label: "Pinterest",   emoji: "📌" },
+  are_na:      { label: "Are.na",      emoji: "🔲" },
+  tumblr:      { label: "Tumblr",      emoji: "📝" },
+  cosmos:      { label: "Cosmos",      emoji: "✦"  },
+  shotdeck:    { label: "Shotdeck",    emoji: "🎬" },
+  midjourney:  { label: "Midjourney",  emoji: "🌀" },
+  manual:      { label: "Manual",      emoji: "📁" },
 };
+
+// Preferred group order
+const PLATFORM_ORDER = ["pinterest", "are_na", "tumblr", "cosmos", "shotdeck", "midjourney", "manual"];
 
 export function Sidebar() {
   const pathname = usePathname();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [collectionsExpanded, setCollectionsExpanded] = useState(true);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -58,6 +64,28 @@ export function Sidebar() {
       setIsLoading(false);
     }
   }
+
+  function toggleGroup(platform: string) {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      next.has(platform) ? next.delete(platform) : next.add(platform);
+      return next;
+    });
+  }
+
+  // Group collections by platform in preferred order
+  const grouped = PLATFORM_ORDER.reduce<{ platform: string; collections: Collection[] }[]>(
+    (acc, platform) => {
+      const items = collections.filter((c) => c.platform === platform);
+      if (items.length > 0) acc.push({ platform, collections: items });
+      return acc;
+    },
+    []
+  );
+  // Append any unknown platforms at the end
+  const knownPlatforms = new Set(PLATFORM_ORDER);
+  const unknownItems = collections.filter((c) => !knownPlatforms.has(c.platform ?? ""));
+  if (unknownItems.length > 0) grouped.push({ platform: "manual", collections: unknownItems });
 
   return (
     <aside className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-black/[0.06] bg-white/80 backdrop-blur-2xl">
@@ -110,7 +138,7 @@ export function Sidebar() {
           </button>
 
           {collectionsExpanded && (
-            <div className="mt-1 space-y-0.5">
+            <div className="mt-1">
               {isLoading ? (
                 <div className="px-3 py-2">
                   <div className="h-3.5 w-24 animate-pulse rounded-md bg-black/[0.07]" />
@@ -118,35 +146,60 @@ export function Sidebar() {
               ) : collections.length === 0 ? (
                 <p className="px-3 py-2 text-xs text-gray-600">No collections yet</p>
               ) : (
-                collections.map((collection) => {
-                  const isActive = pathname === `/collections/${collection.slug}`;
-                  return (
-                    <Link
-                      key={collection.id}
-                      href={`/collections/${collection.slug}`}
-                      className={cn(
-                        "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors",
-                        isActive
-                          ? "bg-[#f2ff59] text-gray-900 font-medium"
-                          : "text-gray-700 hover:bg-black/[0.05] hover:text-gray-900"
-                      )}
-                    >
-                      <span className="text-base leading-none">
-                        {platformIcons[collection.platform]}
-                      </span>
-                      <span className="flex-1 truncate">{collection.name}</span>
-                      <span className={cn("tabular-nums text-xs", isActive ? "text-gray-700" : "text-gray-600")}>
-                        {collection.image_count}
-                      </span>
-                    </Link>
-                  );
-                })
+                <div className="space-y-3">
+                  {grouped.map(({ platform, collections: items }) => {
+                    const meta = platformMeta[platform] ?? { label: platform, emoji: "📁" };
+                    const isCollapsed = collapsedGroups.has(platform);
+                    return (
+                      <div key={platform}>
+                        {/* Group header */}
+                        <button
+                          onClick={() => toggleGroup(platform)}
+                          className="flex w-full items-center gap-1.5 px-3 py-1 text-[11px] font-medium text-gray-500 hover:text-gray-700 transition-colors"
+                        >
+                          <span>{meta.emoji}</span>
+                          <span className="flex-1 text-left">{meta.label}</span>
+                          {isCollapsed
+                            ? <ChevronRight className="h-3 w-3" />
+                            : <ChevronDown className="h-3 w-3" />
+                          }
+                        </button>
+
+                        {/* Collection items */}
+                        {!isCollapsed && (
+                          <div className="space-y-0.5">
+                            {items.map((collection) => {
+                              const isActive = pathname === `/collections/${collection.slug}`;
+                              return (
+                                <Link
+                                  key={collection.id}
+                                  href={`/collections/${collection.slug}`}
+                                  className={cn(
+                                    "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors",
+                                    isActive
+                                      ? "bg-[#f2ff59] text-gray-900 font-medium"
+                                      : "text-gray-700 hover:bg-black/[0.05] hover:text-gray-900"
+                                  )}
+                                >
+                                  <span className="flex-1 truncate">{collection.name}</span>
+                                  <span className={cn("tabular-nums text-xs shrink-0", isActive ? "text-gray-700" : "text-gray-500")}>
+                                    {collection.image_count}
+                                  </span>
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
 
               {/* Add Collection Link */}
               <Link
                 href="/upload"
-                className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-gray-600 transition-colors hover:bg-black/[0.05] hover:text-gray-800"
+                className="mt-2 flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-gray-600 transition-colors hover:bg-black/[0.05] hover:text-gray-800"
               >
                 <Plus className="h-3.5 w-3.5" />
                 <span>Add collection</span>

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, useRef, use } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -28,7 +29,16 @@ import {
   Code,
   FileText,
   Download,
+  Plus,
 } from "lucide-react";
+
+const PLATFORM_EMOJI: Record<string, string> = {
+  pinterest: "📌",
+  are_na: "🔲",
+  tumblr: "📝",
+  cosmos: "✦",
+  manual: "📁",
+};
 
 interface PromptWithVersions extends Prompt {
   versions: PromptVersion[];
@@ -38,6 +48,7 @@ interface CollectionRef {
   id: string;
   name: string;
   slug: string;
+  platform: string;
 }
 
 function deriveSource(sourceType: string, sourceRef: string | null): string {
@@ -74,10 +85,48 @@ export default function ImageDetailPage({
   const [retagError, setRetagError] = useState<string | null>(null);
   const [showJson, setShowJson] = useState(false);
   const [jsonView, setJsonView] = useState<"visstruct" | "ideogram">("ideogram");
+  const [allCollections, setAllCollections] = useState<CollectionRef[]>([]);
+  const [showCollectionPicker, setShowCollectionPicker] = useState(false);
+  const [pickerPos, setPickerPos] = useState<{ top: number; right: number } | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const addBtnRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     fetchImageDetails();
+    fetch("/api/collections")
+      .then((r) => r.json())
+      .then((data) => setAllCollections(Array.isArray(data) ? data : []))
+      .catch(() => {});
   }, [id]);
+
+  // Close picker on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      const target = e.target as Node;
+      if (
+        addBtnRef.current?.contains(target) ||
+        dropdownRef.current?.contains(target)
+      ) return;
+      setShowCollectionPicker(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  function handlePickerToggle() {
+    if (showCollectionPicker) {
+      setShowCollectionPicker(false);
+      return;
+    }
+    const rect = addBtnRef.current?.getBoundingClientRect();
+    if (rect) {
+      setPickerPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+    }
+    setShowCollectionPicker(true);
+  }
 
   async function fetchImageDetails() {
     const { data: imageData, error: imageError } = await supabase
@@ -113,7 +162,7 @@ export default function ImageDetailPage({
 
     const { data: collectionData } = await supabase
       .from("collection_assets")
-      .select("collection:collections(id, name, slug)")
+      .select("collection:collections(id, name, slug, platform)")
       .eq("asset_id", id);
 
     setCollections(
@@ -222,6 +271,26 @@ export default function ImageDetailPage({
     }
   }
 
+  async function handleAddToCollection(collectionId: string) {
+    setShowCollectionPicker(false);
+    await fetch(`/api/collections/${collectionId}/assets`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ asset_ids: [id] }),
+    });
+    const added = allCollections.find((c) => c.id === collectionId);
+    if (added) setCollections((prev) => [...prev, added]);
+  }
+
+  async function handleRemoveFromCollection(collectionId: string) {
+    await fetch(`/api/collections/${collectionId}/assets`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ asset_id: id }),
+    });
+    setCollections((prev) => prev.filter((c) => c.id !== collectionId));
+  }
+
   if (!image) {
     return (
       <div className="flex min-h-screen">
@@ -292,7 +361,7 @@ export default function ImageDetailPage({
               </Panel>
 
               {/* Image info */}
-              <Panel className="overflow-hidden">
+              <Panel className="overflow-visible">
                 <div className="border-b border-black/[0.06] px-5 py-3.5">
                   <p className="text-sm font-medium text-gray-800">Image Info</p>
                 </div>
@@ -311,18 +380,72 @@ export default function ImageDetailPage({
                     <span className="text-xs text-gray-500">Source</span>
                     <Chip>{deriveSource(image.source_type, image.source_ref)}</Chip>
                   </div>
-                  {collections.length > 0 && (
-                    <div className="flex items-start justify-between gap-4 py-2.5">
-                      <span className="text-xs text-gray-500">Collections</span>
-                      <div className="flex flex-wrap justify-end gap-1">
-                        {collections.map((c) => (
-                          <Link key={c.id} href={`/collections/${c.slug}`}>
-                            <Chip className="cursor-pointer hover:bg-black/[0.07] transition-colors">{c.name}</Chip>
+                  <div className="flex items-start justify-between gap-4 py-2.5">
+                    <span className="text-xs text-gray-500">Collections</span>
+                    <div className="flex flex-wrap justify-end gap-1">
+                      {collections.map((c) => (
+                        <div key={c.id} className="group flex items-center gap-0.5 rounded-full border border-black/[0.08] bg-black/[0.03] py-0.5 pl-2 pr-1 transition-colors hover:border-black/[0.14]">
+                          <Link
+                            href={`/collections/${c.slug}`}
+                            className="text-[11px] text-gray-600 transition-colors hover:text-gray-900"
+                          >
+                            {c.name}
                           </Link>
-                        ))}
-                      </div>
+                          <button
+                            onClick={() => handleRemoveFromCollection(c.id)}
+                            className="ml-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full text-gray-300 opacity-0 transition-all group-hover:opacity-100 hover:bg-black/[0.06] hover:text-gray-600"
+                            title="Remove from collection"
+                          >
+                            <X className="h-2 w-2" />
+                          </button>
+                        </div>
+                      ))}
+
+                      {/* Add to collection picker */}
+                      <button
+                        ref={addBtnRef}
+                        onClick={handlePickerToggle}
+                        className={cn(
+                          "flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
+                          showCollectionPicker
+                            ? "border-gray-900 bg-gray-900 text-white"
+                            : "border-black/[0.12] bg-gray-100 text-gray-600 hover:border-black/[0.2] hover:bg-gray-200 hover:text-gray-800"
+                        )}
+                      >
+                        <Plus className="h-3 w-3" />
+                        Add to collection
+                      </button>
+
+                      {/* Dropdown portaled to body to escape stacking contexts */}
+                      {mounted && showCollectionPicker && pickerPos && createPortal(
+                        <div
+                          ref={dropdownRef}
+                          style={{ top: pickerPos.top, right: pickerPos.right }}
+                          className="fixed z-[9999] w-56 rounded-xl border border-black/[0.08] bg-white shadow-xl"
+                        >
+                          {allCollections.filter((c) => !collections.some((ec) => ec.id === c.id)).length === 0 ? (
+                            <p className="px-4 py-3 text-xs text-gray-400">All collections added</p>
+                          ) : (
+                            <div className="max-h-64 overflow-y-auto py-1.5">
+                              {allCollections
+                                .filter((c) => !collections.some((ec) => ec.id === c.id))
+                                .map((c) => (
+                                  <button
+                                    key={c.id}
+                                    onClick={() => handleAddToCollection(c.id)}
+                                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs text-gray-700 transition-colors hover:bg-gray-50"
+                                  >
+                                    <span>{PLATFORM_EMOJI[c.platform] ?? "📁"}</span>
+                                    <span className="truncate font-medium">{c.name}</span>
+                                  </button>
+                                ))}
+                            </div>
+                          )}
+                        </div>,
+                        document.body
+                      )}
                     </div>
-                  )}
+                  </div>
                   <div className="flex items-center justify-between py-2.5">
                     <span className="text-xs text-gray-500">Added</span>
                     <span className="text-xs text-gray-700">{formatDate(image.created_at)}</span>
