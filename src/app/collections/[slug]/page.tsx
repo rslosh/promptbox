@@ -284,6 +284,28 @@ export default function CollectionPage({
       const body: Record<string, unknown> = { autoTag: true };
       if (limitOverride) body.limit = limitOverride;
 
+      // Forward tagging settings so synced images use the same custom
+      // prompts/models (and API key) as manual uploads
+      const stored = localStorage.getItem("promptbox_settings");
+      const {
+        geminiApiKey,
+        geminiSystemPrompt,
+        geminiProsePrompt,
+        geminiScenePrompt,
+        visionModel,
+        proseModel,
+        sceneModel,
+      } = stored ? JSON.parse(stored) : {};
+      Object.assign(body, {
+        apiKey: geminiApiKey,
+        systemPrompt: geminiSystemPrompt,
+        prosePrompt: geminiProsePrompt,
+        scenePrompt: geminiScenePrompt,
+        visionModel,
+        proseModel,
+        sceneModel,
+      });
+
       const response = await fetch(`/api/collections/${collection.id}/sync`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

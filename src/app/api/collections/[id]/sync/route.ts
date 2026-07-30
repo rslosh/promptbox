@@ -13,6 +13,18 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+// Custom prompts / per-pass models from Settings, forwarded by the client so
+// synced images get tagged with the same instructions as manual uploads.
+type TagSettings = {
+  apiKey?: string | null;
+  visionPrompt?: string | null;
+  prosePrompt?: string | null;
+  scenePrompt?: string | null;
+  visionModel?: string | null;
+  proseModel?: string | null;
+  sceneModel?: string | null;
+};
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -22,6 +34,15 @@ export async function POST(
     const body = await request.json().catch(() => ({}));
     const autoTag = body.autoTag !== false;
     const limit: number | null = body.limit ? Math.max(1, Number(body.limit)) : null;
+    const tagSettings: TagSettings = {
+      apiKey: body.apiKey,
+      visionPrompt: body.systemPrompt,
+      prosePrompt: body.prosePrompt,
+      scenePrompt: body.scenePrompt,
+      visionModel: body.visionModel,
+      proseModel: body.proseModel,
+      sceneModel: body.sceneModel,
+    };
 
     // Get the collection
     const { data: collection, error: collectionError } = await supabase
@@ -57,7 +78,7 @@ export async function POST(
     }
 
     // Start sync in background
-    syncCollection(job.id, collection.id, collection.source_url, autoTag, collection.platform ?? null, limit).catch(console.error);
+    syncCollection(job.id, collection.id, collection.source_url, autoTag, collection.platform ?? null, limit, tagSettings).catch(console.error);
 
     return NextResponse.json({
       message: "Sync started",
@@ -76,7 +97,8 @@ async function syncCollection(
   sourceUrl: string,
   autoTag: boolean,
   platform: string | null = null,
-  limit: number | null = null
+  limit: number | null = null,
+  tagSettings: TagSettings = {}
 ) {
   // Update job status to running
   await supabase
@@ -176,10 +198,12 @@ async function syncCollection(
 
     // Auto-tag new images if enabled
     if (autoTag && newAssetIds.length > 0) {
-      const geminiKey = process.env.GEMINI_API_KEY;
+      const geminiKey = tagSettings.apiKey || process.env.GEMINI_API_KEY;
       if (geminiKey) {
         console.log(`[sync] Starting auto-tagging for ${newAssetIds.length} images`);
-        await tagImages(newAssetIds, geminiKey);
+        await tagImages(newAssetIds, geminiKey, tagSettings);
+      } else {
+        console.log("[sync] Skipping auto-tag: no Gemini API key in Settings or GEMINI_API_KEY env");
       }
     }
 
@@ -394,7 +418,7 @@ async function processImageForCollection(
   return { assetId, hash };
 }
 
-async function tagImages(assetIds: string[], apiKey: string) {
+async function tagImages(assetIds: string[], apiKey: string, tagSettings: TagSettings = {}) {
   const CONCURRENCY = 3;
 
   async function tagOne(assetId: string) {
@@ -427,6 +451,12 @@ async function tagImages(assetIds: string[], apiKey: string) {
         base64Image,
         mimeType,
         apiKey,
+        visionPrompt: tagSettings.visionPrompt,
+        prosePrompt: tagSettings.prosePrompt,
+        scenePrompt: tagSettings.scenePrompt,
+        visionModel: tagSettings.visionModel,
+        proseModel: tagSettings.proseModel,
+        sceneModel: tagSettings.sceneModel,
       });
 
       if (tags.length > 0) {

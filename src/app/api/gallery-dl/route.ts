@@ -14,6 +14,18 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.
 // Using untyped client for server-side operations to avoid strict type constraints
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+// Custom prompts / per-pass models from Settings, forwarded by the client so
+// pulled images get tagged with the same instructions as manual uploads.
+type TagSettings = {
+  apiKey?: string | null;
+  visionPrompt?: string | null;
+  prosePrompt?: string | null;
+  scenePrompt?: string | null;
+  visionModel?: string | null;
+  proseModel?: string | null;
+  sceneModel?: string | null;
+};
+
 function cosmosSlugify(text: string): string {
   return text
     .toLowerCase()
@@ -39,7 +51,26 @@ function cosmosExtractName(url: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const { url, autoTag = true } = await request.json();
+    const {
+      url,
+      autoTag = true,
+      apiKey,
+      systemPrompt,
+      prosePrompt,
+      scenePrompt,
+      visionModel,
+      proseModel,
+      sceneModel,
+    } = await request.json();
+    const tagSettings: TagSettings = {
+      apiKey,
+      visionPrompt: systemPrompt,
+      prosePrompt,
+      scenePrompt,
+      visionModel,
+      proseModel,
+      sceneModel,
+    };
 
     if (!url) {
       return NextResponse.json({ error: "URL required" }, { status: 400 });
@@ -61,7 +92,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Start the gallery-dl process in the background
-    processGalleryDl(job.id, url, autoTag).catch(console.error);
+    processGalleryDl(job.id, url, autoTag, tagSettings).catch(console.error);
 
     return NextResponse.json({
       message: "Job created",
@@ -73,7 +104,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function processGalleryDl(jobId: string, url: string, autoTag: boolean) {
+async function processGalleryDl(
+  jobId: string,
+  url: string,
+  autoTag: boolean,
+  tagSettings: TagSettings = {}
+) {
   // Update job status to running
   await supabase
     .from("ingestion_jobs")
@@ -166,12 +202,14 @@ async function processGalleryDl(jobId: string, url: string, autoTag: boolean) {
 
     // Auto-tag images if enabled and API key is available
     if (autoTag && assetIds.length > 0) {
-      const geminiKey = process.env.GEMINI_API_KEY;
+      const geminiKey = tagSettings.apiKey || process.env.GEMINI_API_KEY;
       if (geminiKey) {
         console.log(`[gallery-dl] Starting auto-tagging for ${assetIds.length} images`);
-        await tagImages(assetIds, geminiKey);
+        await tagImages(assetIds, geminiKey, tagSettings);
       } else {
-        console.log("[gallery-dl] Skipping auto-tag: No GEMINI_API_KEY configured");
+        console.log(
+          "[gallery-dl] Skipping auto-tag: no Gemini API key in Settings or GEMINI_API_KEY env"
+        );
       }
     }
 
@@ -195,7 +233,7 @@ async function processGalleryDl(jobId: string, url: string, autoTag: boolean) {
   }
 }
 
-async function tagImages(assetIds: string[], apiKey: string) {
+async function tagImages(assetIds: string[], apiKey: string, tagSettings: TagSettings = {}) {
   for (const assetId of assetIds) {
     try {
       const { data: asset, error: assetError } = await supabase
@@ -232,6 +270,12 @@ async function tagImages(assetIds: string[], apiKey: string) {
         base64Image,
         mimeType,
         apiKey,
+        visionPrompt: tagSettings.visionPrompt,
+        prosePrompt: tagSettings.prosePrompt,
+        scenePrompt: tagSettings.scenePrompt,
+        visionModel: tagSettings.visionModel,
+        proseModel: tagSettings.proseModel,
+        sceneModel: tagSettings.sceneModel,
       });
 
       if (tags.length > 0) {

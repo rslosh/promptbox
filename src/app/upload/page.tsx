@@ -52,6 +52,31 @@ const PLATFORM_EMOJI: Record<string, string> = {
   manual: "📁",
 };
 
+// Tagging settings from the Settings page, in the request-body key names the
+// tag/gallery-dl/sync routes expect. Ensures every ingestion path attaches the
+// same custom prompts, per-pass models, and API key.
+function readTagSettings() {
+  const stored = localStorage.getItem("promptbox_settings");
+  const {
+    geminiApiKey,
+    geminiSystemPrompt,
+    geminiProsePrompt,
+    geminiScenePrompt,
+    visionModel,
+    proseModel,
+    sceneModel,
+  } = stored ? JSON.parse(stored) : {};
+  return {
+    apiKey: geminiApiKey,
+    systemPrompt: geminiSystemPrompt,
+    prosePrompt: geminiProsePrompt,
+    scenePrompt: geminiScenePrompt,
+    visionModel,
+    proseModel,
+    sceneModel,
+  };
+}
+
 export default function UploadPage() {
   const router = useRouter();
   const [files, setFiles] = useState<UploadFile[]>([]);
@@ -123,28 +148,12 @@ export default function UploadPage() {
         uploadedAssetIds.push(data.asset.id);
 
         // Fire tagging in the background — don't await so we can redirect immediately
-        const stored = localStorage.getItem("promptbox_settings");
-        const {
-          geminiApiKey,
-          geminiSystemPrompt,
-          geminiProsePrompt,
-          geminiScenePrompt,
-          visionModel,
-          proseModel,
-          sceneModel,
-        } = stored ? JSON.parse(stored) : {};
         fetch("/api/tag", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             assetId: data.asset.id,
-            apiKey: geminiApiKey,
-            systemPrompt: geminiSystemPrompt,
-            prosePrompt: geminiProsePrompt,
-            scenePrompt: geminiScenePrompt,
-            visionModel,
-            proseModel,
-            sceneModel,
+            ...readTagSettings(),
           }),
           keepalive: true,
         });
@@ -208,7 +217,7 @@ export default function UploadPage() {
       const response = await fetch("/api/gallery-dl", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: singleUrl }),
+        body: JSON.stringify({ url: singleUrl, ...readTagSettings() }),
       });
 
       if (!response.ok) throw new Error("Gallery-DL import failed");
@@ -243,7 +252,11 @@ export default function UploadPage() {
       const syncResponse = await fetch(`/api/collections/${collection.id}/sync`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ autoTag: true, ...(limitNum ? { limit: limitNum } : {}) }),
+        body: JSON.stringify({
+          autoTag: true,
+          ...(limitNum ? { limit: limitNum } : {}),
+          ...readTagSettings(),
+        }),
       });
 
       let jobId = "";
