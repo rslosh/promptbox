@@ -112,7 +112,7 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isRetagging, setIsRetagging] = useState(false);
   const [retagError, setRetagError] = useState<string | null>(null);
-  const [showJson, setShowJson] = useState(false);
+  const [showJson, setShowJson] = useState(true);
   const [jsonView, setJsonView] = useState<"visstruct" | "ideogram">("ideogram");
   const [allCollections, setAllCollections] = useState<CollectionRef[]>([]);
   const [showCollectionPicker, setShowCollectionPicker] = useState(false);
