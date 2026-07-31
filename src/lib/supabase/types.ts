@@ -19,6 +19,8 @@ export interface Database {
           width: number;
           height: number;
           format: string;
+          name: string | null;
+          note: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -31,6 +33,8 @@ export interface Database {
           width: number;
           height: number;
           format: string;
+          name?: string | null;
+          note?: string | null;
           created_at?: string;
           updated_at?: string;
         };

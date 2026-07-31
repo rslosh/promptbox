@@ -68,6 +68,18 @@ export default function GalleryPage() {
 
   useEffect(() => { fetchCollections(); }, []);
 
+  // Images deleted from inside the lightbox toolbar
+  useEffect(() => {
+    function onDeleted(e: Event) {
+      const { id } = (e as CustomEvent<{ id: string }>).detail;
+      setImages((prev) => prev.filter((img) => img.id !== id));
+      handleDeselect(id);
+    }
+    window.addEventListener("promptbox:image-deleted", onDeleted);
+    return () => window.removeEventListener("promptbox:image-deleted", onDeleted);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Keep the module cache mirroring state so a return navigation can re-render
   // from memory, and so deletes/uploads/filter changes don't leave it stale.
   useEffect(() => {

@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Panel } from "@/components/ui/panel";
 import { Chip } from "@/components/ui/chip";
@@ -50,6 +51,23 @@ interface CollectionRef {
   platform: string;
 }
 
+/** Hex palette for the Details card — prefers the Ideogram (scene) palette,
+    falls back to VisionStruct's dominant hex estimates. Already extracted by
+    the tagging passes, so this costs nothing. */
+function extractPalette(prompt: { scene_prompt: unknown; json_prompt: unknown } | null): string[] {
+  if (!prompt) return [];
+  const scene = prompt.scene_prompt as Record<string, unknown> | null;
+  const style = scene?.style_description as Record<string, unknown> | undefined;
+  const sceneColors = Array.isArray(style?.color_palette) ? style.color_palette : [];
+  const json = prompt.json_prompt as Record<string, unknown> | null;
+  const cp = json?.color_palette as Record<string, unknown> | undefined;
+  const visColors = Array.isArray(cp?.dominant_hex_estimates) ? cp.dominant_hex_estimates : [];
+  const hexes = [...sceneColors, ...visColors].filter(
+    (c): c is string => typeof c === "string" && /^#[0-9a-fA-F]{6}$/.test(c)
+  );
+  return [...new Set(hexes.map((h) => h.toUpperCase()))].slice(0, 8);
+}
+
 function deriveSource(sourceType: string, sourceRef: string | null): string {
   if (sourceType === "upload") return "Direct upload";
   if (!sourceRef) return sourceType;
@@ -74,10 +92,11 @@ interface ImageInspectorProps {
 
 export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
   const [image, setImage] = useState<ImageAsset | null>(null);
+  const [nameDraft, setNameDraft] = useState("");
+  const [noteDraft, setNoteDraft] = useState("");
   const [tags, setTags] = useState<AssetTag[]>([]);
   const [prompts, setPrompts] = useState<PromptWithVersions[]>([]);
   const [collections, setCollections] = useState<CollectionRef[]>([]);
-  const [dimensions, setDimensions] = useState<{ w: number; h: number } | null>(null);
   const [selectedPrompt, setSelectedPrompt] = useState<PromptWithVersions | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editedPrompt, setEditedPrompt] = useState("");
@@ -176,6 +195,8 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
     // One synchronous block → React batches this into a single render:
     // the whole panel swaps at once instead of populating piecemeal.
     setImage(imageRes.data);
+    setNameDraft(imageRes.data.name ?? "");
+    setNoteDraft(imageRes.data.note ?? "");
     setTags(tagsRes.data || []);
     setPrompts(promptsWithVersions);
     setSelectedPrompt(promptsWithVersions[0] ?? null);
@@ -184,7 +205,6 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
         .map((row) => row.collection as unknown as CollectionRef | null)
         .filter((c): c is CollectionRef => c !== null)
     );
-    setDimensions(null);
   }
 
   async function handleCopy(text: string, copyId: string) {
@@ -286,6 +306,14 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
     }
   }
 
+  async function saveField(field: "name" | "note", value: string) {
+    if (!image) return;
+    const normalized = value.trim() || null;
+    if (normalized === image[field]) return;
+    setImage({ ...image, [field]: normalized });
+    await supabase.from("image_assets").update({ [field]: normalized }).eq("id", imageId);
+  }
+
   async function handleAddToCollection(collectionId: string) {
     setShowCollectionPicker(false);
     await fetch(`/api/collections/${collectionId}/assets`, {
@@ -326,10 +354,12 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
 
   const actionBar = (
     <div className="flex flex-wrap items-center gap-2">
-      <Button variant="outline" size="sm" onClick={handleDownload}>
-        <Download className="mr-1.5 h-3.5 w-3.5" />
-        Download
-      </Button>
+      {variant === "page" && (
+        <Button variant="outline" size="sm" onClick={handleDownload}>
+          <Download className="mr-1.5 h-3.5 w-3.5" />
+          Download
+        </Button>
+      )}
       <Link href={`/playground?images=${imageId}`}>
         <Button size="sm">
           <Sparkles className="mr-1.5 h-3.5 w-3.5" />
@@ -339,22 +369,100 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
     </div>
   );
 
+  const palette = extractPalette(selectedPrompt);
+
   const infoPanel = (
     <Panel className="overflow-visible">
       <div className="border-b border-hairline px-5 py-3.5">
-        <p className="text-sm font-medium text-primary">Image Info</p>
+        <p className="text-sm font-medium text-primary">Details</p>
       </div>
-      <div className="divide-y divide-hairline px-5">
-        {dimensions && (
-          <div className="flex items-center justify-between py-2.5">
-            <span className="text-xs text-tertiary">Dimensions</span>
-            <span className="text-xs font-medium text-primary">{dimensions.w} × {dimensions.h}</span>
+      <div className="space-y-3 px-5 py-4">
+        {/* Thumbnail preview with format badge — the lightbox stage already
+            shows the image, so this is the panel's identity card */}
+        {variant === "modal" && (
+          <div className="relative overflow-hidden rounded-lg border border-hairline bg-hover-soft">
+            <div className="relative aspect-[4/3]">
+              <Image
+                src={getImageUrl(image.storage_path)}
+                alt=""
+                fill
+                className="object-cover"
+                sizes="360px"
+              />
+            </div>
+            <span className="absolute right-2 top-2 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
+              {image.format}
+            </span>
           </div>
         )}
-        <div className="flex items-center justify-between py-2.5">
-          <span className="text-xs text-tertiary">Format</span>
-          <span className="text-xs font-medium text-primary uppercase">{image.format}</span>
+
+        {/* Palette — extracted by the tagging passes; click to copy */}
+        {palette.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            {palette.map((hex) => (
+              <button
+                key={hex}
+                onClick={() => handleCopy(hex, `hex-${hex}`)}
+                title={`${hex} — click to copy`}
+                className="group/swatch relative h-5 w-5 rounded-pill border border-hairline transition-transform duration-quick hover:scale-110"
+                style={{ backgroundColor: hex }}
+              >
+                {copiedId === `hex-${hex}` && (
+                  <Check className="absolute inset-0 m-auto h-3 w-3 text-white drop-shadow" />
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Name */}
+        <div>
+          <label className="mb-1 block text-xs text-tertiary">Name</label>
+          <Input
+            value={nameDraft}
+            onChange={(e) => setNameDraft(e.target.value)}
+            onBlur={() => saveField("name", nameDraft)}
+            onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+            placeholder="Untitled"
+          />
         </div>
+
+        {/* Source URL */}
+        {image.source_ref && (
+          <div>
+            <label className="mb-1 block text-xs text-tertiary">URL</label>
+            <a
+              href={image.source_ref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block truncate rounded-md border border-input bg-input-bg px-2.5 py-1.5 text-sm text-secondary transition-colors duration-quick hover:text-primary"
+            >
+              {image.source_ref}
+            </a>
+          </div>
+        )}
+
+        {/* Note */}
+        <div>
+          <label className="mb-1 block text-xs text-tertiary">Note</label>
+          <Textarea
+            value={noteDraft}
+            onChange={(e) => setNoteDraft(e.target.value)}
+            onBlur={() => saveField("note", noteDraft)}
+            placeholder="Add a note…"
+            className="min-h-[56px]"
+            rows={2}
+          />
+        </div>
+      </div>
+
+      <div className="divide-y divide-hairline border-t border-hairline px-5">
+        {image.width > 0 && image.height > 0 && (
+          <div className="flex items-center justify-between py-2.5">
+            <span className="text-xs text-tertiary">Dimensions</span>
+            <span className="text-xs font-medium text-primary">{image.width} × {image.height}</span>
+          </div>
+        )}
         <div className="flex items-center justify-between py-2.5">
           <span className="text-xs text-tertiary">Source</span>
           <Chip>{deriveSource(image.source_type, image.source_ref)}</Chip>
@@ -437,6 +545,19 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
     <Panel className="overflow-hidden">
       <div className="flex items-center justify-between border-b border-hairline px-5 py-3.5">
         <p className="text-sm font-medium text-primary">Tags</p>
+        <button
+          onClick={handleRetag}
+          disabled={isRetagging}
+          className="flex h-6 items-center gap-1 rounded-md px-2 text-xs font-medium text-secondary transition-colors duration-quick hover:bg-hover-soft hover:text-primary disabled:opacity-40"
+          title="Re-run auto-tagging on this image"
+        >
+          {isRetagging ? (
+            <RefreshCw className="h-3 w-3 animate-spin" />
+          ) : (
+            <Sparkles className="h-3 w-3" />
+          )}
+          Auto-tag
+        </button>
       </div>
       <div className="p-5">
         {tags.length > 0 ? (
@@ -723,10 +844,6 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
               fill
               className="object-contain"
               sizes="(max-width: 1024px) 100vw, 50vw"
-              onLoad={(e) => {
-                const el = e.currentTarget as HTMLImageElement;
-                setDimensions({ w: el.naturalWidth, h: el.naturalHeight });
-              }}
             />
           </div>
         </Panel>

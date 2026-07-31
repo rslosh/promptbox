@@ -102,6 +102,26 @@ export default function CollectionPage({
   const [layout, setLayout] = useState<LayoutType>("full");
   const [imageSize, setImageSize] = useState<ImageSize>("large");
 
+  // Images deleted from inside the lightbox toolbar
+  useEffect(() => {
+    function onDeleted(e: Event) {
+      const { id } = (e as CustomEvent<{ id: string }>).detail;
+      setCollection((prev) =>
+        prev
+          ? {
+              ...prev,
+              assets: prev.assets.filter((img) => img.id !== id),
+              image_count: prev.image_count - 1,
+            }
+          : null
+      );
+      deselect(id);
+    }
+    window.addEventListener("promptbox:image-deleted", onDeleted);
+    return () => window.removeEventListener("promptbox:image-deleted", onDeleted);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Close delete popover on outside click
   useEffect(() => {
     if (!confirmDelete) return;

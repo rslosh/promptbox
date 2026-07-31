@@ -1,23 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { X, ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
+import {
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Maximize2,
+  Download,
+  Trash2,
+  Pipette,
+  Check,
+} from "lucide-react";
 import { supabase, getImageUrl, getThumbnailUrl } from "@/lib/supabase/client";
 import { getGalleryNav } from "@/lib/gallery-nav";
-import { cn } from "@/lib/utils";
+import { cn, copyToClipboard } from "@/lib/utils";
 import { ImageInspector } from "./image-inspector";
 
+/** Notifies gallery pages so they can drop the card without a refetch. */
+export function emitImageDeleted(id: string) {
+  window.dispatchEvent(new CustomEvent("promptbox:image-deleted", { detail: { id } }));
+}
+
+const ZOOM_MIN = 1;
+const ZOOM_MAX = 3;
+
 /**
- * Full-screen viewer rendered by the intercepting @modal route. The gallery
- * stays mounted underneath — Esc/scrim/back all return without losing grid
- * state. Arrow keys move through the order captured by the last-rendered grid.
- *
- * Speed model: the storage path comes synchronously from the gallery-nav
- * store, the grid's already-cached thumbnail paints on the first frame, and
- * the full-res image fades in over it when loaded. Neighbors are preloaded
- * so arrow-keying is instant.
+ * Full-screen viewer rendered by the intercepting @modal route, styled after
+ * the GatherOS viewer: ambient backdrop from the image's own colors, a top
+ * toolbar (counter · zoom · eyedropper · open · download · delete · close),
+ * and the inspector Details panel on the right.
  */
 export function ImageLightbox({ imageId }: { imageId: string }) {
   const router = useRouter();
@@ -34,9 +47,14 @@ export function ImageLightbox({ imageId }: { imageId: string }) {
   const storagePath = entry?.storagePath ?? fetchedPath;
 
   const [fullLoaded, setFullLoaded] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [pickedColor, setPickedColor] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const stageScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setFullLoaded(false);
+    setZoom(1);
     if (!entry) {
       supabase
         .from("image_assets")
@@ -61,6 +79,55 @@ export function ImageLightbox({ imageId }: { imageId: string }) {
   function goTo(id: string) {
     // replace: keeps history to one entry so Back always closes the lightbox
     router.replace(`/image/${id}`, { scroll: false });
+  }
+
+  async function handleDownload() {
+    if (!storagePath) return;
+    try {
+      const res = await fetch(getImageUrl(storagePath));
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `promptbox-${imageId.slice(0, 8)}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Download error:", error);
+    }
+  }
+
+  async function handleDelete() {
+    if (isDeleting) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/images/${imageId}`, { method: "DELETE" });
+      if (res.ok) {
+        emitImageDeleted(imageId);
+        if (next) goTo(next.id);
+        else if (prev) goTo(prev.id);
+        else router.back();
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
+    }
+    setIsDeleting(false);
+  }
+
+  async function handleEyedropper() {
+    type EyeDropperCtor = new () => { open: () => Promise<{ sRGBHex: string }> };
+    const EyeDropperApi = (window as unknown as { EyeDropper?: EyeDropperCtor }).EyeDropper;
+    if (!EyeDropperApi) return;
+    try {
+      const result = await new EyeDropperApi().open();
+      await copyToClipboard(result.sRGBHex.toUpperCase());
+      setPickedColor(result.sRGBHex.toUpperCase());
+      setTimeout(() => setPickedColor(null), 2000);
+    } catch {
+      // user cancelled the picker
+    }
   }
 
   useEffect(() => {
@@ -91,86 +158,159 @@ export function ImageLightbox({ imageId }: { imageId: string }) {
     };
   }, []);
 
+  const toolbarBtn =
+    "flex h-7 w-7 items-center justify-center rounded-md text-white/70 transition-colors duration-quick hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:pointer-events-none";
+
   return (
-    <div className="fixed inset-0 z-[100] flex">
-      {/* Scrim */}
-      <div
-        className="absolute inset-0 bg-black/75 backdrop-blur-sm"
-        onClick={() => router.back()}
-      />
+    <div className="fixed inset-0 z-[100] flex flex-col bg-black/85">
+      {/* Ambient backdrop: the image's own colors, blurred and dimmed */}
+      {storagePath && (
+        <div
+          aria-hidden
+          className="absolute inset-0 scale-125 bg-cover bg-center opacity-40 blur-[80px] saturate-150"
+          style={{ backgroundImage: `url(${getThumbnailUrl(storagePath)})` }}
+        />
+      )}
+      <div aria-hidden className="absolute inset-0 bg-black/55" />
 
-      {/* Image stage */}
-      <div className="relative z-10 flex min-w-0 flex-1 items-center justify-center p-8">
-        {/* Close */}
-        <button
-          onClick={() => router.back()}
-          className="absolute left-4 top-4 z-20 flex h-8 w-8 items-center justify-center rounded-pill bg-white/10 text-white/80 backdrop-blur-sm transition-colors duration-quick hover:bg-white/20 hover:text-white"
-          aria-label="Close"
-        >
-          <X className="h-4 w-4" />
-        </button>
-
-        {/* Open full page */}
-        <a
-          href={`/image/${imageId}`}
-          className="absolute left-14 top-4 z-20 flex h-8 w-8 items-center justify-center rounded-pill bg-white/10 text-white/80 backdrop-blur-sm transition-colors duration-quick hover:bg-white/20 hover:text-white"
-          title="Open full page"
-        >
-          <Maximize2 className="h-3.5 w-3.5" />
-        </a>
-
-        {/* Prev / Next */}
-        {prev && (
-          <button
-            onClick={() => goTo(prev.id)}
-            className="absolute left-4 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-pill bg-white/10 text-white/80 backdrop-blur-sm transition-colors duration-quick hover:bg-white/20 hover:text-white"
-            aria-label="Previous image"
-          >
-            <ChevronLeft className="h-4.5 w-4.5" />
+      {/* ── Toolbar ── */}
+      <div className="relative z-20 flex h-titlebar shrink-0 items-center justify-between px-3">
+        <div className="flex items-center gap-2">
+          <button onClick={() => router.back()} className={toolbarBtn} aria-label="Close">
+            <X className="h-4 w-4" />
           </button>
-        )}
-        {next && (
-          <button
-            onClick={() => goTo(next.id)}
-            className="absolute right-4 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-pill bg-white/10 text-white/80 backdrop-blur-sm transition-colors duration-quick hover:bg-white/20 hover:text-white"
-            aria-label="Next image"
-          >
-            <ChevronRight className="h-4.5 w-4.5" />
-          </button>
-        )}
+          {index >= 0 && (
+            <span className="text-sm tabular-nums text-white/60">
+              {index + 1} / {siblings.length}
+            </span>
+          )}
+        </div>
 
-        {storagePath && (
-          <div className="relative h-full w-full">
-            {/* Thumbnail: already in the browser cache from the grid — paints
-                immediately and stays underneath until full-res arrives */}
-            <Image
-              src={getThumbnailUrl(storagePath)}
-              alt=""
-              fill
-              className="object-contain"
-              sizes="70vw"
-              priority
-            />
-            <Image
-              src={getImageUrl(storagePath)}
-              alt=""
-              fill
-              className={cn(
-                "object-contain transition-opacity duration-quick",
-                fullLoaded ? "opacity-100" : "opacity-0"
-              )}
-              sizes="70vw"
-              priority
-              onLoad={() => setFullLoaded(true)}
-            />
-          </div>
-        )}
+        <div className="flex items-center gap-1">
+          {/* Zoom */}
+          <span className="mr-1 w-10 text-right text-sm tabular-nums text-white/60">
+            {Math.round(zoom * 100)}%
+          </span>
+          <input
+            type="range"
+            min={ZOOM_MIN * 100}
+            max={ZOOM_MAX * 100}
+            value={zoom * 100}
+            onChange={(e) => setZoom(Number(e.target.value) / 100)}
+            className="h-1 w-28 cursor-pointer appearance-none rounded-pill bg-white/20 accent-white"
+            aria-label="Zoom"
+          />
+
+          <div className="mx-2 h-4 w-px bg-white/15" />
+
+          <button
+            onClick={handleEyedropper}
+            className={cn(toolbarBtn, "relative")}
+            title="Pick a color (copies hex)"
+          >
+            {pickedColor ? <Check className="h-3.5 w-3.5" /> : <Pipette className="h-3.5 w-3.5" />}
+          </button>
+          {pickedColor && (
+            <span className="flex items-center gap-1.5 rounded-md bg-white/10 px-2 py-0.5 text-xs text-white/80">
+              <span
+                className="h-3 w-3 rounded-sm border border-white/30"
+                style={{ backgroundColor: pickedColor }}
+              />
+              {pickedColor} copied
+            </span>
+          )}
+          <a href={`/image/${imageId}`} className={toolbarBtn} title="Open full page">
+            <Maximize2 className="h-3.5 w-3.5" />
+          </a>
+          <button onClick={handleDownload} className={toolbarBtn} title="Download">
+            <Download className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className={cn(toolbarBtn, "hover:!bg-red-500/20 hover:!text-red-400")}
+            title="Delete image"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
 
-      {/* Inspector panel */}
-      <aside className="relative z-10 hidden h-full w-[420px] shrink-0 overflow-y-auto border-l border-hairline bg-content p-4 md:block">
-        <ImageInspector imageId={imageId} variant="modal" />
-      </aside>
+      {/* ── Body ── */}
+      <div className="relative z-10 flex min-h-0 flex-1">
+        {/* Image stage */}
+        <div className="relative flex min-w-0 flex-1 items-center justify-center">
+          {/* Scrim click closes (only when not zoomed in) */}
+          <div
+            className="absolute inset-0"
+            onClick={() => zoom === 1 && router.back()}
+          />
+
+          {/* Prev / Next */}
+          {prev && (
+            <button
+              onClick={() => goTo(prev.id)}
+              className="absolute left-4 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-pill bg-white/10 text-white/80 backdrop-blur-sm transition-colors duration-quick hover:bg-white/20 hover:text-white"
+              aria-label="Previous image"
+            >
+              <ChevronLeft className="h-4.5 w-4.5" />
+            </button>
+          )}
+          {next && (
+            <button
+              onClick={() => goTo(next.id)}
+              className="absolute right-4 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-pill bg-white/10 text-white/80 backdrop-blur-sm transition-colors duration-quick hover:bg-white/20 hover:text-white"
+              aria-label="Next image"
+            >
+              <ChevronRight className="h-4.5 w-4.5" />
+            </button>
+          )}
+
+          {storagePath && (
+            <div
+              ref={stageScrollRef}
+              className={cn("relative h-full w-full p-6", zoom > 1 && "overflow-auto p-0")}
+            >
+              <div
+                className="relative mx-auto h-full"
+                style={
+                  zoom > 1
+                    ? { width: `${zoom * 100}%`, height: `${zoom * 100}%` }
+                    : undefined
+                }
+              >
+                {/* Thumbnail: already in the browser cache from the grid — paints
+                    immediately and stays underneath until full-res arrives */}
+                <Image
+                  src={getThumbnailUrl(storagePath)}
+                  alt=""
+                  fill
+                  className="object-contain"
+                  sizes="70vw"
+                  priority
+                />
+                <Image
+                  src={getImageUrl(storagePath)}
+                  alt=""
+                  fill
+                  className={cn(
+                    "object-contain transition-opacity duration-quick",
+                    fullLoaded ? "opacity-100" : "opacity-0"
+                  )}
+                  sizes={zoom > 1 ? "100vw" : "70vw"}
+                  priority
+                  onLoad={() => setFullLoaded(true)}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Details panel */}
+        <aside className="relative z-10 my-3 mr-3 hidden w-[400px] shrink-0 overflow-y-auto rounded-xl border border-white/10 bg-content p-4 shadow-modal md:block">
+          <ImageInspector imageId={imageId} variant="modal" />
+        </aside>
+      </div>
     </div>
   );
 }
