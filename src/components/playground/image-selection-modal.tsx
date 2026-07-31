@@ -150,17 +150,17 @@ export function ImageSelectionModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-8"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-black/[0.08] bg-white/95 shadow-2xl backdrop-blur-xl">
+      <div className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-hairline gos-glass shadow-2xl backdrop-blur-xl">
 
         {/* Header */}
-        <div className="flex shrink-0 items-center justify-between border-b border-black/[0.06] px-6 py-4">
+        <div className="flex shrink-0 items-center justify-between border-b border-hairline px-6 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#f2ff59]/30">
-              <Images className="h-5 w-5 text-gray-700" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-faint">
+              <Images className="h-5 w-5 text-secondary" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Select Images</h2>
-              <p className="text-sm text-gray-600">Choose images to remix their prompts</p>
+              <h2 className="text-lg font-semibold text-primary">Select Images</h2>
+              <p className="text-sm text-secondary">Choose images to remix their prompts</p>
             </div>
           </div>
           <Button variant="ghost" size="sm" onClick={onClose}>
@@ -169,7 +169,7 @@ export function ImageSelectionModal({
         </div>
 
         {/* Filters */}
-        <div className="shrink-0 border-b border-black/[0.06] px-6 py-4">
+        <div className="shrink-0 border-b border-hairline px-6 py-4">
           <FilterBar
             tags={allTags}
             selectedTags={selectedTags}
@@ -183,14 +183,14 @@ export function ImageSelectionModal({
 
         {/* ── Selection tray ── */}
         {selectedImageObjects.length > 0 && (
-          <div className="shrink-0 border-b border-black/[0.06] bg-gray-50/80 px-6 py-3">
+          <div className="shrink-0 border-b border-hairline bg-hover-soft/80 px-6 py-3">
             <div className="mb-2.5 flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-tertiary">
                 Selected ({selectedImageObjects.length})
               </span>
               <button
                 onClick={handleClearAll}
-                className="text-[11px] text-gray-400 transition-colors hover:text-gray-700"
+                className="text-[11px] text-tertiary transition-colors hover:text-secondary"
               >
                 Clear all
               </button>
@@ -201,7 +201,7 @@ export function ImageSelectionModal({
                 return (
                   <div
                     key={img.id}
-                    className="group/tray relative h-[120px] w-[120px] shrink-0 overflow-hidden rounded-xl border-2 border-gray-900/25"
+                    className="group/tray relative h-[120px] w-[120px] shrink-0 overflow-hidden rounded-xl border-2 border-accent/25"
                   >
                     <Image
                       src={getThumbnailUrl(img.storage_path)}
@@ -219,7 +219,7 @@ export function ImageSelectionModal({
                     )}
                     <button
                       onClick={() => handleDeselect(img.id)}
-                      className="absolute right-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-white transition-colors hover:bg-red-500"
+                      className="absolute right-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-on-accent transition-colors hover:bg-red-500"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -234,13 +234,13 @@ export function ImageSelectionModal({
         <div className="flex-1 overflow-y-auto p-6">
           {isLoading ? (
             <div className="flex h-64 items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+              <Loader2 className="h-8 w-8 animate-spin text-tertiary" />
             </div>
           ) : images.length === 0 ? (
             <div className="flex h-64 flex-col items-center justify-center text-center">
-              <Images className="h-12 w-12 text-gray-300" />
-              <p className="mt-4 text-gray-700">No images found</p>
-              <p className="text-sm text-gray-600">Try adjusting your filters or upload some images</p>
+              <Images className="h-12 w-12 text-icon-muted" />
+              <p className="mt-4 text-secondary">No images found</p>
+              <p className="text-sm text-secondary">Try adjusting your filters or upload some images</p>
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
@@ -259,8 +259,8 @@ export function ImageSelectionModal({
                     className={cn(
                       "group relative aspect-square overflow-hidden rounded-xl border-2 transition-all",
                       isSelected
-                        ? "border-gray-900 ring-2 ring-gray-900/20"
-                        : "border-transparent hover:border-black/[0.2]"
+                        ? "border-accent ring-2 ring-accent/20"
+                        : "border-transparent hover:border-strong"
                     )}
                   >
                     <Image
@@ -277,7 +277,7 @@ export function ImageSelectionModal({
                       className={cn(
                         "absolute left-2 top-2 z-20 flex h-6 w-6 items-center justify-center rounded-full border-2 transition-all",
                         isSelected
-                          ? "border-gray-900 bg-gray-900"
+                          ? "border-accent bg-accent"
                           : "border-white/70 bg-black/30 opacity-0 group-hover:opacity-100"
                       )}
                     >
@@ -314,7 +314,7 @@ export function ImageSelectionModal({
         </div>
 
         {/* Footer */}
-        <div className="flex shrink-0 items-center justify-between border-t border-black/[0.06] px-6 py-4">
+        <div className="flex shrink-0 items-center justify-between border-t border-hairline px-6 py-4">
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button
             onClick={handleConfirm}

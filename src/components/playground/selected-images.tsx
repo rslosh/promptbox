@@ -107,7 +107,7 @@ export function SelectedImages({
     <>
       <div>
         <div className="mb-3 flex items-center justify-between">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+          <p className="text-xs font-semibold uppercase tracking-wide text-tertiary">
             Selected Images
           </p>
           <Button size="sm" variant="ghost" onClick={onAddClick} className="h-6 w-6 p-0">
@@ -126,7 +126,7 @@ export function SelectedImages({
                   return (
                     <div
                       key={image.id}
-                      className="group relative aspect-square cursor-pointer overflow-hidden rounded-xl bg-gray-100"
+                      className="group relative aspect-square cursor-pointer overflow-hidden rounded-xl bg-accent-faint"
                       onClick={() => setPreviewId(image.id)}
                     >
                       <Image
@@ -162,7 +162,7 @@ export function SelectedImages({
 
             <button
               onClick={onAddClick}
-              className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 py-2.5 text-xs text-gray-400 transition-colors hover:border-gray-300 hover:text-gray-600"
+              className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-strong py-2.5 text-xs text-tertiary transition-colors hover:border-strong hover:text-secondary"
             >
               <Plus className="h-3.5 w-3.5" />
               Add more images
@@ -171,7 +171,7 @@ export function SelectedImages({
         ) : (
           <button
             onClick={onAddClick}
-            className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 py-6 text-gray-400 transition-colors hover:border-[#f2ff59] hover:text-gray-600"
+            className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-strong py-6 text-tertiary transition-colors hover:border-strong hover:text-secondary"
           >
             <Plus className="h-6 w-6" />
             <span className="text-xs">Click to select images</span>
@@ -190,11 +190,11 @@ export function SelectedImages({
 
           {/* Preview card — 2-col: image left, metadata right */}
           <div
-            className="fixed z-50 flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl"
+            className="fixed z-50 flex flex-col overflow-hidden rounded-2xl border border-strong bg-surface shadow-2xl"
             style={{ left: PREVIEW_LEFT, top: 16, width: 720, bottom: 110 }}
           >
             {/* Header */}
-            <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-4 py-2.5">
+            <div className="flex shrink-0 items-center justify-between border-b border-hairline px-4 py-2.5">
               <div className="flex items-center gap-2">
                 <span
                   className="rounded px-2 py-0.5 text-xs font-bold text-white"
@@ -203,7 +203,7 @@ export function SelectedImages({
                   {getImageLabel(previewIndex)}
                 </span>
                 {images.length > 1 && (
-                  <span className="text-[11px] text-gray-400">
+                  <span className="text-[11px] text-tertiary">
                     {previewIndex + 1} / {images.length}
                   </span>
                 )}
@@ -214,14 +214,14 @@ export function SelectedImages({
                     <button
                       onClick={() => navigate(-1)}
                       title="Previous (←)"
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                      className="flex h-7 w-7 items-center justify-center rounded-full text-tertiary hover:bg-accent-faint hover:text-secondary"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => navigate(1)}
                       title="Next (→)"
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                      className="flex h-7 w-7 items-center justify-center rounded-full text-tertiary hover:bg-accent-faint hover:text-secondary"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </button>
@@ -230,7 +230,7 @@ export function SelectedImages({
                 <button
                   onClick={() => setPreviewId(null)}
                   title="Close (Esc)"
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-tertiary hover:bg-accent-faint hover:text-secondary"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -240,7 +240,7 @@ export function SelectedImages({
             {/* Body — two columns */}
             <div className="flex min-h-0 flex-1">
               {/* Left: image */}
-              <div className="relative w-[320px] shrink-0 bg-gray-50">
+              <div className="relative w-[320px] shrink-0 bg-hover-soft">
                 <Image
                   src={getThumbnailUrl(previewImage.storage_path)}
                   alt=""
@@ -251,7 +251,7 @@ export function SelectedImages({
               </div>
 
               {/* Divider */}
-              <div className="w-px shrink-0 bg-gray-100" />
+              <div className="w-px shrink-0 bg-accent-faint" />
 
               {/* Right: metadata, scrollable */}
               <div className="min-h-0 flex-1 overflow-y-auto">
@@ -276,23 +276,23 @@ function InsertableText({
 }) {
   if (!onInsert) {
     return prose ? (
-      <p className="text-[11px] leading-relaxed text-gray-700">{text}</p>
+      <p className="text-[11px] leading-relaxed text-secondary">{text}</p>
     ) : (
-      <span className="text-[11px] leading-snug text-gray-700">{text}</span>
+      <span className="text-[11px] leading-snug text-secondary">{text}</span>
     );
   }
 
   const cls = cn(
     "group/ins relative cursor-pointer rounded transition-colors",
     prose
-      ? "block text-[11px] leading-relaxed text-gray-700 hover:bg-gray-50 -mx-1 px-1 py-0.5"
-      : "inline text-[11px] leading-snug text-gray-700 hover:bg-gray-50 rounded px-0.5"
+      ? "block text-[11px] leading-relaxed text-secondary hover:bg-hover-soft -mx-1 px-1 py-0.5"
+      : "inline text-[11px] leading-snug text-secondary hover:bg-hover-soft rounded px-0.5"
   );
 
   return (
     <span className={cls} onClick={() => onInsert(text)} title="Click to insert at cursor">
       {text}
-      <span className="ml-1 inline-block translate-y-px rounded bg-gray-200 px-1 py-px text-[8px] font-medium text-gray-500 opacity-0 transition-opacity group-hover/ins:opacity-100">
+      <span className="ml-1 inline-block translate-y-px rounded bg-accent-soft px-1 py-px text-[8px] font-medium text-tertiary opacity-0 transition-opacity group-hover/ins:opacity-100">
         insert
       </span>
     </span>
@@ -309,7 +309,7 @@ function PreviewMetadata({
   const prompt = image.prompts?.[0];
   if (!prompt) {
     return (
-      <p className="px-4 py-4 text-xs italic text-gray-400">No prompt data available.</p>
+      <p className="px-4 py-4 text-xs italic text-tertiary">No prompt data available.</p>
     );
   }
 
@@ -320,11 +320,11 @@ function PreviewMetadata({
   );
 
   return (
-    <div className="divide-y divide-gray-100">
+    <div className="divide-y divide-hairline">
       {/* Natural prompt */}
       {naturalPrompt && (
         <section className="px-4 py-3">
-          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-tertiary">
             Natural Prompt
           </p>
           <InsertableText text={naturalPrompt} prose onInsert={onInsert} />
@@ -334,21 +334,21 @@ function PreviewMetadata({
       {/* Compact attribute rows */}
       {fieldEntries.length > 0 && (
         <section className="px-4 py-3">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-tertiary">
             Analysis
           </p>
           <div className="space-y-2.5">
             {fieldEntries.map(([key, value]) =>
               PROSE_FIELDS.has(key) ? (
                 <div key={key}>
-                  <p className="mb-0.5 text-[10px] font-medium text-gray-400">
+                  <p className="mb-0.5 text-[10px] font-medium text-tertiary">
                     {META_LABELS[key] ?? key}
                   </p>
                   <InsertableText text={value} prose onInsert={onInsert} />
                 </div>
               ) : (
                 <div key={key} className="flex items-start gap-3">
-                  <span className="w-[90px] shrink-0 pt-px text-[10px] font-medium text-gray-400">
+                  <span className="w-[90px] shrink-0 pt-px text-[10px] font-medium text-tertiary">
                     {META_LABELS[key] ?? key}
                   </span>
                   <InsertableText text={value} onInsert={onInsert} />
@@ -360,7 +360,7 @@ function PreviewMetadata({
       )}
 
       {!naturalPrompt && fieldEntries.length === 0 && (
-        <p className="px-4 py-4 text-xs italic text-gray-400">No analysis data available.</p>
+        <p className="px-4 py-4 text-xs italic text-tertiary">No analysis data available.</p>
       )}
     </div>
   );

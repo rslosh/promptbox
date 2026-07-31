@@ -9,18 +9,18 @@ interface IconWellProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const sizeClasses: Record<IconWellSize, string> = {
-  xs: "h-6 w-6 rounded-full",
-  sm: "h-8 w-8 rounded-xl",
-  md: "h-10 w-10 rounded-xl",
-  lg: "h-12 w-12 rounded-2xl",
-  xl: "h-14 w-14 rounded-2xl",
+  xs: "h-6 w-6 rounded-pill",
+  sm: "h-8 w-8 rounded-md",
+  md: "h-10 w-10 rounded-lg",
+  lg: "h-12 w-12 rounded-xl",
+  xl: "h-14 w-14 rounded-xl",
 };
 
 const variantClasses: Record<IconWellVariant, string> = {
-  default: "border border-black/[0.08] bg-black/[0.04] text-gray-600",
-  accent:  "border border-[#f2ff59] bg-[#f2ff59]/30 text-gray-800",
-  danger:  "border border-red-200 bg-red-50 text-red-500",
-  success: "border border-emerald-200 bg-emerald-50 text-emerald-600",
+  default: "border bg-accent-faint text-secondary",
+  accent: "border-transparent bg-accent text-on-accent",
+  danger: "border-transparent bg-error/10 text-error",
+  success: "border-transparent bg-[var(--status-success-halo)] text-success",
 };
 
 /** Centered icon container used for empty states, section headers, and status indicators */

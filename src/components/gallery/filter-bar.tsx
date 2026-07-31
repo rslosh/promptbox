@@ -81,7 +81,7 @@ export function FilterBar({
       <div className="flex flex-wrap items-center gap-1.5">
 
         {/* Source pills */}
-        <div className="flex items-center rounded-lg border border-black/[0.08] bg-black/[0.03] p-0.5">
+        <div className="flex items-center rounded-lg border border-hairline bg-hover-soft p-0.5">
           {(
             [
               { value: "all", label: "All" },
@@ -95,8 +95,8 @@ export function FilterBar({
               className={cn(
                 "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
                 sourceFilter === value
-                  ? "bg-white shadow-sm text-gray-900"
-                  : "text-gray-600 hover:text-gray-900"
+                  ? "bg-surface shadow-sm text-primary"
+                  : "text-secondary hover:text-primary"
               )}
             >
               {label}
@@ -104,7 +104,7 @@ export function FilterBar({
           ))}
         </div>
 
-        <div className="h-4 w-px bg-black/[0.08]" />
+        <div className="h-4 w-px bg-accent-faint" />
 
         {/* Collections dropdown */}
         {collections.length > 0 && onCollectionsChange && (
@@ -114,8 +114,8 @@ export function FilterBar({
               className={cn(
                 "flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors",
                 selectedCollections.length > 0
-                  ? "border-[#f2ff59] bg-[#f2ff59]/30 text-gray-800"
-                  : "border-black/[0.1] bg-black/[0.03] text-gray-700 hover:border-black/[0.18] hover:text-gray-900"
+                  ? "border-transparent bg-accent text-on-accent"
+                  : "border-input bg-hover-soft text-secondary hover:border-strong hover:text-primary"
               )}
             >
               <FolderOpen className="h-3 w-3" />
@@ -133,7 +133,7 @@ export function FilterBar({
             </button>
 
             {showCollectionDropdown && (
-              <div className="absolute left-0 top-full z-50 mt-1.5 min-w-[200px] max-h-72 overflow-y-auto rounded-xl border border-black/[0.08] bg-white/95 py-1 shadow-lg backdrop-blur-xl">
+              <div className="absolute left-0 top-full z-50 mt-1.5 min-w-[200px] max-h-72 overflow-y-auto rounded-xl border border-hairline gos-glass py-1 shadow-lg backdrop-blur-xl">
                 {collections.map((col) => {
                   const active = selectedCollections.includes(col.id);
                   return (
@@ -143,27 +143,27 @@ export function FilterBar({
                       className={cn(
                         "flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors",
                         active
-                          ? "bg-[#f2ff59]/20 text-gray-900"
-                          : "text-gray-600 hover:bg-black/[0.04] hover:text-gray-900"
+                          ? "bg-accent-faint text-primary"
+                          : "text-secondary hover:bg-hover-soft hover:text-primary"
                       )}
                     >
                       <div
                         className={cn(
                           "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
-                          active ? "border-gray-900 bg-gray-900" : "border-black/[0.15]"
+                          active ? "border-accent bg-accent" : "border-strong"
                         )}
                       >
                         {active && <Check className="h-2.5 w-2.5 text-white" />}
                       </div>
                       <span className="flex-1 truncate">{col.name}</span>
-                      <span className="tabular-nums text-xs text-gray-600">{col.image_count}</span>
+                      <span className="tabular-nums text-xs text-secondary">{col.image_count}</span>
                     </button>
                   );
                 })}
 
                 {selectedCollections.length > 0 && (
                   <>
-                    <div className="my-1 mx-2 h-px bg-black/[0.06]" />
+                    <div className="my-1 mx-2 h-px bg-accent-faint" />
                     <button
                       onClick={() => {
                         onCollectionsChange([]);
@@ -185,7 +185,7 @@ export function FilterBar({
         <div className="relative" ref={sortRef}>
           <button
             onClick={() => setShowSortDropdown((v) => !v)}
-            className="flex h-7 items-center gap-1.5 rounded-lg border border-black/[0.08] bg-black/[0.03] px-2.5 text-xs font-medium text-gray-700 transition-colors hover:border-black/[0.14] hover:text-gray-900"
+            className="flex h-7 items-center gap-1.5 rounded-lg border border-hairline bg-hover-soft px-2.5 text-xs font-medium text-secondary transition-colors hover:border-strong hover:text-primary"
           >
             <ArrowUpDown className="h-3 w-3" />
             {sortBy === "newest" ? "Newest" : "Oldest"}
@@ -195,7 +195,7 @@ export function FilterBar({
           </button>
 
           {showSortDropdown && (
-            <div className="absolute left-0 top-full z-50 mt-1.5 w-36 rounded-xl border border-black/[0.08] bg-white/95 py-1 shadow-lg backdrop-blur-xl">
+            <div className="absolute left-0 top-full z-50 mt-1.5 w-36 rounded-xl border border-hairline gos-glass py-1 shadow-lg backdrop-blur-xl">
               {(["newest", "oldest"] as const).map((s) => (
                 <button
                   key={s}
@@ -206,11 +206,11 @@ export function FilterBar({
                   className={cn(
                     "flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors capitalize",
                     sortBy === s
-                      ? "text-gray-900 font-medium"
-                      : "text-gray-700 hover:bg-black/[0.04] hover:text-gray-900"
+                      ? "text-primary font-medium"
+                      : "text-secondary hover:bg-hover-soft hover:text-primary"
                   )}
                 >
-                  {sortBy === s && <Check className="h-3 w-3 text-gray-700" />}
+                  {sortBy === s && <Check className="h-3 w-3 text-secondary" />}
                   {sortBy !== s && <span className="w-3" />}
                   {s} first
                 </button>
@@ -222,10 +222,10 @@ export function FilterBar({
         {/* Active filter count + clear */}
         {hasActiveFilters && (
           <>
-            <div className="h-4 w-px bg-black/[0.08]" />
+            <div className="h-4 w-px bg-accent-faint" />
             <button
               onClick={clearAllFilters}
-              className="flex h-7 items-center gap-1.5 rounded-lg border border-black/[0.1] bg-black/[0.04] px-2.5 text-xs font-medium text-gray-700 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500"
+              className="flex h-7 items-center gap-1.5 rounded-lg border border-input bg-hover-soft px-2.5 text-xs font-medium text-secondary transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500"
             >
               <X className="h-3 w-3" />
               {activeFilterCount} filter{activeFilterCount !== 1 ? "s" : ""}
@@ -246,8 +246,8 @@ export function FilterBar({
                 className={cn(
                   "flex h-6 items-center gap-1 rounded-full border px-2.5 text-xs font-medium transition-colors",
                   active
-                    ? "border-[#f2ff59] bg-[#f2ff59]/40 text-gray-800"
-                    : "border-black/[0.1] bg-black/[0.03] text-gray-700 hover:border-black/[0.18] hover:text-gray-900"
+                    ? "border-transparent bg-accent text-on-accent"
+                    : "border-input bg-hover-soft text-secondary hover:border-strong hover:text-primary"
                 )}
               >
                 {tag}
@@ -259,7 +259,7 @@ export function FilterBar({
           {tags.length > 14 && (
             <button
               onClick={() => setShowAllTags((v) => !v)}
-              className="flex h-6 items-center rounded-full border border-black/[0.08] bg-black/[0.03] px-2.5 text-xs text-gray-600 transition-colors hover:text-gray-800"
+              className="flex h-6 items-center rounded-full border border-hairline bg-hover-soft px-2.5 text-xs text-secondary transition-colors hover:text-primary"
             >
               {showAllTags ? "Less" : `+${tags.length - 14}`}
             </button>

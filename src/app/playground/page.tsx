@@ -18,9 +18,9 @@ function LoadingFallback() {
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 pl-64">
+      <main className="flex-1 pl-60">
         <div className="flex h-full items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+          <Loader2 className="h-8 w-8 animate-spin text-tertiary" />
         </div>
       </main>
     </div>

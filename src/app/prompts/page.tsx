@@ -86,7 +86,7 @@ function PromptCard({ prompt, allImages, onFavoriteToggle, onEdit, onDelete }: P
   return (
     <div className="group relative cursor-default select-none">
       {/* ── Image card ── */}
-      <div className="relative aspect-square overflow-hidden rounded-2xl border border-black/[0.07] bg-gray-100 shadow-sm transition-shadow duration-200 group-hover:shadow-md">
+      <div className="relative aspect-square overflow-hidden rounded-2xl border border-hairline bg-accent-faint shadow-sm transition-shadow duration-200 group-hover:shadow-md">
         {/* Background */}
         {displayPath ? (
           <img
@@ -147,7 +147,7 @@ function PromptCard({ prompt, allImages, onFavoriteToggle, onEdit, onDelete }: P
                     e.stopPropagation();
                     onDelete(prompt.id);
                   }}
-                  className="rounded-md bg-red-500/70 px-1.5 py-0.5 text-[10px] text-white transition-colors hover:bg-red-500"
+                  className="rounded-md bg-red-500/70 px-1.5 py-0.5 text-[10px] text-on-accent transition-colors hover:bg-red-500"
                 >
                   Yes
                 </button>
@@ -178,7 +178,7 @@ function PromptCard({ prompt, allImages, onFavoriteToggle, onEdit, onDelete }: P
                   e.stopPropagation();
                   onEdit(prompt);
                 }}
-                className="flex items-center gap-1 rounded-lg bg-white/15 px-2 py-1 text-[11px] font-medium text-white transition-all hover:bg-white/25"
+                className="flex items-center gap-1 rounded-lg bg-white/15 px-2 py-1 text-[11px] font-medium text-on-accent transition-all hover:bg-white/25"
               >
                 <Pencil className="h-3 w-3" />
                 Edit
@@ -191,10 +191,10 @@ function PromptCard({ prompt, allImages, onFavoriteToggle, onEdit, onDelete }: P
       {/* ── Info strip ── */}
       <div className="flex items-center justify-between px-0.5 pt-2">
         <div className="min-w-0">
-          <p className="truncate text-[13px] font-medium leading-tight text-gray-900">
+          <p className="truncate text-[13px] font-medium leading-tight text-primary">
             {prompt.title}
           </p>
-          <p className="text-[11px] text-gray-400">{formatRelativeTime(prompt.created_at)}</p>
+          <p className="text-[11px] text-tertiary">{formatRelativeTime(prompt.created_at)}</p>
         </div>
         <div className="ml-2 flex shrink-0 items-center gap-1">
           {prompt.source_url && (
@@ -204,7 +204,7 @@ function PromptCard({ prompt, allImages, onFavoriteToggle, onEdit, onDelete }: P
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
               title="Open original source"
-              className="rounded p-0.5 text-gray-300 transition-colors hover:text-gray-600"
+              className="rounded p-0.5 text-icon-muted transition-colors hover:text-secondary"
             >
               <Link2 className="h-3.5 w-3.5" />
             </a>
@@ -218,7 +218,7 @@ function PromptCard({ prompt, allImages, onFavoriteToggle, onEdit, onDelete }: P
                 "h-3.5 w-3.5 transition-colors",
                 prompt.is_favorite
                   ? "fill-amber-400 text-amber-400"
-                  : "text-gray-300 hover:text-amber-300"
+                  : "text-icon-muted hover:text-amber-300"
               )}
             />
           </button>
@@ -327,15 +327,15 @@ function PromptModal({ editing, allImages, onClose, onSave }: PromptModalProps) 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
+      <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-hairline bg-surface shadow-2xl">
         {/* Header */}
-        <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-6 py-4">
-          <h2 className="text-sm font-semibold text-gray-900">
+        <div className="flex shrink-0 items-center justify-between border-b border-hairline px-6 py-4">
+          <h2 className="text-sm font-semibold text-primary">
             {editing ? "Edit Prompt" : "New Prompt"}
           </h2>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+            className="rounded-lg p-1.5 text-tertiary transition-colors hover:bg-accent-faint hover:text-secondary"
           >
             <X className="h-4 w-4" />
           </button>
@@ -345,7 +345,7 @@ function PromptModal({ editing, allImages, onClose, onSave }: PromptModalProps) 
         <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5">
           {/* Type selector */}
           <div>
-            <label className="mb-2 block text-xs font-medium text-gray-700">Type</label>
+            <label className="mb-2 block text-xs font-medium text-secondary">Type</label>
             <div className="flex gap-1.5">
               {TYPE_BUTTONS.map(({ value, label, Icon }) => (
                 <button
@@ -354,8 +354,8 @@ function PromptModal({ editing, allImages, onClose, onSave }: PromptModalProps) 
                   className={cn(
                     "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all",
                     type === value
-                      ? "border-gray-900 bg-gray-900 text-white"
-                      : "border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+                      ? "border-accent bg-accent text-on-accent"
+                      : "border-hairline text-secondary hover:border-strong hover:bg-hover-soft"
                   )}
                 >
                   <Icon className="h-3 w-3" />
@@ -367,25 +367,25 @@ function PromptModal({ editing, allImages, onClose, onSave }: PromptModalProps) 
 
           {/* Prompt text */}
           <div>
-            <label className="mb-2 block text-xs font-medium text-gray-700">Prompt text</label>
+            <label className="mb-2 block text-xs font-medium text-secondary">Prompt text</label>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={9}
               autoFocus
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 font-mono text-xs leading-relaxed text-gray-800 placeholder-gray-400 focus:border-gray-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-gray-300"
+              className="w-full rounded-xl border border-hairline bg-hover-soft px-3 py-2.5 font-mono text-xs leading-relaxed text-primary placeholder-gray-400 focus:border-strong focus:bg-surface focus:outline-none focus:ring-1 focus:ring-[var(--border-strong)]"
               placeholder="Enter your prompt…"
             />
           </div>
 
           {/* Output image */}
           <div>
-            <label className="mb-2 block text-xs font-medium text-gray-700">
+            <label className="mb-2 block text-xs font-medium text-secondary">
               Output Image{" "}
-              <span className="font-normal text-gray-400">(optional — shows as card visual)</span>
+              <span className="font-normal text-tertiary">(optional — shows as card visual)</span>
             </label>
             {outputPreviewUrl ? (
-              <div className="relative overflow-hidden rounded-xl border border-gray-200">
+              <div className="relative overflow-hidden rounded-xl border border-hairline">
                 <img src={outputPreviewUrl} alt="" className="h-40 w-full object-cover" />
                 {isUploadingImg && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -400,11 +400,11 @@ function PromptModal({ editing, allImages, onClose, onSave }: PromptModalProps) 
                 </button>
               </div>
             ) : (
-              <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-gray-200 py-6 text-center transition-colors hover:border-gray-300 hover:bg-gray-50">
-                <ImagePlus className="h-5 w-5 text-gray-400" />
+              <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-hairline py-6 text-center transition-colors hover:border-strong hover:bg-hover-soft">
+                <ImagePlus className="h-5 w-5 text-tertiary" />
                 <div>
-                  <p className="text-xs font-medium text-gray-600">Click to upload</p>
-                  <p className="text-[11px] text-gray-400">PNG, JPG, WebP, GIF</p>
+                  <p className="text-xs font-medium text-secondary">Click to upload</p>
+                  <p className="text-[11px] text-tertiary">PNG, JPG, WebP, GIF</p>
                 </div>
                 <input
                   ref={fileInputRef}
@@ -422,44 +422,44 @@ function PromptModal({ editing, allImages, onClose, onSave }: PromptModalProps) 
 
           {/* Title */}
           <div>
-            <label className="mb-2 block text-xs font-medium text-gray-700">Title</label>
+            <label className="mb-2 block text-xs font-medium text-secondary">Title</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:border-gray-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-gray-300"
+              className="w-full rounded-xl border border-hairline bg-hover-soft px-3 py-2 text-sm text-primary placeholder-gray-400 focus:border-strong focus:bg-surface focus:outline-none focus:ring-1 focus:ring-[var(--border-strong)]"
               placeholder={editing ? "" : "Auto-generated on save"}
             />
           </div>
 
           {/* Source URL */}
           <div>
-            <label className="mb-2 block text-xs font-medium text-gray-700">
+            <label className="mb-2 block text-xs font-medium text-secondary">
               Source URL{" "}
-              <span className="font-normal text-gray-400">(optional — link back to original)</span>
+              <span className="font-normal text-tertiary">(optional — link back to original)</span>
             </label>
             <input
               type="url"
               value={sourceUrl}
               onChange={(e) => setSourceUrl(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:border-gray-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-gray-300"
+              className="w-full rounded-xl border border-hairline bg-hover-soft px-3 py-2 text-sm text-primary placeholder-gray-400 focus:border-strong focus:bg-surface focus:outline-none focus:ring-1 focus:ring-[var(--border-strong)]"
               placeholder="https://…"
             />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-gray-100 px-6 py-4">
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-hairline px-6 py-4">
           <button
             onClick={onClose}
-            className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100"
+            className="rounded-lg px-4 py-2 text-sm font-medium text-secondary transition-colors hover:bg-accent-faint"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={isSaving || !content.trim() || isUploadingImg}
-            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-50"
           >
             {isSaving ? "Saving…" : "Save"}
           </button>
@@ -508,18 +508,18 @@ function ImportPanel({ onImported }: ImportPanelProps) {
   }
 
   return (
-    <div className="border-b border-black/[0.06]">
+    <div className="border-b border-hairline">
       {/* Toggle row */}
       <button
         onClick={() => !isImporting && setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 px-6 py-3 text-xs text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
+        className="flex w-full items-center gap-2 px-6 py-3 text-xs text-tertiary transition-colors hover:bg-hover-soft hover:text-secondary"
       >
         <Link2 className="h-3.5 w-3.5" />
         Import from URL
-        <span className="ml-1 text-[10px] text-gray-400">
+        <span className="ml-1 text-[10px] text-tertiary">
           inspova.ai, Twitter/X, and more
         </span>
-        <span className="ml-auto text-gray-400">{open ? "▲" : "▼"}</span>
+        <span className="ml-auto text-tertiary">{open ? "▲" : "▼"}</span>
       </button>
 
       {open && (
@@ -527,10 +527,10 @@ function ImportPanel({ onImported }: ImportPanelProps) {
           {/* Loading overlay */}
           {isImporting && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-b-xl bg-white/90 backdrop-blur-sm">
-              <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
+              <Loader2 className="h-5 w-5 animate-spin text-tertiary" />
               <div className="text-center">
-                <p className="text-sm font-medium text-gray-800">Importing…</p>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-sm font-medium text-primary">Importing…</p>
+                <p className="text-xs text-tertiary mt-0.5">
                   Fetching page, downloading image, saving prompt
                 </p>
               </div>
@@ -547,13 +547,13 @@ function ImportPanel({ onImported }: ImportPanelProps) {
               }}
               onKeyDown={(e) => e.key === "Enter" && handleImport()}
               placeholder="https://inspova.ai/… or https://x.com/…"
-              className="h-8 flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 text-xs text-gray-800 placeholder-gray-400 focus:border-gray-400 focus:bg-white focus:outline-none"
+              className="h-8 flex-1 rounded-lg border border-hairline bg-hover-soft px-3 text-xs text-primary placeholder-gray-400 focus:border-strong focus:bg-surface focus:outline-none"
               autoFocus
             />
             <select
               value={type}
               onChange={(e) => setType(e.target.value as PromptType)}
-              className="h-8 rounded-lg border border-gray-200 bg-gray-50 px-2 text-xs text-gray-700 focus:outline-none"
+              className="h-8 rounded-lg border border-hairline bg-hover-soft px-2 text-xs text-secondary focus:outline-none"
             >
               <option value="image_gen">Image Gen</option>
               <option value="image_edit">Image Edit</option>
@@ -565,8 +565,8 @@ function ImportPanel({ onImported }: ImportPanelProps) {
               className={cn(
                 "flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-colors",
                 !url.trim() || isImporting
-                  ? "cursor-not-allowed bg-gray-100 text-gray-400"
-                  : "bg-gray-900 text-white hover:bg-gray-800"
+                  ? "cursor-not-allowed bg-accent-faint text-tertiary"
+                  : "bg-accent text-on-accent hover:bg-accent-hover"
               )}
             >
               Import
@@ -702,28 +702,28 @@ export default function PromptsPage() {
   ];
 
   return (
-    <div className="flex min-h-screen bg-gray-50/50">
+    <div className="flex min-h-screen bg-hover-soft/50">
       <Sidebar />
-      <main className="flex-1 pl-64">
+      <main className="flex-1 pl-60">
         {/* Header */}
-        <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-black/[0.06] bg-white/80 px-6 backdrop-blur-xl">
+        <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-hairline bg-surface px-6 backdrop-blur-xl">
           <div className="min-w-0">
-            <h1 className="text-[15px] font-semibold leading-tight text-gray-900">Prompts</h1>
+            <h1 className="text-[15px] font-semibold leading-tight text-primary">Prompts</h1>
             {!isLoading && (
-              <p className="text-xs leading-tight text-gray-500">{description}</p>
+              <p className="text-xs leading-tight text-tertiary">{description}</p>
             )}
           </div>
 
           <div className="ml-4 flex items-center gap-2">
             {/* Search */}
             <div className="relative hidden md:block">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-tertiary" />
               <input
                 type="search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search prompts…"
-                className="h-8 w-52 rounded-lg border border-gray-200 bg-white pl-8 pr-3 text-[13px] text-gray-800 placeholder-gray-400 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-200"
+                className="h-8 w-52 rounded-lg border border-hairline bg-surface pl-8 pr-3 text-[13px] text-primary placeholder-gray-400 focus:border-strong focus:outline-none focus:ring-1 focus:ring-[var(--border-strong)]"
               />
             </div>
 
@@ -735,7 +735,7 @@ export default function PromptsPage() {
                 "flex h-8 w-8 items-center justify-center rounded-lg border transition-all",
                 showFavoritesOnly
                   ? "border-amber-300 bg-amber-50 text-amber-500"
-                  : "border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-600"
+                  : "border-hairline text-tertiary hover:border-strong hover:text-secondary"
               )}
             >
               <Star className={cn("h-4 w-4", showFavoritesOnly && "fill-amber-400")} />
@@ -744,7 +744,7 @@ export default function PromptsPage() {
             {/* New prompt */}
             <button
               onClick={openNewModal}
-              className="flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-gray-800"
+              className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover"
             >
               <Plus className="h-4 w-4" />
               New Prompt
@@ -756,7 +756,7 @@ export default function PromptsPage() {
         <ImportPanel onImported={handleImported} />
 
         {/* Type filter row */}
-        <div className="flex items-center gap-1.5 border-b border-black/[0.06] bg-white/60 px-6 py-3">
+        <div className="flex items-center gap-1.5 border-b border-hairline bg-surface px-6 py-3">
           {TYPE_FILTERS.map(({ value, label }) => (
             <button
               key={value}
@@ -764,8 +764,8 @@ export default function PromptsPage() {
               className={cn(
                 "rounded-lg px-3 py-1.5 text-sm font-medium transition-all",
                 typeFilter === value
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                  ? "bg-accent text-on-accent"
+                  : "text-tertiary hover:bg-accent-faint hover:text-primary"
               )}
             >
               {label}
@@ -780,7 +780,7 @@ export default function PromptsPage() {
               {[...Array(8)].map((_, i) => (
                 <div
                   key={i}
-                  className="animate-pulse rounded-2xl border border-gray-100 bg-gray-100"
+                  className="animate-pulse rounded-2xl border border-hairline bg-accent-faint"
                   style={{ aspectRatio: "1" }}
                 />
               ))}

@@ -39,17 +39,17 @@ export function MergeNode({ selected }: { selected?: boolean }) {
   return (
     <div
       className={cn(
-        "rounded-2xl border bg-white shadow-sm transition-shadow",
+        "rounded-2xl border bg-surface shadow-sm transition-shadow",
         selected
-          ? "border-gray-900 ring-2 ring-gray-900 shadow-lg"
-          : "border-gray-200 hover:shadow-md"
+          ? "border-accent ring-2 ring-accent shadow-lg"
+          : "border-hairline hover:shadow-md"
       )}
       style={{ width: 340 }}
     >
       <Handle
         type="target"
         position={Position.Top}
-        className="!border-2 !border-white !bg-orange-400"
+        className="!border-2 !border-[var(--surface-1)] !bg-orange-400"
         style={{ width: 10, height: 10 }}
       />
 
@@ -61,7 +61,7 @@ export function MergeNode({ selected }: { selected?: boolean }) {
             Combine
           </span>
           {connectedPrompts.length > 0 && (
-            <span className="text-[10px] text-gray-400">
+            <span className="text-[10px] text-tertiary">
               {connectedPrompts.length} prompt{connectedPrompts.length !== 1 ? "s" : ""}
             </span>
           )}
@@ -75,8 +75,8 @@ export function MergeNode({ selected }: { selected?: boolean }) {
             copied
               ? "border-green-200 bg-green-50 text-green-700"
               : combinedContent
-              ? "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800"
-              : "cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300"
+              ? "border-hairline bg-surface text-tertiary hover:border-strong hover:bg-hover-soft hover:text-primary"
+              : "cursor-not-allowed border-hairline bg-hover-soft text-icon-muted"
           )}
         >
           {copied ? (
@@ -96,7 +96,7 @@ export function MergeNode({ selected }: { selected?: boolean }) {
       {/* Body */}
       <div className="px-3 pb-3">
         {connectedPrompts.length === 0 ? (
-          <p className="text-xs italic text-gray-400">
+          <p className="text-xs italic text-tertiary">
             Draw edges from prompt nodes to combine their output
           </p>
         ) : (
@@ -104,9 +104,9 @@ export function MergeNode({ selected }: { selected?: boolean }) {
             {connectedPrompts.map((content, i) => (
               <div key={i}>
                 {i > 0 && (
-                  <div className="my-2 border-t border-dashed border-gray-200" />
+                  <div className="my-2 border-t border-dashed border-hairline" />
                 )}
-                <p className="line-clamp-3 text-xs leading-relaxed text-gray-700">
+                <p className="line-clamp-3 text-xs leading-relaxed text-secondary">
                   {content}
                 </p>
               </div>

@@ -295,9 +295,9 @@ export default function ImageDetailPage({
     return (
       <div className="flex min-h-screen">
         <Sidebar />
-        <main className="flex-1 pl-64">
+        <main className="flex-1 pl-60">
           <div className="flex h-full items-center justify-center">
-            <div className="animate-pulse text-sm text-gray-400">Loading...</div>
+            <div className="animate-pulse text-sm text-tertiary">Loading...</div>
           </div>
         </main>
       </div>
@@ -310,7 +310,7 @@ export default function ImageDetailPage({
     <div className="flex min-h-screen">
       <Sidebar />
 
-      <main className="flex-1 pl-64">
+      <main className="flex-1 pl-60">
         <Header
           title="Image Details"
           actions={
@@ -362,38 +362,38 @@ export default function ImageDetailPage({
 
               {/* Image info */}
               <Panel className="overflow-visible">
-                <div className="border-b border-black/[0.06] px-5 py-3.5">
-                  <p className="text-sm font-medium text-gray-800">Image Info</p>
+                <div className="border-b border-hairline px-5 py-3.5">
+                  <p className="text-sm font-medium text-primary">Image Info</p>
                 </div>
                 <div className="divide-y divide-black/[0.05] px-5">
                   {dimensions && (
                     <div className="flex items-center justify-between py-2.5">
-                      <span className="text-xs text-gray-500">Dimensions</span>
-                      <span className="text-xs font-medium text-gray-800">{dimensions.w} × {dimensions.h}</span>
+                      <span className="text-xs text-tertiary">Dimensions</span>
+                      <span className="text-xs font-medium text-primary">{dimensions.w} × {dimensions.h}</span>
                     </div>
                   )}
                   <div className="flex items-center justify-between py-2.5">
-                    <span className="text-xs text-gray-500">Format</span>
-                    <span className="text-xs font-medium text-gray-800 uppercase">{image.format}</span>
+                    <span className="text-xs text-tertiary">Format</span>
+                    <span className="text-xs font-medium text-primary uppercase">{image.format}</span>
                   </div>
                   <div className="flex items-center justify-between py-2.5">
-                    <span className="text-xs text-gray-500">Source</span>
+                    <span className="text-xs text-tertiary">Source</span>
                     <Chip>{deriveSource(image.source_type, image.source_ref)}</Chip>
                   </div>
                   <div className="flex items-start justify-between gap-4 py-2.5">
-                    <span className="text-xs text-gray-500">Collections</span>
+                    <span className="text-xs text-tertiary">Collections</span>
                     <div className="flex flex-wrap justify-end gap-1">
                       {collections.map((c) => (
-                        <div key={c.id} className="group flex items-center gap-0.5 rounded-full border border-black/[0.08] bg-black/[0.03] py-0.5 pl-2 pr-1 transition-colors hover:border-black/[0.14]">
+                        <div key={c.id} className="group flex items-center gap-0.5 rounded-full border border-hairline bg-hover-soft py-0.5 pl-2 pr-1 transition-colors hover:border-strong">
                           <Link
                             href={`/collections/${c.slug}`}
-                            className="text-[11px] text-gray-600 transition-colors hover:text-gray-900"
+                            className="text-[11px] text-secondary transition-colors hover:text-primary"
                           >
                             {c.name}
                           </Link>
                           <button
                             onClick={() => handleRemoveFromCollection(c.id)}
-                            className="ml-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full text-gray-300 opacity-0 transition-all group-hover:opacity-100 hover:bg-black/[0.06] hover:text-gray-600"
+                            className="ml-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full text-icon-muted opacity-0 transition-all group-hover:opacity-100 hover:bg-accent-faint hover:text-secondary"
                             title="Remove from collection"
                           >
                             <X className="h-2 w-2" />
@@ -408,8 +408,8 @@ export default function ImageDetailPage({
                         className={cn(
                           "flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
                           showCollectionPicker
-                            ? "border-gray-900 bg-gray-900 text-white"
-                            : "border-black/[0.12] bg-gray-100 text-gray-600 hover:border-black/[0.2] hover:bg-gray-200 hover:text-gray-800"
+                            ? "border-accent bg-accent text-on-accent"
+                            : "border-strong bg-accent-faint text-secondary hover:border-strong hover:bg-accent-soft hover:text-primary"
                         )}
                       >
                         <Plus className="h-3 w-3" />
@@ -421,10 +421,10 @@ export default function ImageDetailPage({
                         <div
                           ref={dropdownRef}
                           style={{ top: pickerPos.top, right: pickerPos.right }}
-                          className="fixed z-[9999] w-56 rounded-xl border border-black/[0.08] bg-white shadow-xl"
+                          className="fixed z-[9999] w-56 rounded-xl border border-hairline bg-surface shadow-xl"
                         >
                           {allCollections.filter((c) => !collections.some((ec) => ec.id === c.id)).length === 0 ? (
-                            <p className="px-4 py-3 text-xs text-gray-400">All collections added</p>
+                            <p className="px-4 py-3 text-xs text-tertiary">All collections added</p>
                           ) : (
                             <div className="max-h-64 overflow-y-auto py-1.5">
                               {allCollections
@@ -433,7 +433,7 @@ export default function ImageDetailPage({
                                   <button
                                     key={c.id}
                                     onClick={() => handleAddToCollection(c.id)}
-                                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs text-gray-700 transition-colors hover:bg-gray-50"
+                                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs text-secondary transition-colors hover:bg-hover-soft"
                                   >
                                     <span>{PLATFORM_EMOJI[c.platform] ?? "📁"}</span>
                                     <span className="truncate font-medium">{c.name}</span>
@@ -447,16 +447,16 @@ export default function ImageDetailPage({
                     </div>
                   </div>
                   <div className="flex items-center justify-between py-2.5">
-                    <span className="text-xs text-gray-500">Added</span>
-                    <span className="text-xs text-gray-700">{formatDate(image.created_at)}</span>
+                    <span className="text-xs text-tertiary">Added</span>
+                    <span className="text-xs text-secondary">{formatDate(image.created_at)}</span>
                   </div>
                 </div>
               </Panel>
 
               {/* Tags */}
               <Panel className="overflow-hidden">
-                <div className="flex items-center justify-between border-b border-black/[0.06] px-5 py-3.5">
-                  <p className="text-sm font-medium text-gray-800">Tags</p>
+                <div className="flex items-center justify-between border-b border-hairline px-5 py-3.5">
+                  <p className="text-sm font-medium text-primary">Tags</p>
                 </div>
                 <div className="p-5">
                   {tags.length > 0 ? (
@@ -465,7 +465,7 @@ export default function ImageDetailPage({
                         <Chip key={tag.id}>
                           {tag.tag}
                           {tag.confidence && (
-                            <span className="text-gray-400">
+                            <span className="text-tertiary">
                               {Math.round(tag.confidence * 100)}%
                             </span>
                           )}
@@ -473,7 +473,7 @@ export default function ImageDetailPage({
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-gray-400">No tags yet</p>
+                    <p className="text-sm text-tertiary">No tags yet</p>
                   )}
                 </div>
               </Panel>
@@ -486,7 +486,7 @@ export default function ImageDetailPage({
               {prompts.length > 0 && (
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-800">Prompts</p>
+                    <p className="text-sm font-medium text-primary">Prompts</p>
                     {retagError && (
                       <p className="mt-1 text-xs text-red-600">{retagError}</p>
                     )}
@@ -517,8 +517,8 @@ export default function ImageDetailPage({
                       className={cn(
                         "flex h-8 shrink-0 items-center rounded-lg border px-3 text-xs font-medium transition-colors",
                         selectedPrompt?.id === prompt.id
-                          ? "border-gray-900 bg-gray-900 text-white"
-                          : "border-black/[0.1] text-gray-600 hover:border-black/[0.2] hover:text-gray-800"
+                          ? "border-accent bg-accent text-on-accent"
+                          : "border-input text-secondary hover:border-strong hover:text-primary"
                       )}
                     >
                       Prompt {prompts.length - index}
@@ -531,15 +531,15 @@ export default function ImageDetailPage({
                 <>
                   {/* Natural prompt */}
                   <Panel className="overflow-hidden">
-                    <div className="flex items-center justify-between border-b border-black/[0.06] px-5 py-3.5">
-                      <p className="flex items-center gap-2 text-sm font-medium text-gray-800">
-                        <FileText className="h-3.5 w-3.5 text-gray-500" />
+                    <div className="flex items-center justify-between border-b border-hairline px-5 py-3.5">
+                      <p className="flex items-center gap-2 text-sm font-medium text-primary">
+                        <FileText className="h-3.5 w-3.5 text-tertiary" />
                         Natural Prompt
                       </p>
                       <div className="flex items-center gap-0.5">
                         <button
                           onClick={() => handleCopy(selectedPrompt.natural_prompt, `natural-${selectedPrompt.id}`)}
-                          className="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-black/[0.05] hover:text-gray-700"
+                          className="flex h-7 w-7 items-center justify-center rounded-md text-tertiary transition-colors hover:bg-hover-soft hover:text-secondary"
                           aria-label="Copy prompt"
                         >
                           {copiedId === `natural-${selectedPrompt.id}` ? (
@@ -554,7 +554,7 @@ export default function ImageDetailPage({
                               setIsEditing(true);
                               setEditedPrompt(selectedPrompt.natural_prompt);
                             }}
-                            className="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-black/[0.05] hover:text-gray-700"
+                            className="flex h-7 w-7 items-center justify-center rounded-md text-tertiary transition-colors hover:bg-hover-soft hover:text-secondary"
                             aria-label="Edit prompt"
                           >
                             <Edit3 className="h-3.5 w-3.5" />
@@ -562,7 +562,7 @@ export default function ImageDetailPage({
                         )}
                         <button
                           onClick={() => handleDeletePrompt(selectedPrompt.id)}
-                          className="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-red-50 hover:text-red-500"
+                          className="flex h-7 w-7 items-center justify-center rounded-md text-tertiary transition-colors hover:bg-red-50 hover:text-red-500"
                           aria-label="Delete prompt"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -589,7 +589,7 @@ export default function ImageDetailPage({
                           </div>
                         </div>
                       ) : (
-                        <p className="text-sm leading-relaxed text-gray-700 whitespace-pre-wrap">
+                        <p className="text-sm leading-relaxed text-secondary whitespace-pre-wrap">
                           {selectedPrompt.natural_prompt}
                         </p>
                       )}
@@ -608,21 +608,21 @@ export default function ImageDetailPage({
                     const activeJsonText = JSON.stringify(activeJson, null, 2);
                     return (
                       <Panel className="overflow-hidden">
-                        <div className="flex items-center justify-between border-b border-black/[0.06] px-5 py-3.5">
-                          <p className="flex items-center gap-2 text-sm font-medium text-gray-800">
-                            <Code className="h-3.5 w-3.5 text-gray-500" />
+                        <div className="flex items-center justify-between border-b border-hairline px-5 py-3.5">
+                          <p className="flex items-center gap-2 text-sm font-medium text-primary">
+                            <Code className="h-3.5 w-3.5 text-tertiary" />
                             JSON Prompt
                           </p>
                           <div className="flex items-center gap-0.5">
                             <button
                               onClick={() => setShowJson(!showJson)}
-                              className="flex h-7 items-center rounded-md px-2.5 text-xs font-medium text-gray-600 transition-colors hover:bg-black/[0.05] hover:text-gray-800"
+                              className="flex h-7 items-center rounded-md px-2.5 text-xs font-medium text-secondary transition-colors hover:bg-hover-soft hover:text-primary"
                             >
                               {showJson ? "Hide" : "Show"}
                             </button>
                             <button
                               onClick={() => handleCopy(activeJsonText, `json-${selectedPrompt.id}`)}
-                              className="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-black/[0.05] hover:text-gray-700"
+                              className="flex h-7 w-7 items-center justify-center rounded-md text-tertiary transition-colors hover:bg-hover-soft hover:text-secondary"
                               aria-label="Copy JSON"
                             >
                               {copiedId === `json-${selectedPrompt.id}` ? (
@@ -636,7 +636,7 @@ export default function ImageDetailPage({
                         {showJson && (
                           <div className="space-y-3 p-5">
                             {hasScene && (
-                              <div className="inline-flex rounded-lg border border-black/[0.06] bg-gray-50 p-0.5">
+                              <div className="inline-flex rounded-lg border border-hairline bg-hover-soft p-0.5">
                                 {[
                                   { key: "ideogram" as const, label: "Ideogram" },
                                   { key: "visstruct" as const, label: "VisStruct" },
@@ -646,8 +646,8 @@ export default function ImageDetailPage({
                                     onClick={() => setJsonView(view.key)}
                                     className={`flex h-7 items-center rounded-md px-3 text-xs font-medium transition-colors ${
                                       activeView === view.key
-                                        ? "bg-white text-gray-800 shadow-sm"
-                                        : "text-gray-500 hover:text-gray-800"
+                                        ? "bg-surface text-primary shadow-sm"
+                                        : "text-tertiary hover:text-primary"
                                     }`}
                                   >
                                     {view.label}
@@ -655,7 +655,7 @@ export default function ImageDetailPage({
                                 ))}
                               </div>
                             )}
-                            <pre className="overflow-x-auto rounded-lg border border-black/[0.06] bg-gray-50 p-4 text-xs text-gray-700">
+                            <pre className="overflow-x-auto rounded-lg border border-hairline bg-hover-soft p-4 text-xs text-secondary">
                               {activeJsonText}
                             </pre>
                           </div>
@@ -667,9 +667,9 @@ export default function ImageDetailPage({
                   {/* Version history */}
                   {selectedPrompt.versions && selectedPrompt.versions.length > 0 && (
                     <Panel className="overflow-hidden">
-                      <div className="border-b border-black/[0.06] px-5 py-3.5">
-                        <p className="flex items-center gap-2 text-sm font-medium text-gray-800">
-                          <Clock className="h-3.5 w-3.5 text-gray-500" />
+                      <div className="border-b border-hairline px-5 py-3.5">
+                        <p className="flex items-center gap-2 text-sm font-medium text-primary">
+                          <Clock className="h-3.5 w-3.5 text-tertiary" />
                           Version History
                         </p>
                       </div>
@@ -683,11 +683,11 @@ export default function ImageDetailPage({
                                   <Chip>v{version.version_index}</Chip>
                                   <Chip>{version.edit_source}</Chip>
                                 </div>
-                                <span className="text-xs text-gray-400">
+                                <span className="text-xs text-tertiary">
                                   {formatDate(version.created_at)}
                                 </span>
                               </div>
-                              <p className="text-xs leading-relaxed text-gray-600 line-clamp-2">
+                              <p className="text-xs leading-relaxed text-secondary line-clamp-2">
                                 {version.natural_prompt}
                               </p>
                             </div>
@@ -698,7 +698,7 @@ export default function ImageDetailPage({
                 </>
               ) : (
                 <Panel className="py-14 text-center">
-                  <p className="text-sm text-gray-400">No prompts generated yet</p>
+                  <p className="text-sm text-tertiary">No prompts generated yet</p>
                   <Button
                     className="mt-4"
                     size="sm"

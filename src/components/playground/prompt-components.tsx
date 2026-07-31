@@ -38,17 +38,17 @@ function FieldRow({
       title={onInsertToken ? `Insert: ${value}` : undefined}
       className={cn(
         "group flex w-full items-start gap-2 px-3 py-1.5 text-left transition-colors",
-        onInsertToken ? "cursor-pointer hover:bg-[#f2ff59]/25" : "cursor-default"
+        onInsertToken ? "cursor-pointer hover:bg-accent-soft" : "cursor-default"
       )}
     >
-      <span className="mt-0.5 w-28 shrink-0 truncate font-mono text-[9px] text-gray-400">
+      <span className="mt-0.5 w-28 shrink-0 truncate font-mono text-[9px] text-tertiary">
         {displayKey}
       </span>
-      <p className="flex-1 text-[10px] leading-relaxed text-gray-700 line-clamp-3">
+      <p className="flex-1 text-[10px] leading-relaxed text-secondary line-clamp-3">
         {value}
       </p>
       {onInsertToken && (
-        <Plus className="mt-0.5 h-3 w-3 shrink-0 text-gray-300 opacity-0 transition-opacity group-hover:opacity-100" />
+        <Plus className="mt-0.5 h-3 w-3 shrink-0 text-icon-muted opacity-0 transition-opacity group-hover:opacity-100" />
       )}
     </button>
   );
@@ -72,21 +72,21 @@ function IndexedItemGroup({
   const indexedPrefix = `${groupName}[${itemIndex}]`;
 
   return (
-    <div className="overflow-hidden rounded border border-gray-100 bg-white">
+    <div className="overflow-hidden rounded border border-hairline bg-surface">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left transition-colors hover:bg-gray-50"
+        className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left transition-colors hover:bg-hover-soft"
       >
         {open ? (
-          <ChevronDown className="h-3 w-3 shrink-0 text-gray-300" />
+          <ChevronDown className="h-3 w-3 shrink-0 text-icon-muted" />
         ) : (
-          <ChevronRight className="h-3 w-3 shrink-0 text-gray-300" />
+          <ChevronRight className="h-3 w-3 shrink-0 text-icon-muted" />
         )}
-        <span className="flex-1 text-[10px] font-medium text-gray-600 truncate">{label}</span>
-        <span className="shrink-0 text-[9px] text-gray-300">{items.length}</span>
+        <span className="flex-1 text-[10px] font-medium text-secondary truncate">{label}</span>
+        <span className="shrink-0 text-[9px] text-icon-muted">{items.length}</span>
       </button>
       {open && (
-        <div className="divide-y divide-gray-50 border-t border-gray-100">
+        <div className="divide-y divide-hairline border-t border-hairline">
           {items.map((c) => (
             <FieldRow
               key={c.id}
@@ -132,17 +132,17 @@ function TopLevelGroup({
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-gray-100">
+    <div className="overflow-hidden rounded-lg border border-hairline">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 bg-gray-50/80 px-3 py-1.5 text-left transition-colors hover:bg-gray-100"
+        className="flex w-full items-center gap-2 bg-hover-soft/80 px-3 py-1.5 text-left transition-colors hover:bg-accent-faint"
       >
         {open ? (
-          <ChevronDown className="h-3 w-3 shrink-0 text-gray-400" />
+          <ChevronDown className="h-3 w-3 shrink-0 text-tertiary" />
         ) : (
-          <ChevronRight className="h-3 w-3 shrink-0 text-gray-400" />
+          <ChevronRight className="h-3 w-3 shrink-0 text-tertiary" />
         )}
-        <span className="flex-1 font-mono text-[10px] font-semibold text-gray-600">
+        <span className="flex-1 font-mono text-[10px] font-semibold text-secondary">
           {groupName}
         </span>
         <span
@@ -154,7 +154,7 @@ function TopLevelGroup({
       </button>
 
       {open && (
-        <div className="border-t border-gray-100">
+        <div className="border-t border-hairline">
           {hasIndexed ? (
             // Render one collapsible sub-group per array index, labelled by .label or .id
             <div className="space-y-0.5 p-1.5">
@@ -181,7 +181,7 @@ function TopLevelGroup({
             </div>
           ) : (
             // Flat list for non-indexed groups
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-hairline">
               {items.map((c) => (
                 <FieldRow
                   key={c.id}
@@ -225,15 +225,15 @@ function ImageGroup({
   const groups = groupByTopLevel(components);
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-xl border border-hairline bg-surface shadow-sm">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-gray-50"
+        className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-hover-soft"
       >
         {open ? (
-          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-tertiary" />
         ) : (
-          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-tertiary" />
         )}
         <div
           className="flex h-5 w-10 shrink-0 items-center justify-center rounded text-[9px] font-bold text-white"
@@ -241,13 +241,13 @@ function ImageGroup({
         >
           {label}
         </div>
-        <span className="text-[10px] font-medium text-gray-500">
+        <span className="text-[10px] font-medium text-tertiary">
           {components.length} fields
         </span>
       </button>
 
       {open && (
-        <div className="space-y-1 border-t border-gray-50 p-2">
+        <div className="space-y-1 border-t border-hairline p-2">
           {groups.map(([groupName, groupItems], i) => (
             <TopLevelGroup
               key={groupName}
@@ -285,11 +285,11 @@ export function PromptComponents({
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+        <p className="text-xs font-semibold uppercase tracking-wide text-tertiary">
           Image Fields
         </p>
         {components.length > 0 && (
-          <span className="text-[10px] text-gray-400">{components.length} fields</span>
+          <span className="text-[10px] text-tertiary">{components.length} fields</span>
         )}
       </div>
 
@@ -304,15 +304,15 @@ export function PromptComponents({
             />
           ))}
           {onInsertToken && (
-            <p className="px-1 text-[10px] text-gray-300">
+            <p className="px-1 text-[10px] text-icon-muted">
               Click any field to insert it at cursor
             </p>
           )}
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-6 text-center">
-          <p className="text-xs text-gray-400">Select images to see their fields</p>
-          <p className="mt-1 text-[10px] text-gray-300">
+          <p className="text-xs text-tertiary">Select images to see their fields</p>
+          <p className="mt-1 text-[10px] text-icon-muted">
             Click fields to insert them into your prompt
           </p>
         </div>

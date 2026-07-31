@@ -10,11 +10,11 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <textarea
         className={cn(
-          "flex min-h-[80px] w-full rounded-lg border border-black/[0.1] bg-white/70 px-3 py-2 text-sm text-gray-900",
-          "placeholder:text-gray-400",
-          "focus:border-[#f2ff59] focus:outline-none focus:ring-2 focus:ring-[#f2ff59]/40",
+          "flex min-h-[80px] w-full rounded-md border border-input bg-input-bg px-2.5 py-1.5 text-sm text-primary",
+          "placeholder:text-tertiary",
+          "focus:bg-input-focus focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent",
           "disabled:cursor-not-allowed disabled:opacity-50",
-          "transition-colors resize-none",
+          "transition-colors duration-quick resize-none",
           className
         )}
         ref={ref}

@@ -97,7 +97,7 @@ export default function JobsPage() {
     <div className="flex min-h-screen">
       <Sidebar />
       
-      <main className="flex-1 pl-64">
+      <main className="flex-1 pl-60">
         <Header
           title="Ingestion Jobs"
           description={`${runningJobs.length} active, ${completedJobs.length} completed, ${failedJobs.length} failed`}
@@ -114,26 +114,26 @@ export default function JobsPage() {
           <div className="grid grid-cols-4 gap-4">
             <Card>
               <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-gray-900">{jobs.length}</div>
-                <div className="text-sm text-gray-600">Total Jobs</div>
+                <div className="text-2xl font-bold text-primary">{jobs.length}</div>
+                <div className="text-sm text-secondary">Total Jobs</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-6">
                 <div className="text-2xl font-bold text-blue-600">{runningJobs.length}</div>
-                <div className="text-sm text-gray-600">Active</div>
+                <div className="text-sm text-secondary">Active</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-6">
                 <div className="text-2xl font-bold text-emerald-600">{completedJobs.length}</div>
-                <div className="text-sm text-gray-600">Completed</div>
+                <div className="text-sm text-secondary">Completed</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-6">
                 <div className="text-2xl font-bold text-red-600">{failedJobs.length}</div>
-                <div className="text-sm text-gray-600">Failed</div>
+                <div className="text-sm text-secondary">Failed</div>
               </CardContent>
             </Card>
           </div>
@@ -147,19 +147,19 @@ export default function JobsPage() {
               {isLoading ? (
                 <div className="space-y-3">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className="h-16 animate-pulse rounded-lg bg-black/[0.06]" />
+                    <div key={i} className="h-16 animate-pulse rounded-lg bg-accent-faint" />
                   ))}
                 </div>
               ) : jobs.length === 0 ? (
                 <div className="py-12 text-center">
-                  <p className="text-gray-600">No jobs yet</p>
+                  <p className="text-secondary">No jobs yet</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {jobs.map((job) => (
                     <div
                       key={job.id}
-                      className="flex items-center justify-between rounded-lg border border-black/[0.08] bg-black/[0.03] p-4"
+                      className="flex items-center justify-between rounded-lg border border-hairline bg-hover-soft p-4"
                     >
                       <div className="flex items-center gap-4">
                         {getStatusIcon(job.status)}
@@ -170,7 +170,7 @@ export default function JobsPage() {
                             </Badge>
                             <Badge variant="outline">{job.source_type}</Badge>
                           </div>
-                          <p className="mt-1 text-sm text-gray-600 truncate max-w-md">
+                          <p className="mt-1 text-sm text-secondary truncate max-w-md">
                             {job.source_ref}
                           </p>
                           {job.error && (
@@ -182,7 +182,7 @@ export default function JobsPage() {
                       </div>
 
                       <div className="flex items-center gap-4">
-                        <span className="text-sm text-gray-600">
+                        <span className="text-sm text-secondary">
                           {formatRelativeTime(job.created_at)}
                         </span>
                         <div className="flex gap-1">

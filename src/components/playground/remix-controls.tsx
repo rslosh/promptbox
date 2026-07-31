@@ -57,7 +57,7 @@ export function RemixControls({
       ) : (
         <button
           onClick={() => setIsEditingName(true)}
-          className="text-sm text-gray-700 hover:text-gray-900"
+          className="text-sm text-secondary hover:text-primary"
         >
           {remixName || "Untitled remix"}
         </button>

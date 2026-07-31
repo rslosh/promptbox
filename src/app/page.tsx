@@ -245,7 +245,7 @@ export default function GalleryPage() {
     <div className="flex min-h-screen">
       <Sidebar />
 
-      <main className="flex-1 pl-64">
+      <main className="flex-1 pl-60">
         <Header
           title="Gallery"
           description={
@@ -287,8 +287,8 @@ export default function GalleryPage() {
                         {/* natural_prompt tooltip — drops below header */}
                         {img.prompts?.[0]?.natural_prompt && (
                           <div className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-56 -translate-x-1/2 opacity-0 transition-opacity group-hover/thumb:opacity-100">
-                            <div className="rounded-xl border border-gray-100 bg-white p-3 shadow-xl">
-                              <p className="line-clamp-5 text-[10px] leading-relaxed text-gray-700">
+                            <div className="rounded-xl border border-hairline bg-surface p-3 shadow-xl">
+                              <p className="line-clamp-5 text-[10px] leading-relaxed text-secondary">
                                 {img.prompts[0].natural_prompt}
                               </p>
                             </div>
@@ -300,9 +300,9 @@ export default function GalleryPage() {
                     {/* Overflow badge */}
                     {overflow > 0 && (
                       <div
-                        className="relative z-0 ml-[-8px] flex h-12 w-12 items-center justify-center rounded-lg border-2 border-white bg-gray-100 shadow-sm ring-1 ring-black/10"
+                        className="relative z-0 ml-[-8px] flex h-12 w-12 items-center justify-center rounded-lg border-2 border-white bg-accent-faint shadow-sm ring-1 ring-black/10"
                       >
-                        <span className="text-[10px] font-semibold text-gray-600">+{overflow}</span>
+                        <span className="text-[10px] font-semibold text-secondary">+{overflow}</span>
                       </div>
                     )}
                   </div>
@@ -310,12 +310,12 @@ export default function GalleryPage() {
                   {/* Clear all */}
                   <button
                     onClick={handleClearSelection}
-                    className="ml-0.5 text-[11px] text-gray-400 transition-colors hover:text-gray-700"
+                    className="ml-0.5 text-[11px] text-tertiary transition-colors hover:text-secondary"
                   >
                     Clear
                   </button>
 
-                  <div className="h-4 w-px bg-gray-200" />
+                  <div className="h-4 w-px bg-accent-soft" />
                 </div>
               )}
 
@@ -364,7 +364,7 @@ export default function GalleryPage() {
               {Array.from({ length: 12 }).map((_, i) => (
                 <div
                   key={i}
-                  className="aspect-square animate-pulse rounded-xl bg-black/[0.06]"
+                  className="aspect-square animate-pulse rounded-xl bg-accent-faint"
                   style={{ animationDelay: `${i * 40}ms` }}
                 />
               ))}

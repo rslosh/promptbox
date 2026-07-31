@@ -88,18 +88,18 @@ export function Sidebar() {
   if (unknownItems.length > 0) grouped.push({ platform: "manual", collections: unknownItems });
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-black/[0.06] bg-white/80 backdrop-blur-2xl">
+    <aside className="gos-chrome fixed inset-y-0 left-0 z-50 flex w-60 flex-col border-r border-hairline">
       {/* Logo */}
-      <div className="flex h-14 items-center gap-2.5 border-b border-black/[0.06] px-5">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#f2ff59]">
-          <Sparkles className="h-3.5 w-3.5 text-gray-900" />
+      <div className="flex h-titlebar items-center gap-2 border-b border-hairline px-4">
+        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-accent">
+          <Sparkles className="h-3 w-3 text-on-accent" />
         </div>
-        <span className="text-[15px] font-semibold tracking-tight text-gray-900">Promptbox</span>
+        <span className="text-md font-semibold tracking-[-0.01em] text-primary">Promptbox</span>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto p-3">
-        <div className="space-y-0.5">
+      <nav className="flex-1 overflow-y-auto p-2">
+        <div className="space-y-px">
           {navigation.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -107,13 +107,13 @@ export function Sidebar() {
                 key={item.name}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors duration-instant",
                   isActive
-                    ? "bg-[#f2ff59] text-gray-900"
-                    : "text-gray-700 hover:bg-black/[0.05] hover:text-gray-900"
+                    ? "bg-active-row text-[var(--active-row-fg)]"
+                    : "text-secondary hover:bg-hover-soft hover:text-primary"
                 )}
               >
-                <item.icon className="h-4 w-4 shrink-0" />
+                <item.icon className="h-3.5 w-3.5 shrink-0" />
                 {item.name}
               </Link>
             );
@@ -124,29 +124,29 @@ export function Sidebar() {
         <div className="mt-5">
           <button
             onClick={() => setCollectionsExpanded(!collectionsExpanded)}
-            className="flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-gray-600 hover:text-gray-800 transition-colors"
+            className="flex w-full items-center justify-between rounded-md px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-tertiary hover:text-secondary transition-colors duration-instant"
           >
             <span className="flex items-center gap-1.5">
-              <FolderHeart className="h-3.5 w-3.5" />
+              <FolderHeart className="h-3 w-3" />
               Collections
             </span>
             {collectionsExpanded ? (
-              <ChevronDown className="h-3.5 w-3.5" />
+              <ChevronDown className="h-3 w-3" />
             ) : (
-              <ChevronRight className="h-3.5 w-3.5" />
+              <ChevronRight className="h-3 w-3" />
             )}
           </button>
 
           {collectionsExpanded && (
             <div className="mt-1">
               {isLoading ? (
-                <div className="px-3 py-2">
-                  <div className="h-3.5 w-24 animate-pulse rounded-md bg-black/[0.07]" />
+                <div className="px-2.5 py-1.5">
+                  <div className="h-3 w-24 animate-pulse rounded-sm bg-accent-faint" />
                 </div>
               ) : collections.length === 0 ? (
-                <p className="px-3 py-2 text-xs text-gray-600">No collections yet</p>
+                <p className="px-2.5 py-1.5 text-xs text-tertiary">No collections yet</p>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   {grouped.map(({ platform, collections: items }) => {
                     const meta = platformMeta[platform] ?? { label: platform, emoji: "📁" };
                     const isCollapsed = collapsedGroups.has(platform);
@@ -155,7 +155,7 @@ export function Sidebar() {
                         {/* Group header */}
                         <button
                           onClick={() => toggleGroup(platform)}
-                          className="flex w-full items-center gap-1.5 px-3 py-1 text-[11px] font-medium text-gray-500 hover:text-gray-700 transition-colors"
+                          className="flex w-full items-center gap-1.5 px-2.5 py-0.5 text-xs font-medium text-tertiary hover:text-secondary transition-colors duration-instant"
                         >
                           <span>{meta.emoji}</span>
                           <span className="flex-1 text-left">{meta.label}</span>
@@ -167,7 +167,7 @@ export function Sidebar() {
 
                         {/* Collection items */}
                         {!isCollapsed && (
-                          <div className="space-y-0.5">
+                          <div className="space-y-px">
                             {items.map((collection) => {
                               const isActive = pathname === `/collections/${collection.slug}`;
                               return (
@@ -175,14 +175,14 @@ export function Sidebar() {
                                   key={collection.id}
                                   href={`/collections/${collection.slug}`}
                                   className={cn(
-                                    "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors",
+                                    "flex items-center gap-2 rounded-md px-2.5 py-1 text-sm transition-colors duration-instant",
                                     isActive
-                                      ? "bg-[#f2ff59] text-gray-900 font-medium"
-                                      : "text-gray-700 hover:bg-black/[0.05] hover:text-gray-900"
+                                      ? "bg-active-row font-medium text-[var(--active-row-fg)]"
+                                      : "text-secondary hover:bg-hover-soft hover:text-primary"
                                   )}
                                 >
                                   <span className="flex-1 truncate">{collection.name}</span>
-                                  <span className={cn("tabular-nums text-xs shrink-0", isActive ? "text-gray-700" : "text-gray-500")}>
+                                  <span className={cn("tabular-nums text-xs shrink-0", isActive ? "text-secondary" : "text-tertiary")}>
                                     {collection.image_count}
                                   </span>
                                 </Link>
@@ -199,9 +199,9 @@ export function Sidebar() {
               {/* Add Collection Link */}
               <Link
                 href="/upload"
-                className="mt-2 flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-gray-600 transition-colors hover:bg-black/[0.05] hover:text-gray-800"
+                className="mt-2 flex items-center gap-2 rounded-md px-2.5 py-1 text-sm text-tertiary transition-colors duration-instant hover:bg-hover-soft hover:text-primary"
               >
-                <Plus className="h-3.5 w-3.5" />
+                <Plus className="h-3 w-3" />
                 <span>Add collection</span>
               </Link>
             </div>
@@ -210,8 +210,8 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-black/[0.06] p-4">
-        <p className="text-[11px] leading-relaxed text-gray-600">
+      <div className="border-t border-hairline p-3">
+        <p className="text-xs leading-relaxed text-tertiary">
           Organize, tag, and remix your AI prompts
         </p>
       </div>

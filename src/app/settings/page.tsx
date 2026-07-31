@@ -520,11 +520,11 @@ export default function SettingsPage() {
     <div className="flex min-h-screen">
       <Sidebar />
       
-      <main className="flex-1 pl-64">
+      <main className="flex-1 pl-60">
         <Header title="Settings" description="Configure API keys and preferences" />
 
         <div className="p-6 space-y-6 max-w-2xl">
-          <div className="flex h-5 items-center text-xs text-gray-500">
+          <div className="flex h-5 items-center text-xs text-tertiary">
             {saved ? (
               <span className="flex items-center gap-1 text-emerald-600">
                 <Check className="h-3.5 w-3.5" />
@@ -549,7 +549,7 @@ export default function SettingsPage() {
               {/* Gemini API Key */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                  <label className="flex items-center gap-2 text-sm font-medium text-primary">
                     <Sparkles className="h-4 w-4" />
                     Gemini API Key
                   </label>
@@ -569,7 +569,7 @@ export default function SettingsPage() {
                     Test
                   </Button>
                 </div>
-                <p className="text-xs text-gray-600">
+                <p className="text-xs text-secondary">
                   Used for image tagging and prompt generation
                 </p>
               </div>
@@ -577,7 +577,7 @@ export default function SettingsPage() {
               {/* Secondary LLM API Key */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                  <label className="flex items-center gap-2 text-sm font-medium text-primary">
                     <Bot className="h-4 w-4" />
                     Secondary LLM API Key
                   </label>
@@ -597,7 +597,7 @@ export default function SettingsPage() {
                     Test
                   </Button>
                 </div>
-                <p className="text-xs text-gray-600">
+                <p className="text-xs text-secondary">
                   Used for prompt remixing and editing in the playground
                 </p>
               </div>
@@ -618,7 +618,7 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-gray-900">
+                <label className="text-sm font-medium text-primary">
                   VisionStruct (image → JSON)
                 </label>
                 <select
@@ -626,7 +626,7 @@ export default function SettingsPage() {
                   onChange={(e) =>
                     setSettings((prev) => ({ ...prev, visionModel: e.target.value }))
                   }
-                  className="flex h-9 w-full rounded-lg border border-black/[0.1] bg-white/70 px-3 py-2 text-sm text-gray-900 focus:border-[#f2ff59] focus:outline-none focus:ring-2 focus:ring-[#f2ff59]/40 transition-colors"
+                  className="flex h-9 w-full rounded-lg border border-input bg-surface px-3 py-2 text-sm text-primary focus:bg-input-focus focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-colors"
                 >
                   {GEMINI_MODELS.map((m) => (
                     <option key={m.value} value={m.value}>
@@ -637,7 +637,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-gray-900">
+                <label className="text-sm font-medium text-primary">
                   PromptForge (natural-language prose)
                 </label>
                 <select
@@ -645,7 +645,7 @@ export default function SettingsPage() {
                   onChange={(e) =>
                     setSettings((prev) => ({ ...prev, proseModel: e.target.value }))
                   }
-                  className="flex h-9 w-full rounded-lg border border-black/[0.1] bg-white/70 px-3 py-2 text-sm text-gray-900 focus:border-[#f2ff59] focus:outline-none focus:ring-2 focus:ring-[#f2ff59]/40 transition-colors"
+                  className="flex h-9 w-full rounded-lg border border-input bg-surface px-3 py-2 text-sm text-primary focus:bg-input-focus focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-colors"
                 >
                   {GEMINI_MODELS.map((m) => (
                     <option key={m.value} value={m.value}>
@@ -656,7 +656,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-gray-900">
+                <label className="text-sm font-medium text-primary">
                   Ideogram / SceneCompose (scene JSON)
                 </label>
                 <select
@@ -664,7 +664,7 @@ export default function SettingsPage() {
                   onChange={(e) =>
                     setSettings((prev) => ({ ...prev, sceneModel: e.target.value }))
                   }
-                  className="flex h-9 w-full rounded-lg border border-black/[0.1] bg-white/70 px-3 py-2 text-sm text-gray-900 focus:border-[#f2ff59] focus:outline-none focus:ring-2 focus:ring-[#f2ff59]/40 transition-colors"
+                  className="flex h-9 w-full rounded-lg border border-input bg-surface px-3 py-2 text-sm text-primary focus:bg-input-focus focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-colors"
                 >
                   {GEMINI_MODELS.map((m) => (
                     <option key={m.value} value={m.value}>
@@ -723,7 +723,7 @@ export default function SettingsPage() {
                   />
                 </div>
                 {backfill.remaining !== null && backfill.status !== "done" && backfill.status !== "running" && (
-                  <span className="text-sm text-gray-600">
+                  <span className="text-sm text-secondary">
                     {backfill.remaining} missing
                   </span>
                 )}
@@ -735,14 +735,14 @@ export default function SettingsPage() {
                       ? "text-red-600"
                       : backfill.status === "done"
                         ? "text-emerald-600"
-                        : "text-gray-600"
+                        : "text-secondary"
                   }`}
                 >
                   {backfill.message}
                 </p>
               )}
               {!settings.geminiApiKey && (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-tertiary">
                   Add your Gemini API key above to enable backfill.
                 </p>
               )}

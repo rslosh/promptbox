@@ -22,7 +22,7 @@ interface PromptNodeData {
 
 const MODE_STYLES: Record<NodeMode, { badge: string; label: string }> = {
   generate: {
-    badge: "bg-gray-100 text-gray-600 border border-gray-200",
+    badge: "bg-accent-faint text-secondary border border-hairline",
     label: "Generate",
   },
   edit: {
@@ -77,7 +77,7 @@ function DiffContent({
             </span>
           );
         return (
-          <span key={i} className="text-gray-800">
+          <span key={i} className="text-primary">
             {token.text}
           </span>
         );
@@ -120,17 +120,17 @@ export function PromptNode({
   return (
     <div
       className={cn(
-        "rounded-2xl border bg-white shadow-sm transition-shadow",
+        "rounded-2xl border bg-surface shadow-sm transition-shadow",
         selected
-          ? "border-gray-900 ring-2 ring-gray-900 shadow-lg"
-          : "border-gray-200 hover:shadow-md"
+          ? "border-accent ring-2 ring-accent shadow-lg"
+          : "border-hairline hover:shadow-md"
       )}
       style={{ width: 340 }}
     >
       <Handle
         type="target"
         position={Position.Top}
-        className="!border-2 !border-white !bg-gray-400"
+        className="!border-2 !border-[var(--surface-1)] !bg-tertiary"
         style={{ width: 10, height: 10 }}
       />
 
@@ -158,7 +158,7 @@ export function PromptNode({
                 "flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium transition-all",
                 showDiff
                   ? "border-amber-200 bg-amber-50 text-amber-700"
-                  : "border-gray-200 bg-white text-gray-400 hover:border-gray-300 hover:text-gray-600"
+                  : "border-hairline bg-surface text-tertiary hover:border-strong hover:text-secondary"
               )}
             >
               <GitCompare className="h-2.5 w-2.5" />
@@ -174,7 +174,7 @@ export function PromptNode({
                 onShowHistory(id);
               }}
               title="View prompt lineage"
-              className="flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-medium text-gray-400 transition-all hover:border-gray-300 hover:text-gray-600"
+              className="flex items-center gap-1 rounded-full border border-hairline bg-surface px-2 py-0.5 text-[10px] font-medium text-tertiary transition-all hover:border-strong hover:text-secondary"
             >
               <History className="h-2.5 w-2.5" />
               Lineage
@@ -190,7 +190,7 @@ export function PromptNode({
                 e.stopPropagation();
                 data.onSaveToLibrary!(data.content, data.imageIds ?? []);
               }}
-              className="flex items-center gap-1 rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors"
+              className="flex items-center gap-1 rounded-full border border-hairline px-2 py-0.5 text-[10px] font-medium text-tertiary hover:border-strong hover:text-secondary transition-colors"
             >
               <Bookmark className="h-2.5 w-2.5" />
               Save
@@ -204,7 +204,7 @@ export function PromptNode({
               "flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-all",
               copied
                 ? "border-green-200 bg-green-50 text-green-700"
-                : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800"
+                : "border-hairline bg-surface text-tertiary hover:border-strong hover:bg-hover-soft hover:text-primary"
             )}
           >
             {copied ? (
@@ -224,7 +224,7 @@ export function PromptNode({
 
       {/* Instruction */}
       {data.instruction && (
-        <p className="truncate px-3 pb-1.5 text-[10px] italic text-gray-400">
+        <p className="truncate px-3 pb-1.5 text-[10px] italic text-tertiary">
           "{data.instruction}"
         </p>
       )}
@@ -241,7 +241,7 @@ export function PromptNode({
         ) : (
           <p
             className={cn(
-              "text-xs text-gray-800 leading-relaxed",
+              "text-xs text-primary leading-relaxed",
               !expanded && isLong ? "line-clamp-6" : ""
             )}
           >
@@ -253,7 +253,7 @@ export function PromptNode({
       {/* Model label */}
       {data.model && (
         <div className="px-3 pb-1.5">
-          <span className="font-mono text-[9px] text-gray-300">{data.model}</span>
+          <span className="font-mono text-[9px] text-icon-muted">{data.model}</span>
         </div>
       )}
 
@@ -267,8 +267,8 @@ export function PromptNode({
           className={cn(
             "flex w-full items-center justify-center gap-1.5 border-t py-2 text-[11px] font-medium transition-colors",
             expanded
-              ? "border-gray-100 text-gray-400 hover:bg-gray-50 hover:text-gray-600"
-              : "border-gray-100 bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+              ? "border-hairline text-tertiary hover:bg-hover-soft hover:text-secondary"
+              : "border-hairline bg-hover-soft text-tertiary hover:bg-accent-faint hover:text-secondary"
           )}
         >
           {expanded ? (
@@ -288,7 +288,7 @@ export function PromptNode({
       <Handle
         type="source"
         position={Position.Bottom}
-        className="!border-2 !border-white !bg-gray-400"
+        className="!border-2 !border-[var(--surface-1)] !bg-tertiary"
         style={{ width: 10, height: 10 }}
       />
     </div>

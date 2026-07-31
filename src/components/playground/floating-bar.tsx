@@ -315,8 +315,8 @@ export const FloatingBar = forwardRef<FloatingBarHandle, FloatingBarProps>(
 
           {/* @ mention dropdown */}
           {showDropdown && (
-            <div className="mb-2 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
-              <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+            <div className="mb-2 overflow-hidden rounded-xl border border-strong bg-surface shadow-lg">
+              <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-tertiary">
                 Reference image
               </div>
               {filteredMentions.map((img, i) => (
@@ -328,7 +328,7 @@ export const FloatingBar = forwardRef<FloatingBarHandle, FloatingBarProps>(
                   }}
                   className={cn(
                     "flex w-full items-center gap-3 px-3 py-2 text-left transition-colors",
-                    i === activeIndex ? "bg-gray-50" : "hover:bg-gray-50"
+                    i === activeIndex ? "bg-hover-soft" : "hover:bg-hover-soft"
                   )}
                 >
                   <span
@@ -337,19 +337,19 @@ export const FloatingBar = forwardRef<FloatingBarHandle, FloatingBarProps>(
                   >
                     {img.label}
                   </span>
-                  <span className="text-sm text-gray-700">Image {img.index + 1}</span>
+                  <span className="text-sm text-secondary">Image {img.index + 1}</span>
                   {i === activeIndex && (
-                    <span className="ml-auto text-[10px] text-gray-300">↵</span>
+                    <span className="ml-auto text-[10px] text-icon-muted">↵</span>
                   )}
                 </button>
               ))}
             </div>
           )}
 
-          <div className="rounded-2xl border border-gray-200 bg-white shadow-xl">
+          <div className="rounded-2xl border border-strong bg-surface shadow-xl">
             {/* Mode tabs */}
             {hasNode && (
-              <div className="flex items-center gap-1 border-b border-gray-100 px-4 pt-3 pb-2">
+              <div className="flex items-center gap-1 border-b border-hairline px-4 pt-3 pb-2">
                 {(["generate", "edit", "duplicate"] as FloatingBarMode[]).map((m) => (
                   <button
                     key={m}
@@ -357,20 +357,20 @@ export const FloatingBar = forwardRef<FloatingBarHandle, FloatingBarProps>(
                     className={cn(
                       "rounded-full px-3 py-1 text-xs font-medium transition-colors",
                       mode === m
-                        ? "bg-gray-900 text-white"
-                        : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                        ? "bg-accent text-on-accent"
+                        : "text-tertiary hover:bg-accent-faint hover:text-secondary"
                     )}
                   >
                     {m.charAt(0).toUpperCase() + m.slice(1)}
                   </button>
                 ))}
                 <div className="ml-auto flex items-center gap-2">
-                  <div className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1">
-                    <span className="max-w-[160px] truncate text-xs text-gray-600">
+                  <div className="flex items-center gap-1.5 rounded-full border border-strong bg-hover-soft px-2.5 py-1">
+                    <span className="max-w-[160px] truncate text-xs text-secondary">
                       {selectedNode?.content.slice(0, 40)}
                       {(selectedNode?.content.length ?? 0) > 40 ? "…" : ""}
                     </span>
-                    <button onClick={onDeselectNode} className="text-gray-400 hover:text-gray-700">
+                    <button onClick={onDeselectNode} className="text-tertiary hover:text-secondary">
                       <X className="h-3 w-3" />
                     </button>
                   </div>
@@ -382,8 +382,8 @@ export const FloatingBar = forwardRef<FloatingBarHandle, FloatingBarProps>(
             <div className="flex items-center gap-3 px-4 py-3">
               {!hasNode && (
                 <div className="shrink-0">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100">
-                    <div className="h-2 w-2 rounded-full bg-gray-400" />
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-faint">
+                    <div className="h-2 w-2 rounded-full bg-tertiary" />
                   </div>
                 </div>
               )}
@@ -397,13 +397,13 @@ export const FloatingBar = forwardRef<FloatingBarHandle, FloatingBarProps>(
                   onInput={handleInput}
                   onKeyDown={handleKeyDown}
                   onBlur={handleBlur}
-                  className="min-h-[36px] w-full text-sm text-gray-800 focus:outline-none leading-relaxed"
+                  className="min-h-[36px] w-full text-sm text-primary focus:outline-none leading-relaxed"
                   style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
                 />
                 {/* Placeholder */}
                 {!instruction && (
                   <span
-                    className="pointer-events-none absolute left-0 top-0 text-sm text-gray-400 select-none"
+                    className="pointer-events-none absolute left-0 top-0 text-sm text-tertiary select-none"
                     aria-hidden
                   >
                     {placeholder}
@@ -414,7 +414,7 @@ export const FloatingBar = forwardRef<FloatingBarHandle, FloatingBarProps>(
               {/* Duplicate count */}
               {mode === "duplicate" && hasNode && (
                 <div className="flex shrink-0 items-center gap-1.5">
-                  <span className="text-xs text-gray-500">×</span>
+                  <span className="text-xs text-tertiary">×</span>
                   <input
                     type="number"
                     min={1}
@@ -425,7 +425,7 @@ export const FloatingBar = forwardRef<FloatingBarHandle, FloatingBarProps>(
                         Math.max(1, Math.min(10, parseInt(e.target.value) || 1))
                       )
                     }
-                    className="w-12 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-center text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-gray-300"
+                    className="w-12 rounded-lg border border-strong bg-hover-soft px-2 py-1 text-center text-sm text-secondary focus:outline-none focus:ring-1 focus:ring-[var(--border-strong)]"
                   />
                 </div>
               )}
@@ -437,8 +437,8 @@ export const FloatingBar = forwardRef<FloatingBarHandle, FloatingBarProps>(
                 className={cn(
                   "flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-medium transition-all",
                   canGenerate
-                    ? "bg-[#f2ff59] text-gray-900 hover:bg-[#eeff3a] active:scale-95"
-                    : "cursor-not-allowed bg-gray-100 text-gray-400"
+                    ? "bg-accent text-on-accent hover:bg-accent-hover active:scale-95"
+                    : "cursor-not-allowed bg-accent-faint text-tertiary"
                 )}
               >
                 {isGenerating ? (
@@ -458,14 +458,14 @@ export const FloatingBar = forwardRef<FloatingBarHandle, FloatingBarProps>(
             </div>
 
             {/* Hint */}
-            <div className="flex items-center justify-between border-t border-gray-50 px-4 py-1.5">
-              <p className="text-[10px] text-gray-300">
+            <div className="flex items-center justify-between border-t border-hairline px-4 py-1.5">
+              <p className="text-[10px] text-icon-muted">
                 ⌘ + Enter to generate · @ to reference an image · click fields to insert
               </p>
               {onShowPreview && mode === "generate" && (
                 <button
                   onClick={onShowPreview}
-                  className="flex items-center gap-1 text-[10px] text-gray-300 transition-colors hover:text-gray-500"
+                  className="flex items-center gap-1 text-[10px] text-icon-muted transition-colors hover:text-tertiary"
                 >
                   <Eye className="h-3 w-3" />
                   View request

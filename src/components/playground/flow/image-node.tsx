@@ -21,7 +21,7 @@ export function ImageNode({ data }: { data: ImageNodeData }) {
   return (
     <div
       className={cn(
-        "flex items-center gap-2 rounded-xl border-2 bg-white px-3 py-2 shadow-sm",
+        "flex items-center gap-2 rounded-xl border-2 bg-surface px-3 py-2 shadow-sm",
         color.border
       )}
       style={{ width: 160 }}
@@ -55,7 +55,7 @@ export function ImageNode({ data }: { data: ImageNodeData }) {
       <Handle
         type="source"
         position={Position.Bottom}
-        className="!border-2 !border-white !bg-gray-400"
+        className="!border-2 !border-[var(--surface-1)] !bg-tertiary"
         style={{ width: 10, height: 10 }}
       />
     </div>

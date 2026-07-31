@@ -13,21 +13,23 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         className={cn(
-          "inline-flex items-center justify-center rounded-lg font-medium transition-colors",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f2ff59]/60 focus-visible:ring-offset-2",
+          "inline-flex items-center justify-center font-semibold tracking-[-0.01em] transition-all duration-quick ease-out",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
           "disabled:pointer-events-none disabled:opacity-40",
           {
-            "bg-gray-900 text-white hover:bg-gray-800": variant === "default",
-            "bg-black/[0.06] text-gray-700 hover:bg-black/[0.1]": variant === "secondary",
-            "text-gray-600 hover:bg-black/[0.05] hover:text-gray-900": variant === "ghost",
-            "border border-black/[0.12] bg-transparent text-gray-700 hover:bg-black/[0.04] hover:text-gray-900": variant === "outline",
-            "bg-red-500 text-white hover:bg-red-600": variant === "destructive",
+            "rounded-pill bg-accent text-on-accent hover:bg-accent-hover": variant === "default",
+            "gos-btn rounded-md text-primary hover:brightness-[1.02] active:brightness-[0.98]":
+              variant === "secondary",
+            "rounded-md text-secondary hover:bg-hover-soft hover:text-primary": variant === "ghost",
+            "rounded-md border border-strong bg-transparent text-secondary hover:bg-hover-soft hover:text-primary":
+              variant === "outline",
+            "rounded-md bg-error text-white hover:opacity-90": variant === "destructive",
           },
           {
-            "h-8 px-3 text-sm": size === "sm",
-            "h-9 px-4 text-sm": size === "md",
-            "h-11 px-6 text-base": size === "lg",
-            "h-9 w-9": size === "icon",
+            "h-7 px-2.5 text-xs": size === "sm",
+            "h-8 px-4 text-sm": size === "md",
+            "h-9 px-5 text-sm": size === "lg",
+            "h-8 w-8": size === "icon",
           },
           className
         )}

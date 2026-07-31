@@ -55,7 +55,7 @@ const platformColors: Record<string, string> = {
   pinterest: "text-rose-600 bg-rose-50 border-rose-200",
   are_na: "text-blue-600 bg-blue-50 border-blue-200",
   tumblr: "text-cyan-700 bg-cyan-50 border-cyan-200",
-  manual: "text-gray-700 bg-black/[0.04] border-black/[0.1]",
+  manual: "text-secondary bg-hover-soft border-input",
   cosmos: "text-violet-700 bg-violet-50 border-violet-200",
 };
 
@@ -362,16 +362,16 @@ export default function CollectionPage({
     return (
       <div className="flex min-h-screen">
         <Sidebar />
-        <main className="flex-1 pl-64">
+        <main className="flex-1 pl-60">
           <div className="flex h-full min-h-screen items-center justify-center">
             <div className="text-center">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-black/[0.1] bg-black/[0.04]">
-                <ImageIcon className="h-5 w-5 text-gray-600" />
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-input bg-hover-soft">
+                <ImageIcon className="h-5 w-5 text-secondary" />
               </div>
-              <h2 className="text-base font-medium text-gray-800">{error}</h2>
+              <h2 className="text-base font-medium text-primary">{error}</h2>
               <Link
                 href="/"
-                className="mt-3 inline-block text-sm text-gray-600 transition-colors hover:text-gray-900"
+                className="mt-3 inline-block text-sm text-secondary transition-colors hover:text-primary"
               >
                 ← Back to Gallery
               </Link>
@@ -386,7 +386,7 @@ export default function CollectionPage({
     <div className="flex min-h-screen">
       <Sidebar />
 
-      <main className="flex-1 pl-64">
+      <main className="flex-1 pl-60">
         {/* Header */}
         <Header
           title={isLoading ? "Loading..." : collection?.name || "Collection"}
@@ -448,8 +448,8 @@ export default function CollectionPage({
                     </Button>
 
                     {syncPopoverOpen && (
-                      <div className="absolute right-0 top-[calc(100%+6px)] z-50 w-56 rounded-xl border border-black/[0.08] bg-white/95 p-4 shadow-xl backdrop-blur-xl">
-                        <p className="mb-2.5 text-xs font-medium text-gray-700">
+                      <div className="absolute right-0 top-[calc(100%+6px)] z-50 w-56 rounded-xl border border-hairline gos-glass p-4 shadow-xl backdrop-blur-xl">
+                        <p className="mb-2.5 text-xs font-medium text-secondary">
                           Import limit
                         </p>
                         <input
@@ -465,9 +465,9 @@ export default function CollectionPage({
                           }}
                           placeholder="No limit"
                           autoFocus
-                          className="mb-3 w-full rounded-lg border border-black/[0.1] bg-white px-3 py-1.5 text-sm text-gray-800 placeholder-gray-400 focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-200"
+                          className="mb-3 w-full rounded-lg border border-input bg-surface px-3 py-1.5 text-sm text-primary placeholder-gray-400 focus:border-strong focus:outline-none focus:ring-1 focus:ring-[var(--border-strong)]"
                         />
-                        <p className="mb-3 text-[11px] leading-relaxed text-gray-500">
+                        <p className="mb-3 text-[11px] leading-relaxed text-tertiary">
                           Max new images to add. Duplicates are always skipped.
                         </p>
                         <button
@@ -475,7 +475,7 @@ export default function CollectionPage({
                             const n = syncLimit.trim() ? parseInt(syncLimit, 10) : undefined;
                             handleSync(n);
                           }}
-                          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-gray-900 py-1.5 text-xs font-medium text-white transition-colors hover:bg-gray-800"
+                          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-accent py-1.5 text-xs font-medium text-on-accent transition-colors hover:bg-accent-hover"
                         >
                           <RefreshCw className="h-3 w-3" />
                           {syncLimit.trim() ? `Sync up to ${syncLimit}` : "Sync all new"}
@@ -486,7 +486,7 @@ export default function CollectionPage({
 
                   {/* External link */}
                   <a href={collection.source_url} target="_blank" rel="noopener noreferrer">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-600 hover:text-gray-900">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-secondary hover:text-primary">
                       <ExternalLink className="h-3.5 w-3.5" />
                     </Button>
                   </a>
@@ -503,7 +503,7 @@ export default function CollectionPage({
                       "h-8 w-8 transition-colors",
                       confirmDelete
                         ? "bg-red-50 text-red-500"
-                        : "text-gray-600 hover:text-red-500 hover:bg-red-50"
+                        : "text-secondary hover:text-red-500 hover:bg-red-50"
                     )}
                     onClick={() => setConfirmDelete((v) => !v)}
                     disabled={isDeleting}
@@ -517,14 +517,14 @@ export default function CollectionPage({
 
                   {/* Confirmation popover */}
                   {confirmDelete && (
-                    <div className="absolute right-0 top-[calc(100%+6px)] z-50 w-60 rounded-xl border border-black/[0.08] bg-white/95 p-4 shadow-xl backdrop-blur-xl">
+                    <div className="absolute right-0 top-[calc(100%+6px)] z-50 w-60 rounded-xl border border-hairline gos-glass p-4 shadow-xl backdrop-blur-xl">
                       <div className="mb-3 flex items-start gap-2.5">
                         <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-50 border border-red-200">
                           <AlertTriangle className="h-3 w-3 text-red-500" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-900">Delete collection?</p>
-                          <p className="mt-0.5 text-xs leading-relaxed text-gray-600">
+                          <p className="text-sm font-medium text-primary">Delete collection?</p>
+                          <p className="mt-0.5 text-xs leading-relaxed text-secondary">
                             Images stay in your gallery. This can&rsquo;t be undone.
                           </p>
                         </div>
@@ -532,7 +532,7 @@ export default function CollectionPage({
                       <div className="flex gap-2">
                         <button
                           onClick={() => setConfirmDelete(false)}
-                          className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border border-black/[0.1] text-xs text-gray-600 transition-colors hover:bg-black/[0.04] hover:text-gray-800"
+                          className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border border-input text-xs text-secondary transition-colors hover:bg-hover-soft hover:text-primary"
                         >
                           <X className="h-3 w-3" />
                           Cancel
@@ -567,7 +567,7 @@ export default function CollectionPage({
         >
           <div
             className={cn(
-              "h-full bg-gradient-to-r from-[#f2ff59] via-yellow-300 to-[#f2ff59] bg-[length:200%_100%]",
+              "h-full bg-gradient-to-r from-accent/70 via-accent to-accent/70 bg-[length:200%_100%]",
               isSyncing && "animate-[shimmer_1.5s_ease-in-out_infinite]"
             )}
             style={{
@@ -595,7 +595,7 @@ export default function CollectionPage({
 
               {/* Last synced */}
               {collection.last_synced_at && (
-                <span className="flex items-center gap-1.5 text-xs text-gray-600">
+                <span className="flex items-center gap-1.5 text-xs text-secondary">
                   <Clock className="h-3 w-3" />
                   {formatDate(collection.last_synced_at)}
                 </span>
@@ -604,8 +604,8 @@ export default function CollectionPage({
               {/* Description */}
               {collection.description && (
                 <>
-                  <span className="text-gray-400">·</span>
-                  <p className="text-xs text-gray-600">{collection.description}</p>
+                  <span className="text-tertiary">·</span>
+                  <p className="text-xs text-secondary">{collection.description}</p>
                 </>
               )}
 
@@ -619,7 +619,7 @@ export default function CollectionPage({
                   )}
                   {syncProgress.status === "downloading" ? "Downloading" : "Tagging with AI"}
                   {syncProgress.imagesFound > 0 && (
-                    <span className="ml-0.5 rounded-full bg-gray-900/10 px-1.5 py-px font-medium tabular-nums">
+                    <span className="ml-0.5 rounded-full bg-accent/10 px-1.5 py-px font-medium tabular-nums">
                       {syncProgress.imagesFound} new
                     </span>
                   )}
@@ -650,7 +650,7 @@ export default function CollectionPage({
               {Array.from({ length: 12 }).map((_, i) => (
                 <div
                   key={i}
-                  className="aspect-square animate-pulse rounded-xl bg-black/[0.06]"
+                  className="aspect-square animate-pulse rounded-xl bg-accent-faint"
                   style={{ animationDelay: `${i * 40}ms` }}
                 />
               ))}
@@ -681,10 +681,10 @@ export default function CollectionPage({
             <div className="flex flex-col items-center justify-center py-24">
               <div className="relative mb-5">
                 <IconWell size="xl" variant="accent" className="opacity-40" />
-                <Loader2 className="absolute inset-0 m-auto h-6 w-6 animate-spin text-gray-600" />
+                <Loader2 className="absolute inset-0 m-auto h-6 w-6 animate-spin text-secondary" />
               </div>
-              <p className="text-sm font-medium text-gray-700">Downloading images&hellip;</p>
-              <p className="mt-1 text-xs text-gray-600">Large boards may take a moment</p>
+              <p className="text-sm font-medium text-secondary">Downloading images&hellip;</p>
+              <p className="mt-1 text-xs text-secondary">Large boards may take a moment</p>
             </div>
           ) : (
             /* Empty state */

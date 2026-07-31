@@ -71,7 +71,7 @@ export function RemixList({ onCreateNew }: RemixListProps) {
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-tertiary" />
       </div>
     );
   }
@@ -81,8 +81,8 @@ export function RemixList({ onCreateNew }: RemixListProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Your Remixes</h2>
-          <p className="text-sm text-gray-600">
+          <h2 className="text-lg font-semibold text-primary">Your Remixes</h2>
+          <p className="text-sm text-secondary">
             {remixes.length} saved remix{remixes.length !== 1 ? "es" : ""}
           </p>
         </div>
@@ -104,7 +104,7 @@ export function RemixList({ onCreateNew }: RemixListProps) {
               <Card
                 key={remix.id}
                 className={cn(
-                  "group cursor-pointer transition-all hover:border-[#f2ff59] hover:bg-[#f2ff59]/10",
+                  "group cursor-pointer transition-all hover:border-strong hover:bg-hover-soft",
                   isDeleting && "opacity-50 pointer-events-none"
                 )}
                 onClick={() => handleOpen(remix.id)}
@@ -112,10 +112,10 @@ export function RemixList({ onCreateNew }: RemixListProps) {
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <h3 className="truncate font-medium text-gray-900">
+                      <h3 className="truncate font-medium text-primary">
                         {remix.name || "Untitled remix"}
                       </h3>
-                      <div className="mt-1 flex items-center gap-2 text-xs text-gray-600">
+                      <div className="mt-1 flex items-center gap-2 text-xs text-secondary">
                         <Clock className="h-3 w-3" />
                         <span>{formatRelativeTime(remix.updated_at)}</span>
                       </div>
@@ -124,7 +124,7 @@ export function RemixList({ onCreateNew }: RemixListProps) {
                       onClick={(e) => handleDelete(remix.id, e)}
                       className="shrink-0 rounded p-1.5 opacity-0 transition-all hover:bg-red-50 group-hover:opacity-100"
                     >
-                      <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
+                      <Trash2 className="h-4 w-4 text-tertiary hover:text-red-500" />
                     </button>
                   </div>
 
@@ -147,7 +147,7 @@ export function RemixList({ onCreateNew }: RemixListProps) {
 
                   {/* Preview of generated prompt */}
                   {remix.generated_prompt && (
-                    <p className="mt-3 line-clamp-2 text-xs text-gray-600">
+                    <p className="mt-3 line-clamp-2 text-xs text-secondary">
                       {remix.generated_prompt}
                     </p>
                   )}
@@ -159,11 +159,11 @@ export function RemixList({ onCreateNew }: RemixListProps) {
       ) : (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="rounded-full bg-[#f2ff59]/30 p-4">
-              <FolderOpen className="h-8 w-8 text-gray-700" />
+            <div className="rounded-full bg-accent-faint p-4">
+              <FolderOpen className="h-8 w-8 text-secondary" />
             </div>
-            <h3 className="mt-4 font-medium text-gray-900">No remixes yet</h3>
-            <p className="mt-1 text-sm text-gray-600">
+            <h3 className="mt-4 font-medium text-primary">No remixes yet</h3>
+            <p className="mt-1 text-sm text-secondary">
               Create your first remix by selecting images and generating a prompt
             </p>
             <Button onClick={onCreateNew} className="mt-6">

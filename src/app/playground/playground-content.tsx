@@ -73,26 +73,26 @@ function RequestPreviewModal({ isOpen, onClose, systemPrompt, userMessage }: Req
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative flex w-full max-w-2xl flex-col rounded-2xl border border-gray-200 bg-white shadow-2xl" style={{ maxHeight: "80vh" }}>
+      <div className="relative flex w-full max-w-2xl flex-col rounded-2xl border border-hairline bg-surface shadow-2xl" style={{ maxHeight: "80vh" }}>
         {/* Header */}
-        <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-5 py-4">
+        <div className="flex shrink-0 items-center justify-between border-b border-hairline px-5 py-4">
           <div>
-            <h2 className="text-sm font-semibold text-gray-900">LLM Request Preview</h2>
-            <p className="mt-0.5 text-xs text-gray-400">Exactly what is sent to the model on Generate</p>
+            <h2 className="text-sm font-semibold text-primary">LLM Request Preview</h2>
+            <p className="mt-0.5 text-xs text-tertiary">Exactly what is sent to the model on Generate</p>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
+          <button onClick={onClose} className="rounded-lg p-1.5 text-tertiary hover:bg-accent-faint hover:text-secondary">
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex shrink-0 gap-1 border-b border-gray-100 px-5 pt-3">
+        <div className="flex shrink-0 gap-1 border-b border-hairline px-5 pt-3">
           <button
             onClick={() => setTab("system")}
             className={`rounded-t-lg px-3 py-1.5 text-xs font-medium transition-colors ${
               tab === "system"
-                ? "border border-b-0 border-gray-200 bg-white text-gray-900"
-                : "text-gray-400 hover:text-gray-600"
+                ? "border border-b-0 border-hairline bg-surface text-primary"
+                : "text-tertiary hover:text-secondary"
             }`}
           >
             System Prompt
@@ -101,8 +101,8 @@ function RequestPreviewModal({ isOpen, onClose, systemPrompt, userMessage }: Req
             onClick={() => setTab("user")}
             className={`rounded-t-lg px-3 py-1.5 text-xs font-medium transition-colors ${
               tab === "user"
-                ? "border border-b-0 border-gray-200 bg-white text-gray-900"
-                : "text-gray-400 hover:text-gray-600"
+                ? "border border-b-0 border-hairline bg-surface text-primary"
+                : "text-tertiary hover:text-secondary"
             }`}
           >
             User Message
@@ -111,17 +111,17 @@ function RequestPreviewModal({ isOpen, onClose, systemPrompt, userMessage }: Req
 
         {/* Content */}
         <div className="relative min-h-0 flex-1 overflow-y-auto">
-          <pre className="p-5 font-mono text-[11px] leading-relaxed text-gray-700 whitespace-pre-wrap break-words">
-            {activeText || <span className="italic text-gray-400">No data yet — select images and enter an instruction first.</span>}
+          <pre className="p-5 font-mono text-[11px] leading-relaxed text-secondary whitespace-pre-wrap break-words">
+            {activeText || <span className="italic text-tertiary">No data yet — select images and enter an instruction first.</span>}
           </pre>
         </div>
 
         {/* Footer */}
-        <div className="flex shrink-0 items-center justify-between border-t border-gray-100 px-5 py-3">
-          <span className="text-[10px] text-gray-400">{activeText.length.toLocaleString()} characters</span>
+        <div className="flex shrink-0 items-center justify-between border-t border-hairline px-5 py-3">
+          <span className="text-[10px] text-tertiary">{activeText.length.toLocaleString()} characters</span>
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 transition-colors hover:bg-gray-50"
+            className="flex items-center gap-1.5 rounded-lg border border-hairline px-3 py-1.5 text-xs text-secondary transition-colors hover:bg-hover-soft"
           >
             {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
             {copied ? "Copied!" : "Copy"}
@@ -150,9 +150,9 @@ const LINEAGE_MODE_STYLES: Record<
   { badge: string; label: string; dot: string }
 > = {
   generate: {
-    badge: "bg-gray-100 text-gray-600 border border-gray-200",
+    badge: "bg-accent-faint text-secondary border border-hairline",
     label: "Generate",
-    dot: "bg-gray-400",
+    dot: "bg-tertiary",
   },
   edit: {
     badge: "bg-blue-50 text-blue-700 border border-blue-200",
@@ -221,20 +221,20 @@ function LineageModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div
-        className="relative flex w-full max-w-xl flex-col rounded-2xl border border-gray-200 bg-white shadow-2xl"
+        className="relative flex w-full max-w-xl flex-col rounded-2xl border border-hairline bg-surface shadow-2xl"
         style={{ maxHeight: "85vh" }}
       >
         {/* Header */}
-        <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-5 py-4">
+        <div className="flex shrink-0 items-center justify-between border-b border-hairline px-5 py-4">
           <div>
-            <h2 className="text-sm font-semibold text-gray-900">Prompt Lineage</h2>
-            <p className="mt-0.5 text-xs text-gray-400">
+            <h2 className="text-sm font-semibold text-primary">Prompt Lineage</h2>
+            <p className="mt-0.5 text-xs text-tertiary">
               {stepCount} {stepCount === 1 ? "step" : "steps"} to this prompt
             </p>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            className="rounded-lg p-1.5 text-tertiary hover:bg-accent-faint hover:text-secondary"
           >
             <X className="h-4 w-4" />
           </button>
@@ -262,7 +262,7 @@ function LineageModal({
                     {i + 1}
                   </div>
                   {i < stepCount - 1 && (
-                    <div className="mt-1 w-px flex-1 bg-gray-200" style={{ minHeight: 20 }} />
+                    <div className="mt-1 w-px flex-1 bg-accent-soft" style={{ minHeight: 20 }} />
                   )}
                 </div>
 
@@ -276,28 +276,28 @@ function LineageModal({
                       {style.label}
                     </span>
                     {entry.isCurrent && (
-                      <span className="text-[10px] text-gray-400">current</span>
+                      <span className="text-[10px] text-tertiary">current</span>
                     )}
                     {entry.model && (
-                      <span className="font-mono text-[9px] text-gray-300">{entry.model}</span>
+                      <span className="font-mono text-[9px] text-icon-muted">{entry.model}</span>
                     )}
                   </div>
 
                   {/* Instruction */}
                   {entry.instruction ? (
-                    <p className="mb-2 text-[11px] italic text-gray-400">
+                    <p className="mb-2 text-[11px] italic text-tertiary">
                       "{entry.instruction}"
                     </p>
                   ) : (
-                    <p className="mb-2 text-[11px] italic text-gray-300">
+                    <p className="mb-2 text-[11px] italic text-icon-muted">
                       No instruction
                     </p>
                   )}
 
                   {/* Prompt content box */}
-                  <div className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+                  <div className="rounded-xl border border-hairline bg-hover-soft px-3 py-2.5">
                     <div
-                      className={`text-[11px] leading-relaxed text-gray-700 ${
+                      className={`text-[11px] leading-relaxed text-secondary ${
                         !isExpanded ? "line-clamp-4" : ""
                       }`}
                     >
@@ -313,7 +313,7 @@ function LineageModal({
                       {isLong && (
                         <button
                           onClick={() => toggleExpand(i)}
-                          className="text-[10px] text-gray-400 hover:text-gray-600"
+                          className="text-[10px] text-tertiary hover:text-secondary"
                         >
                           {isExpanded ? "Show less" : "Show full prompt"}
                         </button>
@@ -324,7 +324,7 @@ function LineageModal({
                           className={`flex items-center gap-1 text-[10px] transition-colors ${
                             isDiff
                               ? "text-amber-600"
-                              : "text-gray-400 hover:text-gray-600"
+                              : "text-tertiary hover:text-secondary"
                           }`}
                         >
                           <GitCompare className="h-2.5 w-2.5" />
@@ -389,17 +389,17 @@ function SaveToLibraryModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative flex w-full max-w-sm flex-col rounded-2xl border border-gray-200 bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-          <h2 className="text-sm font-semibold text-gray-900">Save to Prompt Library</h2>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
+      <div className="relative flex w-full max-w-sm flex-col rounded-2xl border border-hairline bg-surface shadow-2xl">
+        <div className="flex items-center justify-between border-b border-hairline px-5 py-4">
+          <h2 className="text-sm font-semibold text-primary">Save to Prompt Library</h2>
+          <button onClick={onClose} className="rounded-lg p-1.5 text-tertiary hover:bg-accent-faint hover:text-secondary">
             <X className="h-4 w-4" />
           </button>
         </div>
 
         <div className="space-y-4 px-5 py-4">
           <div>
-            <label className="mb-2 block text-xs font-medium text-gray-700">Type</label>
+            <label className="mb-2 block text-xs font-medium text-secondary">Type</label>
             <div className="flex gap-1.5">
               {TYPE_BUTTONS.map(({ value, label }) => (
                 <button
@@ -407,8 +407,8 @@ function SaveToLibraryModal({
                   onClick={() => setType(value)}
                   className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${
                     type === value
-                      ? "border-gray-900 bg-gray-900 text-white"
-                      : "border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+                      ? "border-accent bg-accent text-on-accent"
+                      : "border-hairline text-secondary hover:border-strong hover:bg-hover-soft"
                   }`}
                 >
                   {label}
@@ -416,20 +416,20 @@ function SaveToLibraryModal({
               ))}
             </div>
           </div>
-          <p className="text-xs text-gray-400">Title will be auto-generated.</p>
+          <p className="text-xs text-tertiary">Title will be auto-generated.</p>
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-gray-100 px-5 py-4">
+        <div className="flex items-center justify-end gap-2 border-t border-hairline px-5 py-4">
           <button
             onClick={onClose}
-            className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100"
+            className="rounded-lg px-4 py-2 text-sm font-medium text-secondary transition-colors hover:bg-accent-faint"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-50"
           >
             {isSaving ? "Saving…" : "Save"}
           </button>
@@ -643,7 +643,7 @@ function PlaygroundCanvas({
           target: pn.id,
           type: "smoothstep",
           animated: isGenerating,
-          style: { stroke: "#d1d5db", strokeWidth: 1.5 },
+          style: { stroke: "var(--border-strong)", strokeWidth: 1.5 },
         });
       });
     });
@@ -658,7 +658,7 @@ function PlaygroundCanvas({
           target: pn.id,
           type: "smoothstep",
           animated: isGenerating,
-          style: { stroke: "#d1d5db", strokeWidth: 1.5 },
+          style: { stroke: "var(--border-strong)", strokeWidth: 1.5 },
         });
       });
 
@@ -698,7 +698,7 @@ function PlaygroundCanvas({
 
   const onConnect = useCallback(
     (connection: Connection) =>
-      setRfEdges((eds) => addEdge({ ...connection, type: "smoothstep", style: { stroke: "#d1d5db", strokeWidth: 1.5 } }, eds)),
+      setRfEdges((eds) => addEdge({ ...connection, type: "smoothstep", style: { stroke: "var(--border-strong)", strokeWidth: 1.5 } }, eds)),
     [setRfEdges]
   );
 
@@ -824,8 +824,8 @@ function PlaygroundCanvas({
     return (
       <div className="flex min-h-screen">
         <Sidebar />
-        <main className="flex flex-1 pl-64 items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        <main className="flex flex-1 pl-60 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-tertiary" />
         </main>
       </div>
     );
@@ -835,10 +835,10 @@ function PlaygroundCanvas({
     return (
       <div className="flex min-h-screen">
         <Sidebar />
-        <main className="flex-1 pl-64">
-          <div className="border-b border-gray-200 bg-white px-6 py-4">
-            <h1 className="text-lg font-semibold text-gray-900">Playground</h1>
-            <p className="text-sm text-gray-500">Mix and remix prompts from multiple images</p>
+        <main className="flex-1 pl-60">
+          <div className="border-b border-hairline bg-surface px-6 py-4">
+            <h1 className="text-lg font-semibold text-primary">Playground</h1>
+            <p className="text-sm text-tertiary">Mix and remix prompts from multiple images</p>
           </div>
           <div className="p-6">
             <RemixList
@@ -859,17 +859,17 @@ function PlaygroundCanvas({
       <Sidebar />
 
       {/* Content area (after 64px sidebar) */}
-      <div className="flex flex-1 flex-col overflow-hidden pl-64">
+      <div className="flex flex-1 flex-col overflow-hidden pl-60">
         {/* Top bar */}
-        <div className="flex shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-4 py-2">
+        <div className="flex shrink-0 items-center gap-3 border-b border-hairline bg-surface px-4 py-2">
           <button
             onClick={() => setShowRemixList(true)}
-            className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+            className="flex items-center gap-1 text-sm text-tertiary hover:text-secondary"
           >
             <ChevronDown className="h-4 w-4 rotate-90" />
             All Remixes
           </button>
-          <div className="h-4 w-px bg-gray-200" />
+          <div className="h-4 w-px bg-accent-soft" />
           <RemixControls
             remixId={currentRemixId}
             remixName={remixName}
@@ -896,7 +896,7 @@ function PlaygroundCanvas({
           />
 
           {/* React Flow canvas */}
-          <div ref={reactFlowRef} className="flex-1 bg-gray-50">
+          <div ref={reactFlowRef} className="flex-1 bg-hover-soft">
             <ReactFlow
               nodes={rfNodes}
               edges={rfEdges}
@@ -913,14 +913,14 @@ function PlaygroundCanvas({
               <Background
                 variant={BackgroundVariant.Dots}
                 gap={20}
-                color="#e5e7eb"
+                color="var(--border-strong)"
                 size={1}
               />
               <Controls position="bottom-right" />
               <Panel position="top-left">
                 <button
                   onClick={handleAddMergeNode}
-                  className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-500 shadow-sm transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700"
+                  className="flex items-center gap-1.5 rounded-xl border border-hairline bg-surface px-3 py-2 text-xs font-medium text-tertiary shadow-sm transition-colors hover:border-strong hover:bg-hover-soft hover:text-secondary"
                 >
                   <Combine className="h-3.5 w-3.5 text-orange-500" />
                   Add Combine Node
@@ -932,10 +932,10 @@ function PlaygroundCanvas({
             {selectedImages.length === 0 && promptNodes.length === 0 && (
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                 <div className="text-center">
-                  <p className="text-sm font-medium text-gray-500">
+                  <p className="text-sm font-medium text-tertiary">
                     Select images to get started
                   </p>
-                  <p className="mt-1 text-xs text-gray-400">
+                  <p className="mt-1 text-xs text-tertiary">
                     Images will appear as nodes on the canvas
                   </p>
                 </div>
