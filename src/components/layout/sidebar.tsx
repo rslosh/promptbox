@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -40,12 +40,53 @@ const platformMeta: Record<string, { label: string; emoji: string }> = {
 // Preferred group order
 const PLATFORM_ORDER = ["pinterest", "are_na", "tumblr", "cosmos", "shotdeck", "midjourney", "manual"];
 
+// Every page renders its own <Sidebar/>, so navigation remounts it. These
+// module-level caches carry the collections list and the user's expand/
+// collapse choices across mounts (localStorage adds cross-session persistence).
+const UI_STATE_KEY = "promptbox_sidebar_ui";
+let cachedCollections: Collection[] | null = null;
+let cachedUi: { collapsed: string[]; expanded: boolean } | null = null;
+
 export function Sidebar() {
   const pathname = usePathname();
-  const [collections, setCollections] = useState<Collection[]>([]);
-  const [collectionsExpanded, setCollectionsExpanded] = useState(true);
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-  const [isLoading, setIsLoading] = useState(true);
+  const [collections, setCollections] = useState<Collection[]>(cachedCollections ?? []);
+  const [collectionsExpanded, setCollectionsExpanded] = useState(cachedUi?.expanded ?? true);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    () => new Set(cachedUi?.collapsed ?? [])
+  );
+  const [isLoading, setIsLoading] = useState(cachedCollections === null);
+  const uiInitialized = useRef(cachedUi !== null);
+
+  // First mount of the session: hydrate expand/collapse state from
+  // localStorage (deferred to an effect so SSR markup matches).
+  useEffect(() => {
+    if (uiInitialized.current) return;
+    try {
+      const stored = localStorage.getItem(UI_STATE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as { collapsed: string[]; expanded: boolean };
+        setCollapsedGroups(new Set(parsed.collapsed));
+        setCollectionsExpanded(parsed.expanded);
+        cachedUi = parsed;
+      } else {
+        cachedUi = { collapsed: [], expanded: true };
+      }
+    } catch {
+      cachedUi = { collapsed: [], expanded: true };
+    }
+    uiInitialized.current = true;
+  }, []);
+
+  // Persist expand/collapse choices (skipped until hydration completes so
+  // defaults never clobber the stored state).
+  useEffect(() => {
+    if (!uiInitialized.current) return;
+    const next = { collapsed: [...collapsedGroups], expanded: collectionsExpanded };
+    cachedUi = next;
+    try {
+      localStorage.setItem(UI_STATE_KEY, JSON.stringify(next));
+    } catch {}
+  }, [collapsedGroups, collectionsExpanded]);
 
   useEffect(() => {
     fetchCollections();
@@ -57,6 +98,7 @@ export function Sidebar() {
       if (response.ok) {
         const data = await response.json();
         setCollections(data);
+        cachedCollections = data;
       }
     } catch (error) {
       console.error("Failed to fetch collections:", error);

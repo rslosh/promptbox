@@ -226,6 +226,21 @@ export default function GalleryPage() {
   const visibleThumbs = selectedImageObjects.slice(0, MAX_VISIBLE_THUMBS);
   const overflow = selectedImageObjects.length - MAX_VISIBLE_THUMBS;
 
+  // Fisher-Yates over the loaded set — pure client-side, no refetch;
+  // clicking again reshuffles.
+  function handleShuffle() {
+    setImages((prev) => {
+      const shuffled = [...prev];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    });
+    setGalleryScroll(0);
+    window.scrollTo(0, 0);
+  }
+
   return (
     <div className="flex min-h-screen">
       <Sidebar />
@@ -339,6 +354,7 @@ export default function GalleryPage() {
             onSourceFilterChange={setSourceFilter}
             sortBy={sortBy}
             onSortChange={setSortBy}
+            onShuffle={handleShuffle}
             collections={collections}
             selectedCollections={selectedCollections}
             onCollectionsChange={setSelectedCollections}

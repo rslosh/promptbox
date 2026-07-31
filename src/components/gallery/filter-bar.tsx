@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { X, ChevronDown, Check, FolderOpen, ArrowUpDown } from "lucide-react";
+import { X, ChevronDown, Check, FolderOpen, ArrowUpDown, Shuffle } from "lucide-react";
 import type { Collection } from "@/lib/supabase/types";
 
 interface FilterBarProps {
@@ -13,6 +13,7 @@ interface FilterBarProps {
   onSourceFilterChange: (source: "all" | "upload" | "gallery_dl") => void;
   sortBy: "newest" | "oldest";
   onSortChange: (sort: "newest" | "oldest") => void;
+  onShuffle?: () => void;
   collections?: Collection[];
   selectedCollections?: string[];
   onCollectionsChange?: (collectionIds: string[]) => void;
@@ -26,6 +27,7 @@ export function FilterBar({
   onSourceFilterChange,
   sortBy,
   onSortChange,
+  onShuffle,
   collections = [],
   selectedCollections = [],
   onCollectionsChange,
@@ -218,6 +220,18 @@ export function FilterBar({
             </div>
           )}
         </div>
+
+        {/* Shuffle — random order; each click reshuffles */}
+        {onShuffle && (
+          <button
+            onClick={onShuffle}
+            title="Shuffle images randomly"
+            className="flex h-7 items-center gap-1.5 rounded-lg border border-hairline bg-hover-soft px-2.5 text-xs font-medium text-secondary transition-colors hover:border-strong hover:text-primary"
+          >
+            <Shuffle className="h-3 w-3" />
+            Shuffle
+          </button>
+        )}
 
         {/* Active filter count + clear */}
         {hasActiveFilters && (
