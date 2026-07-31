@@ -28,6 +28,7 @@ import {
   FileText,
   Download,
   Plus,
+  Info,
 } from "lucide-react";
 
 const PLATFORM_EMOJI: Record<string, string> = {
@@ -68,6 +69,12 @@ function extractPalette(prompt: { scene_prompt: unknown; json_prompt: unknown } 
   return [...new Set(hexes.map((h) => h.toUpperCase()))].slice(0, 8);
 }
 
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function deriveSource(sourceType: string, sourceRef: string | null): string {
   if (sourceType === "upload") return "Direct upload";
   if (!sourceRef) return sourceType;
@@ -94,6 +101,8 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
   const [image, setImage] = useState<ImageAsset | null>(null);
   const [nameDraft, setNameDraft] = useState("");
   const [noteDraft, setNoteDraft] = useState("");
+  const [fileSize, setFileSize] = useState<number | null>(null);
+  const [showVersions, setShowVersions] = useState(false);
   const [tags, setTags] = useState<AssetTag[]>([]);
   const [prompts, setPrompts] = useState<PromptWithVersions[]>([]);
   const [collections, setCollections] = useState<CollectionRef[]>([]);
@@ -306,6 +315,22 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
     }
   }
 
+  // File size for the info tooltip — a HEAD request against storage
+  useEffect(() => {
+    if (!image) return;
+    let cancelled = false;
+    setFileSize(null);
+    fetch(getImageUrl(image.storage_path), { method: "HEAD" })
+      .then((r) => {
+        const len = r.headers.get("content-length");
+        if (!cancelled && len) setFileSize(Number(len));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [image?.storage_path]); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function saveField(field: "name" | "note", value: string) {
     if (!image) return;
     const normalized = value.trim() || null;
@@ -371,12 +396,42 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
 
   const palette = extractPalette(selectedPrompt);
 
-  const infoPanel = (
-    <Panel className="overflow-visible">
-      <div className="border-b border-hairline px-5 py-3.5">
-        <p className="text-sm font-medium text-primary">Details</p>
+  const detailsHeader = (
+    <div className="flex items-center justify-between border-b border-hairline px-5 py-3.5">
+      <p className="text-sm font-medium text-primary">Details</p>
+      <div className="group/info relative">
+        <button
+          aria-label="Image information"
+          className="flex h-6 w-6 items-center justify-center rounded-pill text-tertiary transition-colors duration-quick hover:bg-hover-soft hover:text-primary"
+        >
+          <Info className="h-3.5 w-3.5" />
+        </button>
+        <div className="pointer-events-none absolute right-0 top-full z-50 mt-1.5 w-56 space-y-2 rounded-lg border border-hairline bg-surface p-3.5 opacity-0 shadow-modal transition-opacity duration-quick group-hover/info:opacity-100">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-tertiary">Saved</span>
+            <span className="text-xs font-medium text-primary">{formatDate(image.created_at)}</span>
+          </div>
+          {image.width > 0 && image.height > 0 && (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-tertiary">Dimensions</span>
+              <span className="text-xs font-medium text-primary">
+                {image.width} × {image.height}
+              </span>
+            </div>
+          )}
+          {fileSize !== null && (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-tertiary">Size</span>
+              <span className="text-xs font-medium text-primary">{formatBytes(fileSize)}</span>
+            </div>
+          )}
+        </div>
       </div>
-      <div className="space-y-3 px-5 py-4">
+    </div>
+  );
+
+  const detailsFields = (
+    <div className="space-y-3 px-5 py-4">
         {/* Thumbnail preview with format badge — the lightbox stage already
             shows the image, so this is the panel's identity card */}
         {variant === "modal" && (
@@ -454,9 +509,11 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
             rows={2}
           />
         </div>
-      </div>
+    </div>
+  );
 
-      <div className="divide-y divide-hairline border-t border-hairline px-5">
+  const metaRows = (
+    <div className="divide-y divide-hairline border-t border-hairline px-5">
         {image.width > 0 && image.height > 0 && (
           <div className="flex items-center justify-between py-2.5">
             <span className="text-xs text-tertiary">Dimensions</span>
@@ -537,47 +594,286 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
           <span className="text-xs text-tertiary">Added</span>
           <span className="text-xs text-secondary">{formatDate(image.created_at)}</span>
         </div>
-      </div>
+    </div>
+  );
+
+  const infoPanel = (
+    <Panel className="overflow-visible">
+      {detailsHeader}
+      {detailsFields}
+      {metaRows}
     </Panel>
+  );
+
+  const tagsChips =
+    tags.length > 0 ? (
+      <div className="flex flex-wrap gap-1.5">
+        {tags.map((tag) => (
+          <Chip key={tag.id}>
+            {tag.tag}
+            {tag.confidence && (
+              <span className="text-tertiary">{Math.round(tag.confidence * 100)}%</span>
+            )}
+          </Chip>
+        ))}
+      </div>
+    ) : (
+      <p className="text-sm text-tertiary">No tags yet</p>
+    );
+
+  const autoTagButton = (
+    <button
+      onClick={handleRetag}
+      disabled={isRetagging}
+      className="flex h-6 items-center gap-1 rounded-md px-2 text-xs font-medium text-secondary transition-colors duration-quick hover:bg-hover-soft hover:text-primary disabled:opacity-40"
+      title="Re-run auto-tagging on this image"
+    >
+      {isRetagging ? (
+        <RefreshCw className="h-3 w-3 animate-spin" />
+      ) : (
+        <Sparkles className="h-3 w-3" />
+      )}
+      Auto-tag
+    </button>
   );
 
   const tagsPanel = (
     <Panel className="overflow-hidden">
       <div className="flex items-center justify-between border-b border-hairline px-5 py-3.5">
         <p className="text-sm font-medium text-primary">Tags</p>
-        <button
-          onClick={handleRetag}
-          disabled={isRetagging}
-          className="flex h-6 items-center gap-1 rounded-md px-2 text-xs font-medium text-secondary transition-colors duration-quick hover:bg-hover-soft hover:text-primary disabled:opacity-40"
-          title="Re-run auto-tagging on this image"
-        >
-          {isRetagging ? (
-            <RefreshCw className="h-3 w-3 animate-spin" />
-          ) : (
-            <Sparkles className="h-3 w-3" />
-          )}
-          Auto-tag
-        </button>
+        {autoTagButton}
       </div>
-      <div className="p-5">
-        {tags.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
-            {tags.map((tag) => (
-              <Chip key={tag.id}>
-                {tag.tag}
-                {tag.confidence && (
-                  <span className="text-tertiary">
-                    {Math.round(tag.confidence * 100)}%
-                  </span>
-                )}
-              </Chip>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-tertiary">No tags yet</p>
+      <div className="p-5">{tagsChips}</div>
+    </Panel>
+  );
+
+  // Modal-only: prompts folded into the Details card as an "Image Prompt"
+  // section, GatherOS-style, instead of separate stacked panels.
+  const scenePromptJson = selectedPrompt?.scene_prompt as Record<string, unknown> | null;
+  const hasSceneJson = !!scenePromptJson && Object.keys(scenePromptJson).length > 0;
+  const activeJsonView = hasSceneJson ? jsonView : "visstruct";
+  const activeJsonText = selectedPrompt
+    ? JSON.stringify(
+        activeJsonView === "ideogram"
+          ? scenePromptJson
+          : reorderForDisplay(selectedPrompt.json_prompt as Record<string, unknown>),
+        null,
+        2
+      )
+    : "";
+
+  const promptSection = (
+    <div className="border-t border-hairline">
+      <div className="flex items-center justify-between px-5 py-3.5">
+        <p className="flex items-center gap-2 text-sm font-medium text-primary">
+          <Sparkles className="h-3.5 w-3.5 text-tertiary" />
+          Image Prompt
+        </p>
+        {selectedPrompt && (
+          <button
+            onClick={handleRetag}
+            disabled={isRetagging}
+            className="flex h-6 items-center gap-1 rounded-md px-2 text-xs font-medium text-secondary transition-colors duration-quick hover:bg-hover-soft hover:text-primary disabled:opacity-40"
+          >
+            <RefreshCw className={cn("h-3 w-3", isRetagging && "animate-spin")} />
+            {isRetagging ? "Regenerating…" : "Regenerate"}
+          </button>
         )}
       </div>
-    </Panel>
+      <div className="space-y-3 px-5 pb-4">
+        {retagError && <p className="text-xs text-error">{retagError}</p>}
+
+        {prompts.length > 1 && (
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {prompts.map((prompt, index) => (
+              <button
+                key={prompt.id}
+                onClick={() => setSelectedPrompt(prompt)}
+                className={cn(
+                  "flex h-7 shrink-0 items-center rounded-md border px-2.5 text-xs font-medium transition-colors",
+                  selectedPrompt?.id === prompt.id
+                    ? "border-accent bg-accent text-on-accent"
+                    : "border-input text-secondary hover:border-strong hover:text-primary"
+                )}
+              >
+                Prompt {prompts.length - index}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {selectedPrompt ? (
+          <>
+            {isEditing ? (
+              <div className="space-y-2">
+                <Textarea
+                  value={editedPrompt}
+                  onChange={(e) => setEditedPrompt(e.target.value)}
+                  rows={6}
+                />
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleSaveEdit}>
+                    <Save className="mr-1.5 h-3.5 w-3.5" />
+                    Save
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)}>
+                    <X className="mr-1.5 h-3.5 w-3.5" />
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-md border border-hairline bg-hover-soft p-3">
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-secondary">
+                  {selectedPrompt.natural_prompt}
+                </p>
+                <div className="mt-2 flex items-center gap-0.5 border-t border-hairline pt-2">
+                  <button
+                    onClick={() =>
+                      handleCopy(selectedPrompt.natural_prompt, `natural-${selectedPrompt.id}`)
+                    }
+                    className="flex h-6 w-6 items-center justify-center rounded-md text-tertiary transition-colors hover:bg-hover-soft hover:text-secondary"
+                    aria-label="Copy prompt"
+                  >
+                    {copiedId === `natural-${selectedPrompt.id}` ? (
+                      <Check className="h-3 w-3 text-success" />
+                    ) : (
+                      <Copy className="h-3 w-3" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsEditing(true);
+                      setEditedPrompt(selectedPrompt.natural_prompt);
+                    }}
+                    className="flex h-6 w-6 items-center justify-center rounded-md text-tertiary transition-colors hover:bg-hover-soft hover:text-secondary"
+                    aria-label="Edit prompt"
+                  >
+                    <Edit3 className="h-3 w-3" />
+                  </button>
+                  <button
+                    onClick={() => handleDeletePrompt(selectedPrompt.id)}
+                    className="flex h-6 w-6 items-center justify-center rounded-md text-tertiary transition-colors hover:bg-error/10 hover:text-error"
+                    aria-label="Delete prompt"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* JSON */}
+            <div className="flex items-center justify-between">
+              <p className="flex items-center gap-1.5 text-xs font-medium text-secondary">
+                <Code className="h-3 w-3 text-tertiary" />
+                JSON
+              </p>
+              <div className="flex items-center gap-0.5">
+                <button
+                  onClick={() => setShowJson(!showJson)}
+                  className="flex h-6 items-center rounded-md px-2 text-xs font-medium text-secondary transition-colors hover:bg-hover-soft hover:text-primary"
+                >
+                  {showJson ? "Hide" : "Show"}
+                </button>
+                <button
+                  onClick={() => handleCopy(activeJsonText, `json-${selectedPrompt.id}`)}
+                  className="flex h-6 w-6 items-center justify-center rounded-md text-tertiary transition-colors hover:bg-hover-soft hover:text-secondary"
+                  aria-label="Copy JSON"
+                >
+                  {copiedId === `json-${selectedPrompt.id}` ? (
+                    <Check className="h-3 w-3 text-success" />
+                  ) : (
+                    <Copy className="h-3 w-3" />
+                  )}
+                </button>
+              </div>
+            </div>
+            {showJson && (
+              <div className="space-y-2">
+                {hasSceneJson && (
+                  <div className="inline-flex rounded-md border border-hairline bg-hover-soft p-0.5">
+                    {[
+                      { key: "ideogram" as const, label: "Ideogram" },
+                      { key: "visstruct" as const, label: "VisStruct" },
+                    ].map((view) => (
+                      <button
+                        key={view.key}
+                        onClick={() => setJsonView(view.key)}
+                        className={cn(
+                          "flex h-6 items-center rounded-sm px-2.5 text-xs font-medium transition-colors",
+                          activeJsonView === view.key
+                            ? "bg-surface text-primary shadow-sm"
+                            : "text-tertiary hover:text-primary"
+                        )}
+                      >
+                        {view.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <pre className="max-h-64 overflow-auto rounded-md border border-hairline bg-hover-soft p-3 text-xs text-secondary">
+                  {activeJsonText}
+                </pre>
+              </div>
+            )}
+
+            {/* Version history */}
+            {selectedPrompt.versions && selectedPrompt.versions.length > 0 && (
+              <div>
+                <button
+                  onClick={() => setShowVersions((v) => !v)}
+                  className="flex items-center gap-1.5 text-xs text-tertiary transition-colors hover:text-secondary"
+                >
+                  <Clock className="h-3 w-3" />
+                  Version history ({selectedPrompt.versions.length})
+                </button>
+                {showVersions && (
+                  <div className="mt-2 divide-y divide-hairline rounded-md border border-hairline">
+                    {selectedPrompt.versions
+                      .sort((a, b) => b.version_index - a.version_index)
+                      .map((version) => (
+                        <div key={version.id} className="p-3">
+                          <div className="mb-1 flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <Chip>v{version.version_index}</Chip>
+                              <Chip>{version.edit_source}</Chip>
+                            </div>
+                            <span className="text-xs text-tertiary">
+                              {formatDate(version.created_at)}
+                            </span>
+                          </div>
+                          <p className="line-clamp-2 text-xs leading-relaxed text-secondary">
+                            {version.natural_prompt}
+                          </p>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          <Button size="sm" onClick={handleRetag} disabled={isRetagging}>
+            {isRetagging ? (
+              <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+            )}
+            {isRetagging ? "Generating…" : "Generate prompt"}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+
+  const tagsSection = (
+    <div className="border-t border-hairline">
+      <div className="flex items-center justify-between px-5 py-3.5">
+        <p className="text-sm font-medium text-primary">Tags</p>
+        {autoTagButton}
+      </div>
+      <div className="px-5 pb-4">{tagsChips}</div>
+    </div>
   );
 
   const promptsColumn = (
@@ -821,12 +1117,18 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
   );
 
   if (variant === "modal") {
+    // One continuous Details card, GatherOS-style: identity → fields →
+    // Image Prompt → metadata → Tags.
     return (
-      <div className="space-y-4">
+      <div className="space-y-3">
         {actionBar}
-        {promptsColumn}
-        {infoPanel}
-        {tagsPanel}
+        <Panel className="overflow-visible">
+          {detailsHeader}
+          {detailsFields}
+          {promptSection}
+          {metaRows}
+          {tagsSection}
+        </Panel>
       </div>
     );
   }

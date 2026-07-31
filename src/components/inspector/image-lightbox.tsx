@@ -23,7 +23,7 @@ export function emitImageDeleted(id: string) {
   window.dispatchEvent(new CustomEvent("promptbox:image-deleted", { detail: { id } }));
 }
 
-const ZOOM_MIN = 1;
+const ZOOM_MIN = 0.25;
 const ZOOM_MAX = 3;
 
 /**
@@ -65,6 +65,15 @@ export function ImageLightbox({ imageId }: { imageId: string }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageId]);
+
+  // Keep the viewport centered on the image's center as zoom changes —
+  // without this the scroll container anchors to the top-left.
+  useEffect(() => {
+    const el = stageScrollRef.current;
+    if (!el) return;
+    el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2;
+    el.scrollTop = (el.scrollHeight - el.clientHeight) / 2;
+  }, [zoom]);
 
   // Preload neighbor full-res images so arrow navigation is instant
   useEffect(() => {
@@ -269,15 +278,16 @@ export function ImageLightbox({ imageId }: { imageId: string }) {
           {storagePath && (
             <div
               ref={stageScrollRef}
-              className={cn("relative h-full w-full p-6", zoom > 1 && "overflow-auto p-0")}
+              className="relative flex h-full w-full overflow-auto"
+              onClick={(e) => {
+                if (zoom <= 1 && e.target === e.currentTarget) router.back();
+              }}
             >
+              {/* m-auto centers when smaller than the stage and resolves to 0
+                  when overflowing, so scrolling reaches every edge */}
               <div
-                className="relative mx-auto h-full"
-                style={
-                  zoom > 1
-                    ? { width: `${zoom * 100}%`, height: `${zoom * 100}%` }
-                    : undefined
-                }
+                className="relative m-auto shrink-0"
+                style={{ width: `${zoom * 100}%`, height: `${zoom * 100}%` }}
               >
                 {/* Thumbnail: already in the browser cache from the grid — paints
                     immediately and stays underneath until full-res arrives */}
