@@ -92,21 +92,27 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
   const [mounted, setMounted] = useState(false);
   const addBtnRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  // Monotonic fetch id: fast arrow-keying can have several fetches in
+  // flight — only the newest is allowed to write state.
+  const fetchIdRef = useRef(0);
 
   useEffect(() => { setMounted(true); }, []);
 
+  // The full collections list doesn't change per image — fetch once.
   useEffect(() => {
-    // Reset per-image UI state when navigating between images inside the lightbox
-    setImage(null);
-    setSelectedPrompt(null);
-    setIsEditing(false);
-    setRetagError(null);
-    setDimensions(null);
-    fetchImageDetails();
     fetch("/api/collections")
       .then((r) => r.json())
       .then((data) => setAllCollections(Array.isArray(data) ? data : []))
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    // Stale-while-loading: keep the previous image's panel rendered while
+    // the next loads, then swap everything in a single render. Only editing
+    // state resets immediately — it must not carry across images.
+    setIsEditing(false);
+    setRetagError(null);
+    fetchImageDetails();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageId]);
 
@@ -137,47 +143,48 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
   }
 
   async function fetchImageDetails() {
-    const { data: imageData, error: imageError } = await supabase
-      .from("image_assets")
-      .select("*")
-      .eq("id", imageId)
-      .single();
+    const fetchId = ++fetchIdRef.current;
 
-    if (imageError || !imageData) {
-      console.error("Error fetching image:", imageError);
+    const [imageRes, tagsRes, promptsRes, collectionsRes] = await Promise.all([
+      supabase.from("image_assets").select("*").eq("id", imageId).single(),
+      supabase
+        .from("asset_tags")
+        .select("*")
+        .eq("asset_id", imageId)
+        .order("confidence", { ascending: false }),
+      supabase
+        .from("prompts")
+        .select(`*, versions:prompt_versions(*)`)
+        .eq("asset_id", imageId)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("collection_assets")
+        .select("collection:collections(id, name, slug, platform)")
+        .eq("asset_id", imageId),
+    ]);
+
+    // A newer navigation superseded this fetch — drop it.
+    if (fetchId !== fetchIdRef.current) return;
+
+    if (imageRes.error || !imageRes.data) {
+      console.error("Error fetching image:", imageRes.error);
       return;
     }
-    setImage(imageData);
 
-    const { data: tagsData } = await supabase
-      .from("asset_tags")
-      .select("*")
-      .eq("asset_id", imageId)
-      .order("confidence", { ascending: false });
-    setTags(tagsData || []);
+    const promptsWithVersions = (promptsRes.data || []) as PromptWithVersions[];
 
-    const { data: promptsData } = await supabase
-      .from("prompts")
-      .select(`*, versions:prompt_versions(*)`)
-      .eq("asset_id", imageId)
-      .order("created_at", { ascending: false });
-
-    const promptsWithVersions = (promptsData || []) as PromptWithVersions[];
+    // One synchronous block → React batches this into a single render:
+    // the whole panel swaps at once instead of populating piecemeal.
+    setImage(imageRes.data);
+    setTags(tagsRes.data || []);
     setPrompts(promptsWithVersions);
-    if (promptsWithVersions.length > 0) {
-      setSelectedPrompt(promptsWithVersions[0]);
-    }
-
-    const { data: collectionData } = await supabase
-      .from("collection_assets")
-      .select("collection:collections(id, name, slug, platform)")
-      .eq("asset_id", imageId);
-
+    setSelectedPrompt(promptsWithVersions[0] ?? null);
     setCollections(
-      (collectionData || [])
+      (collectionsRes.data || [])
         .map((row) => row.collection as unknown as CollectionRef | null)
         .filter((c): c is CollectionRef => c !== null)
     );
+    setDimensions(null);
   }
 
   async function handleCopy(text: string, copyId: string) {
@@ -300,9 +307,17 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
   }
 
   if (!image) {
+    // Only shown on the very first open — subsequent navigations keep the
+    // previous panel visible until the new data swaps in atomically.
     return (
-      <div className="flex h-full items-center justify-center py-24">
-        <div className="animate-pulse text-sm text-tertiary">Loading…</div>
+      <div className="animate-pulse space-y-4">
+        <div className="flex gap-2">
+          <div className="h-8 w-28 rounded-md bg-accent-faint" />
+          <div className="h-8 w-40 rounded-pill bg-accent-faint" />
+        </div>
+        <div className="h-48 rounded-xl bg-accent-faint" />
+        <div className="h-32 rounded-xl bg-accent-faint" />
+        <div className="h-24 rounded-xl bg-accent-faint" />
       </div>
     );
   }
