@@ -221,15 +221,18 @@ export function FilterBar({
           )}
         </div>
 
-        {/* Shuffle — random order; each click reshuffles */}
+        {/* Shuffle — random order; each click (or S) reshuffles */}
         {onShuffle && (
           <button
             onClick={onShuffle}
-            title="Shuffle images randomly"
-            className="flex h-7 items-center gap-1.5 rounded-lg border border-hairline bg-hover-soft px-2.5 text-xs font-medium text-secondary transition-colors hover:border-strong hover:text-primary"
+            title="Shuffle images randomly (S)"
+            className="group/shuffle flex h-7 items-center gap-1.5 rounded-lg border border-hairline bg-hover-soft px-2.5 text-xs font-medium text-secondary transition-colors hover:border-strong hover:text-primary"
           >
             <Shuffle className="h-3 w-3" />
             Shuffle
+            <kbd className="rounded-sm border border-hairline bg-accent-faint px-1 text-[10px] text-tertiary transition-colors group-hover/shuffle:text-secondary">
+              S
+            </kbd>
           </button>
         )}
 

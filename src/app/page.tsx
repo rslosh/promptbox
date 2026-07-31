@@ -226,6 +226,25 @@ export default function GalleryPage() {
   const visibleThumbs = selectedImageObjects.slice(0, MAX_VISIBLE_THUMBS);
   const overflow = selectedImageObjects.length - MAX_VISIBLE_THUMBS;
 
+  // Keyboard shortcut: S reshuffles. Ignores typing contexts, modifier
+  // combos, and does nothing while the lightbox overlay is on top
+  // (pathname is /image/... then, even though this page stays mounted).
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "s" && e.key !== "S") return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
+        return;
+      }
+      if (pathnameRef.current !== "/") return;
+      handleShuffle();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Fisher-Yates over the loaded set — pure client-side, no refetch;
   // clicking again reshuffles.
   function handleShuffle() {
