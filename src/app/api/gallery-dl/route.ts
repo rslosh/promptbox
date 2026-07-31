@@ -328,6 +328,9 @@ function runGalleryDl(url: string, outputDir: string): Promise<string> {
     const args = [
       "--dest", outputDir,
       "--no-mtime",
+      // Skip Pinterest video pins: we only ingest images, and video pins
+      // otherwise route to yt-dlp (not installed) and fail the whole run.
+      "-o", "extractor.pinterest.videos=false",
       url,
     ];
 
@@ -345,6 +348,12 @@ function runGalleryDl(url: string, outputDir: string): Promise<string> {
 
     proc.on("close", (code) => {
       if (code === 0) {
+        resolve(stdout);
+      } else if (code === 4) {
+        // Exit 4 = some downloads failed (e.g. an unsupported media type).
+        // Everything that succeeded is already on disk — process it rather
+        // than failing the whole import.
+        console.warn(`[gallery-dl] finished with download errors (continuing): ${stderr.slice(0, 500)}`);
         resolve(stdout);
       } else {
         reject(new Error(`gallery-dl exited with code ${code}: ${stderr}`));
