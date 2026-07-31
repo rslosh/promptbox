@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { ImageGrid } from "@/components/gallery/image-grid";
+import { GallerySkeleton } from "@/components/gallery/gallery-skeleton";
+import { useImageSelection } from "@/hooks/use-image-selection";
 import { ViewOptions, type LayoutType, type ImageSize } from "@/components/gallery/view-options";
 import { Button } from "@/components/ui/button";
 import {
@@ -80,7 +82,11 @@ export default function CollectionPage({
     imagesTagged: 0,
     message: initialSyncing ? "Downloading images from Pinterest..." : "",
   });
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const {
+    selectedIds,
+    handleSelectionChange,
+    deselect,
+  } = useImageSelection(collection?.assets ?? []);
   const [error, setError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -352,11 +358,6 @@ export default function CollectionPage({
     });
   }
 
-  const skeletonGridClasses = {
-    small: "grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10",
-    medium: "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6",
-    large: "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4",
-  };
 
   if (error) {
     return (
@@ -646,21 +647,13 @@ export default function CollectionPage({
 
           {/* Image Grid */}
           {isLoading ? (
-            <div className={`grid gap-3 ${skeletonGridClasses[imageSize]}`}>
-              {Array.from({ length: 12 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="aspect-square animate-pulse rounded-xl bg-accent-faint"
-                  style={{ animationDelay: `${i * 40}ms` }}
-                />
-              ))}
-            </div>
+            <GallerySkeleton imageSize={imageSize} />
           ) : collection?.assets && collection.assets.length > 0 ? (
             <ImageGrid
               images={collection.assets}
               selectable
               selectedIds={selectedIds}
-              onSelectionChange={setSelectedIds}
+              onSelectionChange={handleSelectionChange}
               onDelete={(id) => {
                 setCollection((prev) =>
                   prev
@@ -671,7 +664,7 @@ export default function CollectionPage({
                       }
                     : null
                 );
-                setSelectedIds((prev) => prev.filter((i) => i !== id));
+                deselect(id);
               }}
               layout={layout}
               imageSize={imageSize}

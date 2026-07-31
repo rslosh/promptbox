@@ -5,6 +5,8 @@ import Image from "next/image";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { ImageGrid } from "@/components/gallery/image-grid";
+import { GallerySkeleton } from "@/components/gallery/gallery-skeleton";
+import { useImageSelection } from "@/hooks/use-image-selection";
 import { FilterBar } from "@/components/gallery/filter-bar";
 import { ViewOptions, type LayoutType, type ImageSize } from "@/components/gallery/view-options";
 import { Button } from "@/components/ui/button";
@@ -39,9 +41,13 @@ export default function GalleryPage() {
   );
   const [sortBy, setSortBy] = useState<"newest" | "oldest">(cached.filters.sortBy);
 
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  // Full objects survive filter changes
-  const [selectedImageMap, setSelectedImageMap] = useState<Map<string, ImageWithDetails>>(new Map());
+  const {
+    selectedIds,
+    selectedImages: selectedImageObjects,
+    handleSelectionChange,
+    deselect: handleDeselect,
+    clear: handleClearSelection,
+  } = useImageSelection(images);
 
   const [isLoading, setIsLoading] = useState(cached.images === null);
   const [layout, setLayout] = useState<LayoutType>("full");
@@ -205,41 +211,8 @@ export default function GalleryPage() {
     if (data) setCollections(data);
   }
 
-  function handleSelectionChange(newIds: string[]) {
-    const addedId = newIds.find((id) => !selectedIds.includes(id));
-    const removedId = selectedIds.find((id) => !newIds.includes(id));
-
-    setSelectedImageMap((prev) => {
-      const next = new Map(prev);
-      if (addedId) {
-        const img = images.find((i) => i.id === addedId);
-        if (img) next.set(addedId, img);
-      }
-      if (removedId) next.delete(removedId);
-      return next;
-    });
-    setSelectedIds(newIds);
-  }
-
-  function handleDeselect(id: string) {
-    setSelectedIds((prev) => prev.filter((i) => i !== id));
-    setSelectedImageMap((prev) => { const n = new Map(prev); n.delete(id); return n; });
-  }
-
-  function handleClearSelection() {
-    setSelectedIds([]);
-    setSelectedImageMap(new Map());
-  }
-
-  const selectedImageObjects = Array.from(selectedImageMap.values());
   const visibleThumbs = selectedImageObjects.slice(0, MAX_VISIBLE_THUMBS);
   const overflow = selectedImageObjects.length - MAX_VISIBLE_THUMBS;
-
-  const skeletonGridClasses = {
-    small: "grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10",
-    medium: "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6",
-    large: "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4",
-  };
 
   return (
     <div className="flex min-h-screen">
@@ -360,15 +333,7 @@ export default function GalleryPage() {
           />
 
           {isLoading ? (
-            <div className={`grid gap-4 ${skeletonGridClasses[imageSize]}`}>
-              {Array.from({ length: 12 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="aspect-square animate-pulse rounded-xl bg-accent-faint"
-                  style={{ animationDelay: `${i * 40}ms` }}
-                />
-              ))}
-            </div>
+            <GallerySkeleton imageSize={imageSize} />
           ) : (
             <ImageGrid
               images={images}
