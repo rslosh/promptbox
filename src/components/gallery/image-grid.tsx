@@ -4,7 +4,6 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { Check, Eye, Copy, Trash2, Braces } from "lucide-react";
 import type { ImageAsset, AssetTag, Prompt } from "@/lib/supabase/types";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -224,19 +223,20 @@ export function ImageGrid({
                     </p>
                   )}
 
-                  {/* Actions */}
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Link href={`/image/${image.id}`} onClick={(e) => e.stopPropagation()}>
-                      <Button size="sm" variant="secondary" className="h-7 text-xs bg-white/15 text-white hover:bg-white/25 border-0">
-                        <Eye className="mr-1 h-3 w-3" />
-                        {imageSize === "small" ? "" : "View"}
-                      </Button>
+                  {/* Actions — glass chips over imagery, deliberately not Button
+                      (gos-btn's gradient surface is opaque and fights the overlay) */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Link
+                      href={`/image/${image.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex h-6 items-center rounded-md bg-white/15 px-2 text-xs font-medium text-white backdrop-blur-sm transition-colors duration-quick hover:bg-white/25"
+                    >
+                      <Eye className="mr-1 h-3 w-3" />
+                      {imageSize === "small" ? "" : "View"}
                     </Link>
                     {firstPrompt && imageSize !== "small" && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="h-7 text-xs bg-white/15 text-white hover:bg-white/25 border-0"
+                      <button
+                        className="inline-flex h-6 items-center rounded-md bg-white/15 px-2 text-xs font-medium text-white backdrop-blur-sm transition-colors duration-quick hover:bg-white/25"
                         onClick={(e) => handleCopyPrompt(firstPrompt, e)}
                       >
                         {copiedId === firstPrompt.id ? (
@@ -245,13 +245,11 @@ export function ImageGrid({
                           <Copy className="mr-1 h-3 w-3" />
                         )}
                         Copy
-                      </Button>
+                      </button>
                     )}
                     {firstPrompt && hasScene && imageSize !== "small" && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="h-7 text-xs bg-white/15 text-white hover:bg-white/25 border-0"
+                      <button
+                        className="inline-flex h-6 items-center rounded-md bg-white/15 px-2 text-xs font-medium text-white backdrop-blur-sm transition-colors duration-quick hover:bg-white/25"
                         onClick={(e) => handleCopySceneJson(firstPrompt, e)}
                         title="Copy Ideogram (scene composition) JSON"
                       >
@@ -261,7 +259,7 @@ export function ImageGrid({
                           <Braces className="mr-1 h-3 w-3" />
                         )}
                         Ideogram
-                      </Button>
+                      </button>
                     )}
                   </div>
                 </div>
