@@ -50,8 +50,9 @@ export function ImageGrid({
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // Publish the current grid order so the lightbox can arrow-key through it
+  // and paint thumbnails instantly without refetching
   useEffect(() => {
-    setGalleryNav(images.map((i) => i.id));
+    setGalleryNav(images.map((i) => ({ id: i.id, storagePath: i.storage_path })));
   }, [images]);
 
   const handleSelect = (id: string) => {

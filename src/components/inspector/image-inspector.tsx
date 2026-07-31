@@ -688,9 +688,9 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
     return (
       <div className="space-y-4">
         {actionBar}
+        {promptsColumn}
         {infoPanel}
         {tagsPanel}
-        {promptsColumn}
       </div>
     );
   }

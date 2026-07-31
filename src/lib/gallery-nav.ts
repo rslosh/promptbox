@@ -1,12 +1,18 @@
-// Ordered image ids of the most recently rendered gallery grid.
-// The lightbox reads this to know its prev/next neighbors without
-// re-fetching or threading the whole list through the route.
-let orderedIds: string[] = [];
-
-export function setGalleryNav(ids: string[]) {
-  orderedIds = ids;
+// Ordered entries of the most recently rendered gallery grid.
+// The lightbox reads this to know its prev/next neighbors AND each
+// image's storage path — so it can paint the (already-cached) thumbnail
+// immediately instead of round-tripping to the DB first.
+export interface GalleryNavEntry {
+  id: string;
+  storagePath: string;
 }
 
-export function getGalleryNav(): string[] {
-  return orderedIds;
+let entries: GalleryNavEntry[] = [];
+
+export function setGalleryNav(next: GalleryNavEntry[]) {
+  entries = next;
+}
+
+export function getGalleryNav(): GalleryNavEntry[] {
+  return entries;
 }
