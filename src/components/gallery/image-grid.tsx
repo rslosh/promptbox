@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { setGalleryNav } from "@/lib/gallery-nav";
 import { cn } from "@/lib/utils";
 import { Check, Eye, Copy, Trash2, Braces } from "lucide-react";
 import type { ImageAsset, AssetTag, Prompt } from "@/lib/supabase/types";
@@ -41,10 +43,16 @@ export function ImageGrid({
   layout = "square",
   imageSize = "medium",
 }: ImageGridProps) {
+  const router = useRouter();
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  // Publish the current grid order so the lightbox can arrow-key through it
+  useEffect(() => {
+    setGalleryNav(images.map((i) => i.id));
+  }, [images]);
 
   const handleSelect = (id: string) => {
     if (!onSelectionChange) return;
@@ -136,14 +144,17 @@ export function ImageGrid({
           <div
             key={image.id}
             className={cn(
-              "group relative overflow-hidden rounded-xl border bg-hover-soft",
-              selectable && "cursor-pointer",
+              "group relative cursor-pointer overflow-hidden rounded-xl border bg-hover-soft",
               isSelected
                 ? "border-accent ring-2 ring-accent/20"
                 : "border-hairline hover:border-strong",
               isDeleting && "opacity-50 pointer-events-none"
             )}
-            onClick={() => selectable && handleSelect(image.id)}
+            onClick={() =>
+              // Clicking the card opens the lightbox (intercepted /image route);
+              // selection happens via the circle control, not the card body.
+              router.push(`/image/${image.id}`, { scroll: false })
+            }
           >
             {/* Image container */}
             <div className="relative w-full aspect-square">
@@ -166,7 +177,12 @@ export function ImageGrid({
 
               {/* Selection checkbox */}
               {selectable && (
-                <div
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSelect(image.id);
+                  }}
+                  aria-label={isSelected ? "Deselect image" : "Select image"}
                   className={cn(
                     "absolute left-2 top-2 z-20 flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors",
                     isSelected
@@ -174,8 +190,8 @@ export function ImageGrid({
                       : "border-white/70 bg-black/30 opacity-0 group-hover:opacity-100"
                   )}
                 >
-                  {isSelected && <Check className="h-3 w-3 text-white" />}
-                </div>
+                  {isSelected && <Check className="h-3 w-3 text-on-accent" />}
+                </button>
               )}
 
               {/* Delete button - top right */}
