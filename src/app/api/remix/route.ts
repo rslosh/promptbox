@@ -22,7 +22,7 @@ async function callModel(
   systemPrompt: string,
   userMessage: string
 ): Promise<{ text: string; model: string }> {
-  const models = ["gemini-3.1-flash-lite-preview", "gemini-3-flash-preview"];
+  const models = ["gemini-3.1-flash-lite-preview", "gemini-3.6-flash"];
   let lastError: Error | null = null;
 
   for (const model of models) {
@@ -60,7 +60,7 @@ async function callDuplicateFlash(
   instruction: string,
   count: number
 ): Promise<{ texts: string[]; model: string }> {
-  const flashModels = ["gemini-3.1-flash-lite-preview", "gemini-3-flash-preview"];
+  const flashModels = ["gemini-3.1-flash-lite-preview", "gemini-3.6-flash"];
 
   const userMessage = `ORIGINAL PROMPT:
 ${selectedPrompt}

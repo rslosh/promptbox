@@ -1,14 +1,14 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-export const VISION_MODEL = "gemini-3-flash-preview";
-export const PROSE_MODEL = "gemini-3-flash-preview";
-export const SCENE_MODEL = "gemini-3-flash-preview";
+export const VISION_MODEL = "gemini-3.6-flash";
+export const PROSE_MODEL = "gemini-3.6-flash";
+export const SCENE_MODEL = "gemini-3.6-flash";
 export const PROMPT_VERSION = "v2";
 
 // Gemini models selectable per auto-prompt pass in Settings. Flash is the
 // fast default; Pro trades latency/cost for higher-quality output.
 export const GEMINI_MODELS = [
-  { value: "gemini-3-flash-preview", label: "Gemini 3 Flash (fast, default)" },
+  { value: "gemini-3.6-flash", label: "Gemini 3.6 Flash (fast, default)" },
   { value: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro (higher quality)" },
 ] as const;
 

@@ -2,7 +2,7 @@
 // chronological text breakdown via Gemini. The default model list is shared
 // with the image passes (see GEMINI_MODELS in tagger.ts).
 
-export const VIDEO_MODEL = "gemini-3-flash-preview";
+export const VIDEO_MODEL = "gemini-3.6-flash";
 
 export const VIDEOANALYZER_SYSTEM_INSTRUCTION = `SYSTEM PROMPT: HYPER-GRANULAR VIDEO ANALYSIS
 ROLE:
