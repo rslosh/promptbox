@@ -61,7 +61,7 @@ function GalleryView() {
 
   const [isLoading, setIsLoading] = useState(unfiled ? true : cached.images === null);
   const [layout, setLayout] = useState<LayoutType>("full");
-  const [imageSize, setImageSize] = useState<ImageSize>("medium");
+  const [imageSize, setImageSize] = useState<ImageSize>("small");
 
   const pathname = usePathname();
   const pathnameRef = useRef(pathname);

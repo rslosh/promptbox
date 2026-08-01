@@ -87,9 +87,8 @@ function SidebarInner() {
     } catch {}
   }, [collapsedGroups, collectionsExpanded]);
 
-  useEffect(() => {
-    fetchCollections();
-    // Background refresh of remote totals for countable platforms (cosmos).
+  // Background refresh of remote totals for countable platforms (cosmos).
+  function refreshRemoteCounts() {
     fetch("/api/collections/pending")
       .then((r) => r.json())
       .then((d) => {
@@ -102,6 +101,19 @@ function SidebarInner() {
         }
       })
       .catch(() => {});
+  }
+
+  useEffect(() => {
+    fetchCollections();
+    refreshRemoteCounts();
+    // A finished sync changes image_count (and remote_count) — refetch so the
+    // "+N pending" badges clear without a hard reload.
+    function onCollectionsChanged() {
+      fetchCollections();
+      refreshRemoteCounts();
+    }
+    window.addEventListener("promptbox:collections-changed", onCollectionsChanged);
+    return () => window.removeEventListener("promptbox:collections-changed", onCollectionsChanged);
   }, []);
 
   async function fetchCollections() {
@@ -131,7 +143,8 @@ function SidebarInner() {
   function toggleGroup(platform: string) {
     setCollapsedGroups((prev) => {
       const next = new Set(prev);
-      next.has(platform) ? next.delete(platform) : next.add(platform);
+      if (next.has(platform)) next.delete(platform);
+      else next.add(platform);
       return next;
     });
   }

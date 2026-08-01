@@ -27,7 +27,6 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { readTagSettings } from "@/lib/tag-settings";
 import { Chip } from "@/components/ui/chip";
-import { IconWell } from "@/components/ui/icon-well";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { Collection, ImageAsset, AssetTag, Prompt } from "@/lib/supabase/types";
 
@@ -118,7 +117,7 @@ export default function CollectionPage({
 
   // View options
   const [layout, setLayout] = useState<LayoutType>("full");
-  const [imageSize, setImageSize] = useState<ImageSize>("large");
+  const [imageSize, setImageSize] = useState<ImageSize>("small");
 
   // Images deleted from inside the lightbox toolbar
   useEffect(() => {
@@ -283,6 +282,8 @@ export default function CollectionPage({
             }
             setIsSyncing(false);
             window.history.replaceState({}, "", `/collections/${slug}`);
+            // Tell the sidebar counts changed so "+N pending" badges clear.
+            window.dispatchEvent(new CustomEvent("promptbox:collections-changed"));
           } else if (job.status === "failed") {
             setSyncProgress({
               status: "failed",
@@ -292,6 +293,7 @@ export default function CollectionPage({
             });
             setIsSyncing(false);
             window.history.replaceState({}, "", `/collections/${slug}`);
+            window.dispatchEvent(new CustomEvent("promptbox:collections-changed"));
           } else if (job.status === "running") {
             setSyncProgress((prev) => ({
               ...prev,
@@ -317,6 +319,7 @@ export default function CollectionPage({
         message: prev.imagesFound > 0 ? `Synced ${prev.imagesFound} images!` : "Sync complete!",
       }));
       window.history.replaceState({}, "", `/collections/${slug}`);
+      window.dispatchEvent(new CustomEvent("promptbox:collections-changed"));
     }, 300000);
 
     return () => {
@@ -779,23 +782,6 @@ export default function CollectionPage({
                 </>
               )}
 
-              {/* Sync status chip */}
-              {isSyncing && (
-                <Chip variant="accent" className="ml-auto">
-                  {syncProgress.status === "downloading" ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <Wand2 className="h-3 w-3 animate-pulse" />
-                  )}
-                  {syncProgress.status === "downloading" ? "Downloading" : "Tagging with AI"}
-                  {syncProgress.imagesFound > 0 && (
-                    <span className="ml-0.5 rounded-full bg-accent/10 px-1.5 py-px font-medium tabular-nums">
-                      {syncProgress.imagesFound} new
-                    </span>
-                  )}
-                </Chip>
-              )}
-
               {/* Sync complete chip */}
               {!isSyncing && syncProgress.status === "complete" && syncProgress.imagesFound > 0 && (
                 <Chip variant="success" className="ml-auto">
@@ -810,6 +796,31 @@ export default function CollectionPage({
                   <AlertTriangle className="h-3 w-3" />
                   {syncProgress.message}
                 </Chip>
+              )}
+            </div>
+          )}
+
+          {/* Sync progress banner — deliberately loud so an in-flight sync is
+              unmissable; new images stream into the grid below as they land */}
+          {isSyncing && (
+            <div className="flex items-center gap-3 rounded-xl border border-hairline bg-accent-faint px-4 py-3">
+              {syncProgress.status === "downloading" ? (
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
+              ) : (
+                <Wand2 className="h-4 w-4 shrink-0 animate-pulse text-primary" />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-primary">
+                  {syncProgress.status === "downloading"
+                    ? "Syncing collection…"
+                    : "Tagging new images with AI…"}
+                </p>
+                <p className="truncate text-xs text-secondary">{syncProgress.message}</p>
+              </div>
+              {syncProgress.imagesFound > 0 && (
+                <span className="shrink-0 rounded-full bg-accent px-2 py-0.5 text-xs font-semibold tabular-nums text-on-accent">
+                  {syncProgress.imagesFound} new
+                </span>
               )}
             </div>
           )}
@@ -840,7 +851,10 @@ export default function CollectionPage({
           {isLoading ? (
             <GallerySkeleton imageSize={imageSize} />
           ) : collection?.assets && collection.assets.length > 0 ? (
-            <ImageGrid
+            <>
+              {/* Placeholder tiles where incoming images will appear */}
+              {isSyncing && <GallerySkeleton imageSize={imageSize} count={8} />}
+              <ImageGrid
               images={collection.assets}
               selectable
               selectedIds={selectedIds}
@@ -860,16 +874,10 @@ export default function CollectionPage({
               layout={layout}
               imageSize={imageSize}
             />
+            </>
           ) : isSyncing ? (
-            /* Syncing empty state */
-            <div className="flex flex-col items-center justify-center py-24">
-              <div className="relative mb-5">
-                <IconWell size="xl" variant="accent" className="opacity-40" />
-                <Loader2 className="absolute inset-0 m-auto h-6 w-6 animate-spin text-secondary" />
-              </div>
-              <p className="text-sm font-medium text-secondary">Downloading images&hellip;</p>
-              <p className="mt-1 text-xs text-secondary">Large boards may take a moment</p>
-            </div>
+            /* Syncing empty state — skeleton grid where images will stream in */
+            <GallerySkeleton imageSize={imageSize} />
           ) : (
             /* Empty state */
             <EmptyState
