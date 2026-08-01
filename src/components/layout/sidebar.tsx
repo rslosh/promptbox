@@ -88,8 +88,9 @@ function SidebarInner() {
   }, [collapsedGroups, collectionsExpanded]);
 
   // Background refresh of remote totals for countable platforms (cosmos).
-  function refreshRemoteCounts() {
-    fetch("/api/collections/pending")
+  // force bypasses the server's 10-minute throttle (used right after a sync).
+  function refreshRemoteCounts(force = false) {
+    fetch(force ? "/api/collections/pending?force=1" : "/api/collections/pending")
       .then((r) => r.json())
       .then((d) => {
         if (d.remoteCounts) {
@@ -110,7 +111,7 @@ function SidebarInner() {
     // "+N pending" badges clear without a hard reload.
     function onCollectionsChanged() {
       fetchCollections();
-      refreshRemoteCounts();
+      refreshRemoteCounts(true);
     }
     window.addEventListener("promptbox:collections-changed", onCollectionsChanged);
     return () => window.removeEventListener("promptbox:collections-changed", onCollectionsChanged);

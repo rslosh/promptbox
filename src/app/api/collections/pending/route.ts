@@ -26,8 +26,11 @@ async function remoteCountFor(platform: Platform, sourceUrl: string): Promise<nu
  * the sidebar can show a pending-sync badge. Throttled per collection so the
  * sidebar can call this freely on mount.
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    // ?force=1 skips the throttle — used right after a sync, when the remote
+    // total is worth re-checking immediately.
+    const force = new URL(request.url).searchParams.get("force") === "1";
     const { data: collections, error } = await supabase
       .from("collections")
       .select("id, platform, source_url, remote_count, remote_count_checked_at");
@@ -45,7 +48,7 @@ export async function GET() {
 
     // Only the stale ones need a remote hit; the rest keep their stored value.
     const stale = countable.filter((c) => {
-      if (!c.remote_count_checked_at) return true;
+      if (force || !c.remote_count_checked_at) return true;
       return now - new Date(c.remote_count_checked_at).getTime() > THROTTLE_MS;
     });
 

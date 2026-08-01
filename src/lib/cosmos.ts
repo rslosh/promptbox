@@ -81,10 +81,10 @@ interface CosmosClusterResponse {
   errors?: Array<{ message: string }>;
 }
 
-export async function fetchCosmosClusterImages(clusterUrl: string): Promise<string[]> {
-  // Cosmos uses the Next.js App Router (no __NEXT_DATA__) and lazy-loads
-  // elements via GraphQL. Fetch the page only to extract the numeric clusterId,
-  // then paginate api.cosmos.so/graphql to get every element.
+// Cosmos uses the Next.js App Router (no __NEXT_DATA__) and lazy-loads
+// elements via GraphQL. Fetch the page only to extract the numeric clusterId,
+// then paginate api.cosmos.so/graphql to collect every unique image URL.
+async function collectCosmosImageUrls(clusterUrl: string): Promise<string[]> {
   const pageRes = await fetch(clusterUrl, { headers: { "User-Agent": COSMOS_UA } });
   if (!pageRes.ok) throw new Error(`Failed to fetch Cosmos cluster page: ${pageRes.status}`);
   const html = await pageRes.text();
@@ -126,42 +126,27 @@ export async function fetchCosmosClusterImages(clusterUrl: string): Promise<stri
     if (!pageCursor) break;
   }
 
-  if (urls.size === 0) throw new Error("No images found in Cosmos cluster — cluster may be empty or private");
   return [...urls];
 }
 
+export async function fetchCosmosClusterImages(clusterUrl: string): Promise<string[]> {
+  const urls = await collectCosmosImageUrls(clusterUrl);
+  if (urls.length === 0) throw new Error("No images found in Cosmos cluster — cluster may be empty or private");
+  return urls;
+}
+
 /**
- * Cheap remote total for a Cosmos cluster — fetches the cluster page for its
- * id, then a single GraphQL request (pageSize 1) to read `meta.count` without
- * paginating every element. Returns null on any failure.
+ * Remote total for a Cosmos cluster — the number of unique, syncable image
+ * URLs, NOT the cluster's raw `meta.count`. meta.count includes videos,
+ * non-image blocks, and duplicate connections the sync will never ingest, so
+ * using it made "+N pending" badges overcount permanently. Counting the same
+ * things the sync downloads keeps badge arithmetic honest. Returns null on
+ * any failure.
  */
 export async function fetchCosmosCount(clusterUrl: string): Promise<number | null> {
   try {
-    const pageRes = await fetch(clusterUrl, { headers: { "User-Agent": COSMOS_UA } });
-    if (!pageRes.ok) return null;
-    const html = await pageRes.text();
-    const idMatch = html.match(/"clusterId":(\d+)/);
-    if (!idMatch) return null;
-    const clusterId = Number(idMatch[1]);
-
-    const gqlRes = await fetch("https://api.cosmos.so/graphql", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "User-Agent": COSMOS_UA,
-        Origin: "https://www.cosmos.so",
-        Referer: "https://www.cosmos.so/",
-      },
-      body: JSON.stringify({
-        operationName: "GetClusterElements",
-        variables: { clusterId, pageSize: 1, pageCursor: null },
-        query: COSMOS_CLUSTER_QUERY,
-      }),
-    });
-    if (!gqlRes.ok) return null;
-    const data = (await gqlRes.json()) as CosmosClusterResponse;
-    const count = data.data?.clusterConnections?.meta?.count;
-    return typeof count === "number" ? count : null;
+    const urls = await collectCosmosImageUrls(clusterUrl);
+    return urls.length;
   } catch {
     return null;
   }
