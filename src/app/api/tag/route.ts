@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { runTagger } from "@/lib/tagger";
+import { getImageDimensions } from "@/lib/image-meta";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey =
@@ -52,6 +53,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Gemini API key not configured" }, { status: 400 });
     }
 
+    // Real pixel dimensions travel into the scene JSON (so the Ideogram output
+    // keeps the source orientation) and backfill the asset if it was 0×0.
+    const dimensions = await getImageDimensions(buffer);
+    if (dimensions.width > 0 && (asset.width !== dimensions.width || asset.height !== dimensions.height)) {
+      await supabase
+        .from("image_assets")
+        .update({ width: dimensions.width, height: dimensions.height })
+        .eq("id", assetId);
+    }
+
     const {
       jsonPrompt,
       naturalPrompt,
@@ -68,6 +79,7 @@ export async function POST(request: NextRequest) {
       visionModel,
       proseModel,
       sceneModel,
+      dimensions,
     });
 
     if (tags.length > 0) {

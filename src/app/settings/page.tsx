@@ -18,6 +18,10 @@ import {
   PROSE_MODEL,
   SCENE_MODEL,
 } from "@/lib/tagger";
+import {
+  VIDEOANALYZER_SYSTEM_INSTRUCTION as DEFAULT_VIDEOANALYZER_PROMPT,
+  VIDEO_MODEL,
+} from "@/lib/video-analyzer";
 
 interface Settings {
   geminiApiKey: string;
@@ -25,9 +29,11 @@ interface Settings {
   geminiSystemPrompt: string;
   geminiProsePrompt: string;
   geminiScenePrompt: string;
+  geminiVideoPrompt: string;
   visionModel: string;
   proseModel: string;
   sceneModel: string;
+  videoModel: string;
   remixSystemPrompt: string;
   editSystemPrompt: string;
   duplicateSystemPrompt: string;
@@ -293,9 +299,11 @@ export default function SettingsPage() {
     geminiSystemPrompt: DEFAULT_VISIONSTRUCT_PROMPT,
     geminiProsePrompt: DEFAULT_PROMPTFORGE_PROMPT,
     geminiScenePrompt: DEFAULT_SCENECOMPOSE_PROMPT,
+    geminiVideoPrompt: DEFAULT_VIDEOANALYZER_PROMPT,
     visionModel: VISION_MODEL,
     proseModel: PROSE_MODEL,
     sceneModel: SCENE_MODEL,
+    videoModel: VIDEO_MODEL,
     remixSystemPrompt: DEFAULT_REMIX_PROMPT,
     editSystemPrompt: DEFAULT_EDIT_PROMPT,
     duplicateSystemPrompt: DEFAULT_DUPLICATE_PROMPT,
@@ -345,6 +353,7 @@ export default function SettingsPage() {
         parsed.visionModel = heal(parsed.visionModel, VISION_MODEL);
         parsed.proseModel = heal(parsed.proseModel, PROSE_MODEL);
         parsed.sceneModel = heal(parsed.sceneModel, SCENE_MODEL);
+        parsed.videoModel = heal(parsed.videoModel, VIDEO_MODEL);
         setSettings((prev) => ({ ...prev, ...parsed }));
       } catch (e) {
         console.error("Failed to parse settings:", e);
@@ -673,6 +682,25 @@ export default function SettingsPage() {
                   ))}
                 </select>
               </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-900">
+                  Video Analysis (video → caption)
+                </label>
+                <select
+                  value={settings.videoModel}
+                  onChange={(e) =>
+                    setSettings((prev) => ({ ...prev, videoModel: e.target.value }))
+                  }
+                  className="flex h-9 w-full rounded-lg border border-black/[0.1] bg-white/70 px-3 py-2 text-sm text-gray-900 focus:border-[#f2ff59] focus:outline-none focus:ring-2 focus:ring-[#f2ff59]/40 transition-colors"
+                >
+                  {GEMINI_MODELS.map((m) => (
+                    <option key={m.value} value={m.value}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </CardContent>
           </Card>
 
@@ -842,6 +870,40 @@ export default function SettingsPage() {
                 value={settings.geminiScenePrompt}
                 onChange={(e) =>
                   setSettings((prev) => ({ ...prev, geminiScenePrompt: e.target.value }))
+                }
+                rows={12}
+                className="font-mono text-xs"
+              />
+            </CardContent>
+          </Card>
+
+          {/* Video Analysis System Prompt */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div>
+                  <CardTitle>Video Analysis System Prompt</CardTitle>
+                  <CardDescription>
+                    Hyper-granular video breakdown — used by the Videos tab to caption uploaded
+                    clips (visuals, motion, camera work, and full audio transcription).
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setSettings((prev) => ({ ...prev, geminiVideoPrompt: DEFAULT_VIDEOANALYZER_PROMPT }))
+                  }
+                >
+                  Reset to Default
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                value={settings.geminiVideoPrompt}
+                onChange={(e) =>
+                  setSettings((prev) => ({ ...prev, geminiVideoPrompt: e.target.value }))
                 }
                 rows={12}
                 className="font-mono text-xs"

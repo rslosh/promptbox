@@ -2,8 +2,15 @@
 
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { X, ChevronDown, Check, FolderOpen, ArrowUpDown } from "lucide-react";
+import { X, ChevronDown, Check, FolderOpen, ArrowUpDown, Shuffle } from "lucide-react";
 import type { Collection } from "@/lib/supabase/types";
+import type { SortBy } from "@/lib/gallery-cache";
+
+const SORT_OPTIONS: { value: SortBy; label: string }[] = [
+  { value: "newest", label: "Newest first" },
+  { value: "oldest", label: "Oldest first" },
+  { value: "random", label: "Random" },
+];
 
 interface FilterBarProps {
   tags: string[];
@@ -11,8 +18,8 @@ interface FilterBarProps {
   onTagsChange: (tags: string[]) => void;
   sourceFilter: "all" | "upload" | "gallery_dl";
   onSourceFilterChange: (source: "all" | "upload" | "gallery_dl") => void;
-  sortBy: "newest" | "oldest";
-  onSortChange: (sort: "newest" | "oldest") => void;
+  sortBy: SortBy;
+  onSortChange: (sort: SortBy) => void;
   collections?: Collection[];
   selectedCollections?: string[];
   onCollectionsChange?: (collectionIds: string[]) => void;
@@ -187,8 +194,12 @@ export function FilterBar({
             onClick={() => setShowSortDropdown((v) => !v)}
             className="flex h-7 items-center gap-1.5 rounded-lg border border-black/[0.08] bg-black/[0.03] px-2.5 text-xs font-medium text-gray-700 transition-colors hover:border-black/[0.14] hover:text-gray-900"
           >
-            <ArrowUpDown className="h-3 w-3" />
-            {sortBy === "newest" ? "Newest" : "Oldest"}
+            {sortBy === "random" ? (
+              <Shuffle className="h-3 w-3" />
+            ) : (
+              <ArrowUpDown className="h-3 w-3" />
+            )}
+            {sortBy === "newest" ? "Newest" : sortBy === "oldest" ? "Oldest" : "Random"}
             <ChevronDown
               className={cn("h-3 w-3 transition-transform", showSortDropdown && "rotate-180")}
             />
@@ -196,23 +207,26 @@ export function FilterBar({
 
           {showSortDropdown && (
             <div className="absolute left-0 top-full z-50 mt-1.5 w-36 rounded-xl border border-black/[0.08] bg-white/95 py-1 shadow-lg backdrop-blur-xl">
-              {(["newest", "oldest"] as const).map((s) => (
+              {SORT_OPTIONS.map(({ value, label }) => (
                 <button
-                  key={s}
+                  key={value}
                   onClick={() => {
-                    onSortChange(s);
+                    onSortChange(value);
                     setShowSortDropdown(false);
                   }}
                   className={cn(
-                    "flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors capitalize",
-                    sortBy === s
+                    "flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors",
+                    sortBy === value
                       ? "text-gray-900 font-medium"
                       : "text-gray-700 hover:bg-black/[0.04] hover:text-gray-900"
                   )}
                 >
-                  {sortBy === s && <Check className="h-3 w-3 text-gray-700" />}
-                  {sortBy !== s && <span className="w-3" />}
-                  {s} first
+                  {sortBy === value ? (
+                    <Check className="h-3 w-3 text-gray-700" />
+                  ) : (
+                    <span className="w-3" />
+                  )}
+                  {label}
                 </button>
               ))}
             </div>

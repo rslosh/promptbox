@@ -7,12 +7,26 @@ import os from "os";
 import crypto from "crypto";
 import { fetchCosmosClusterImages, downloadCosmosImage } from "@/lib/cosmos";
 import { runTagger } from "@/lib/tagger";
+import { getImageDimensions } from "@/lib/image-meta";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 // Using untyped client for server-side operations to avoid strict type constraints
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+// The browser forwards the user's Settings so a URL import tags with the same
+// prompts/models as a manual upload or "Regenerate" — otherwise this route
+// silently falls back to the built-in defaults.
+type TagSettings = {
+  apiKey?: string;
+  visionPrompt?: string | null;
+  prosePrompt?: string | null;
+  scenePrompt?: string | null;
+  visionModel?: string | null;
+  proseModel?: string | null;
+  sceneModel?: string | null;
+};
 
 function cosmosSlugify(text: string): string {
   return text
@@ -39,7 +53,9 @@ function cosmosExtractName(url: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const { url, autoTag = true } = await request.json();
+    const body = await request.json();
+    const { url, autoTag = true } = body;
+    const tagSettings: TagSettings = body.tagSettings || {};
 
     if (!url) {
       return NextResponse.json({ error: "URL required" }, { status: 400 });
@@ -61,7 +77,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Start the gallery-dl process in the background
-    processGalleryDl(job.id, url, autoTag).catch(console.error);
+    processGalleryDl(job.id, url, autoTag, tagSettings).catch(console.error);
 
     return NextResponse.json({
       message: "Job created",
@@ -73,7 +89,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function processGalleryDl(jobId: string, url: string, autoTag: boolean) {
+async function processGalleryDl(
+  jobId: string,
+  url: string,
+  autoTag: boolean,
+  tagSettings: TagSettings = {}
+) {
   // Update job status to running
   await supabase
     .from("ingestion_jobs")
@@ -166,12 +187,12 @@ async function processGalleryDl(jobId: string, url: string, autoTag: boolean) {
 
     // Auto-tag images if enabled and API key is available
     if (autoTag && assetIds.length > 0) {
-      const geminiKey = process.env.GEMINI_API_KEY;
+      const geminiKey = tagSettings.apiKey || process.env.GEMINI_API_KEY;
       if (geminiKey) {
         console.log(`[gallery-dl] Starting auto-tagging for ${assetIds.length} images`);
-        await tagImages(assetIds, geminiKey);
+        await tagImages(assetIds, geminiKey, tagSettings);
       } else {
-        console.log("[gallery-dl] Skipping auto-tag: No GEMINI_API_KEY configured");
+        console.log("[gallery-dl] Skipping auto-tag: No Gemini API key configured");
       }
     }
 
@@ -195,7 +216,7 @@ async function processGalleryDl(jobId: string, url: string, autoTag: boolean) {
   }
 }
 
-async function tagImages(assetIds: string[], apiKey: string) {
+async function tagImages(assetIds: string[], apiKey: string, tagSettings: TagSettings = {}) {
   for (const assetId of assetIds) {
     try {
       const { data: asset, error: assetError } = await supabase
@@ -221,6 +242,7 @@ async function tagImages(assetIds: string[], apiKey: string) {
       const buffer = Buffer.from(await imageData.arrayBuffer());
       const base64Image = buffer.toString("base64");
       const mimeType = `image/${asset.format}`;
+      const dimensions = await getImageDimensions(buffer);
 
       const {
         jsonPrompt,
@@ -232,6 +254,13 @@ async function tagImages(assetIds: string[], apiKey: string) {
         base64Image,
         mimeType,
         apiKey,
+        visionPrompt: tagSettings.visionPrompt ?? undefined,
+        prosePrompt: tagSettings.prosePrompt ?? undefined,
+        scenePrompt: tagSettings.scenePrompt ?? undefined,
+        visionModel: tagSettings.visionModel ?? undefined,
+        proseModel: tagSettings.proseModel ?? undefined,
+        sceneModel: tagSettings.sceneModel ?? undefined,
+        dimensions,
       });
 
       if (tags.length > 0) {
@@ -395,6 +424,7 @@ async function processImage(filePath: string, sourceUrl: string): Promise<string
     });
 
   // Create asset record and return the ID
+  const { width, height } = await getImageDimensions(buffer);
   const { data: asset, error: assetError } = await supabase
     .from("image_assets")
     .insert({
@@ -402,8 +432,8 @@ async function processImage(filePath: string, sourceUrl: string): Promise<string
       hash_sha256: hash,
       source_type: "gallery_dl",
       source_ref: sourceUrl,
-      width: 0,
-      height: 0,
+      width,
+      height,
       format,
     })
     .select("id")

@@ -23,6 +23,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { readTagSettings } from "@/lib/tag-settings";
 import { Chip } from "@/components/ui/chip";
 import { IconWell } from "@/components/ui/icon-well";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -34,6 +35,15 @@ interface CollectionWithAssets extends Collection {
     prompts?: Prompt[];
     position: number;
   })[];
+}
+
+interface RetagState {
+  status: "idle" | "running" | "complete" | "failed";
+  unfixed: number; // prompts NOT on the corrected Ideogram pipeline (need a fix)
+  total: number; // all prompts in this collection
+  processed: number;
+  failed: number;
+  message: string;
 }
 
 interface SyncProgress {
@@ -84,6 +94,14 @@ export default function CollectionPage({
   const [error, setError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [retag, setRetag] = useState<RetagState>({
+    status: "idle",
+    unfixed: 0,
+    total: 0,
+    processed: 0,
+    failed: 0,
+    message: "",
+  });
   const [syncPopoverOpen, setSyncPopoverOpen] = useState(false);
   const [syncLimit, setSyncLimit] = useState("");
   const deleteRef = useRef<HTMLDivElement>(null);
@@ -141,6 +159,23 @@ export default function CollectionPage({
     }
   }, [slug]);
 
+  // How many of this collection's prompts are not yet on the corrected Ideogram
+  // pipeline (unfixed), and how many exist in total — drives the Fix button.
+  const refreshRetagCounts = useCallback(async (collectionId: string) => {
+    try {
+      const res = await fetch(`/api/backfill-scene?collectionId=${collectionId}`);
+      if (!res.ok) return;
+      const d = await res.json();
+      setRetag((p) => ({
+        ...p,
+        unfixed: typeof d.unfixed === "number" ? d.unfixed : p.unfixed,
+        total: typeof d.total === "number" ? d.total : p.total,
+      }));
+    } catch {
+      /* counts are advisory — leave the last known values in place */
+    }
+  }, []);
+
   // Initial fetch
   useEffect(() => {
     async function init() {
@@ -149,11 +184,12 @@ export default function CollectionPage({
       if (data) {
         setCollection(data);
         prevImageCount.current = data.assets?.length || 0;
+        refreshRetagCounts(data.id);
       }
       setIsLoading(false);
     }
     init();
-  }, [fetchCollection]);
+  }, [fetchCollection, refreshRetagCounts]);
 
   // Poll for updates during sync
   useEffect(() => {
@@ -284,6 +320,10 @@ export default function CollectionPage({
       const body: Record<string, unknown> = { autoTag: true };
       if (limitOverride) body.limit = limitOverride;
 
+      // Forward the user's tagging settings so sync tags with the same config
+      // as the image page's "Regenerate".
+      body.tagSettings = readTagSettings();
+
       const response = await fetch(`/api/collections/${collection.id}/sync`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -303,6 +343,98 @@ export default function CollectionPage({
         imagesTagged: 0,
         message: "Sync failed. Please try again.",
       });
+    }
+  }
+
+  // Repairs this collection's Ideogram prompts: re-runs SceneCompose (with the
+  // current Settings) over every prompt not yet on the corrected pipeline, and
+  // only those. Already-fixed prompts are skipped by the server, so running it
+  // on a fully-fixed collection is a no-op — it's a fix, not a bulk re-tagger.
+  // The server works in small batches; we drive it until done so a big
+  // collection can't blow the request timeout.
+  async function handleRetag() {
+    if (!collection || retag.status === "running" || retag.unfixed === 0) return;
+
+    const settings = readTagSettings();
+    setRetag((p) => ({ ...p, status: "running", processed: 0, failed: 0, message: "Starting…" }));
+
+    let processed = 0;
+    let failed = 0;
+    try {
+      while (true) {
+        const res = await fetch("/api/backfill-scene", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            apiKey: settings.apiKey,
+            scenePrompt: settings.scenePrompt,
+            sceneModel: settings.sceneModel,
+            collectionId: collection.id,
+            limit: 5,
+            mode: "fix",
+          }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || `Retag failed (${res.status})`);
+        }
+        const data: {
+          succeeded: number;
+          failed: number;
+          remaining: number;
+          quotaExceeded?: boolean;
+          done: boolean;
+        } = await res.json();
+
+        processed += data.succeeded;
+        failed += data.failed;
+        setRetag((p) => ({
+          ...p,
+          status: "running",
+          unfixed: data.remaining,
+          processed,
+          failed,
+          message: `Fixed ${processed} · ${data.remaining} to go`,
+        }));
+
+        // Daily Gemini quota ran out — stop and tell the user when to resume.
+        if (data.quotaExceeded) {
+          setRetag((p) => ({
+            ...p,
+            status: "failed",
+            unfixed: data.remaining,
+            message: `Daily Gemini quota reached — fixed ${processed}, ${data.remaining} left. Resume tomorrow.`,
+          }));
+          refreshRetagCounts(collection.id);
+          const partial = await fetchCollection();
+          if (partial) setCollection(partial);
+          return;
+        }
+
+        if (data.done) break;
+        // The unfixed set shrinks as rows gain aspect_ratio; zero progress means
+        // the rest can't be processed (e.g. an image that won't tag) — bail.
+        if (data.succeeded === 0) {
+          throw new Error(`Stopped — ${data.remaining} prompt(s) could not be fixed`);
+        }
+      }
+
+      setRetag((p) => ({
+        ...p,
+        status: "complete",
+        unfixed: 0,
+        message: `Fixed ${processed}${failed > 0 ? ` · ${failed} failed` : ""}`,
+      }));
+      const fresh = await fetchCollection();
+      if (fresh) setCollection(fresh);
+      refreshRetagCounts(collection.id);
+    } catch (err) {
+      setRetag((p) => ({
+        ...p,
+        status: "failed",
+        message: err instanceof Error ? err.message : "Retag failed",
+      }));
+      refreshRetagCounts(collection.id);
     }
   }
 
@@ -392,6 +524,45 @@ export default function CollectionPage({
                 imageSize={imageSize}
                 onImageSizeChange={setImageSize}
               />
+
+              {/* Fix button — repairs Ideogram prompts not yet on the corrected
+                  pipeline. Available for every collection (incl. manual uploads).
+                  Once nothing is unfixed it flips to a disabled "Fixed" state, so
+                  it never invites a redundant re-run. */}
+              {(() => {
+                const allFixed = retag.unfixed === 0 && retag.total > 0;
+                return (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRetag}
+                    disabled={retag.status === "running" || !collection || retag.unfixed === 0}
+                    className="gap-1.5"
+                    title={
+                      allFixed
+                        ? "All Ideogram prompts are on the corrected pipeline"
+                        : `Re-run the Ideogram pass on ${retag.unfixed} image(s) using your Settings`
+                    }
+                  >
+                    {retag.status === "running" ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Fixing
+                      </>
+                    ) : allFixed ? (
+                      <>
+                        <Check className="h-3.5 w-3.5 text-emerald-500" />
+                        Fixed
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="h-3.5 w-3.5" />
+                        Fix {retag.unfixed}
+                      </>
+                    )}
+                  </Button>
+                );
+              })()}
 
               {collection?.source_url && (
                 <>
@@ -617,6 +788,28 @@ export default function CollectionPage({
                 <Chip variant="danger" className="ml-auto">
                   <AlertTriangle className="h-3 w-3" />
                   {syncProgress.message}
+                </Chip>
+              )}
+            </div>
+          )}
+
+          {/* Retag status */}
+          {retag.status !== "idle" && retag.message && (
+            <div className="mb-4 flex items-center gap-2">
+              {retag.status === "running" ? (
+                <Chip variant="default">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  {retag.message}
+                </Chip>
+              ) : retag.status === "failed" ? (
+                <Chip variant="danger">
+                  <AlertTriangle className="h-3 w-3" />
+                  {retag.message}
+                </Chip>
+              ) : (
+                <Chip variant="success">
+                  <Check className="h-3 w-3" />
+                  {retag.message}
                 </Chip>
               )}
             </div>

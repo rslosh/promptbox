@@ -10,6 +10,7 @@ import { IconWell } from "@/components/ui/icon-well";
 import { Input } from "@/components/ui/input";
 import { Chip } from "@/components/ui/chip";
 import { cn } from "@/lib/utils";
+import { readTagSettings } from "@/lib/tag-settings";
 import type { Collection } from "@/lib/supabase/types";
 import {
   Upload,
@@ -208,7 +209,7 @@ export default function UploadPage() {
       const response = await fetch("/api/gallery-dl", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: singleUrl }),
+        body: JSON.stringify({ url: singleUrl, tagSettings: readTagSettings() }),
       });
 
       if (!response.ok) throw new Error("Gallery-DL import failed");

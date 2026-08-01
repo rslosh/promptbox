@@ -130,6 +130,43 @@ export async function fetchCosmosClusterImages(clusterUrl: string): Promise<stri
   return [...urls];
 }
 
+/**
+ * Cheap remote total for a Cosmos cluster — fetches the cluster page for its
+ * id, then a single GraphQL request (pageSize 1) to read `meta.count` without
+ * paginating every element. Returns null on any failure.
+ */
+export async function fetchCosmosCount(clusterUrl: string): Promise<number | null> {
+  try {
+    const pageRes = await fetch(clusterUrl, { headers: { "User-Agent": COSMOS_UA } });
+    if (!pageRes.ok) return null;
+    const html = await pageRes.text();
+    const idMatch = html.match(/"clusterId":(\d+)/);
+    if (!idMatch) return null;
+    const clusterId = Number(idMatch[1]);
+
+    const gqlRes = await fetch("https://api.cosmos.so/graphql", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": COSMOS_UA,
+        Origin: "https://www.cosmos.so",
+        Referer: "https://www.cosmos.so/",
+      },
+      body: JSON.stringify({
+        operationName: "GetClusterElements",
+        variables: { clusterId, pageSize: 1, pageCursor: null },
+        query: COSMOS_CLUSTER_QUERY,
+      }),
+    });
+    if (!gqlRes.ok) return null;
+    const data = (await gqlRes.json()) as CosmosClusterResponse;
+    const count = data.data?.clusterConnections?.meta?.count;
+    return typeof count === "number" ? count : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function downloadCosmosImage(url: string, destDir: string): Promise<string | null> {
   try {
     const res = await fetch(url, {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { runSceneCompose } from "@/lib/tagger";
+import { getImageDimensions } from "@/lib/image-meta";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey =
@@ -11,25 +12,66 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 // Counts and mutations must always hit the DB — never serve a cached count.
 export const dynamic = "force-dynamic";
 
+// Scoping to a collection walks prompts -> asset -> collection_assets with
+// inner joins, so Postgres does the filtering. Collecting the collection's
+// asset IDs first and passing them to .in() would blow the URL length limit
+// once a collection passes a few hundred images.
+const ASSET_COLS = "storage_path, format, width, height";
+
+function promptSelect(collectionId: string | null): string {
+  return collectionId
+    ? `id, asset:image_assets!inner(${ASSET_COLS}, collection_assets!inner(collection_id))`
+    : `id, asset:image_assets(${ASSET_COLS})`;
+}
+
 // A prompt needs backfilling when it has a real VisStruct analysis
 // (json_prompt.image_type present) but no SceneCompose result yet
 // (scene_prompt.high_level_description absent). Constraining on json_prompt
 // keeps the work-set to prompts we can actually reformat, so repeated batches
 // always converge to zero remaining.
-async function countPending(): Promise<number> {
-  const { count } = await supabase
+async function countPending(collectionId: string | null = null): Promise<number> {
+  const select = collectionId
+    ? "id, asset:image_assets!inner(collection_assets!inner(collection_id))"
+    : "id";
+  let query = supabase
     .from("prompts")
-    .select("id", { count: "exact", head: true })
+    .select(select, { count: "exact", head: true })
     .is("scene_prompt->>high_level_description", null)
     .not("json_prompt->>image_type", "is", null);
+  if (collectionId) query = query.eq("asset.collection_assets.collection_id", collectionId);
+  const { count } = await query;
   return count ?? 0;
 }
 
-// Total prompts in the table (used by the "re-run all / overwrite" flow).
-async function countTotal(): Promise<number> {
-  const { count } = await supabase
+// Total prompts in scope (used by the "re-run all / overwrite" flow).
+async function countTotal(collectionId: string | null = null): Promise<number> {
+  const select = collectionId
+    ? "id, asset:image_assets!inner(collection_assets!inner(collection_id))"
+    : "id";
+  let query = supabase.from("prompts").select(select, { count: "exact", head: true });
+  if (collectionId) query = query.eq("asset.collection_assets.collection_id", collectionId);
+  const { count } = await query;
+  return count ?? 0;
+}
+
+// A prompt is "unfixed" when its scene JSON was NOT produced by the corrected
+// pipeline. The corrected SceneCompose always stamps `aspect_ratio`, so its
+// absence flags both "never had an Ideogram prompt" and "has an old, possibly
+// axis-transposed one" in a single check. This is what the collection Retag
+// targets — re-running it once clears the whole collection and re-running after
+// that is a genuine no-op (count is 0). Note we do NOT constrain on
+// json_prompt->>image_type: the image-based SceneCompose needs only the image,
+// and most older prompts lack that key anyway.
+async function countUnfixed(collectionId: string | null = null): Promise<number> {
+  const select = collectionId
+    ? "id, asset:image_assets!inner(collection_assets!inner(collection_id))"
+    : "id, asset:image_assets!inner(id)";
+  let query = supabase
     .from("prompts")
-    .select("id", { count: "exact", head: true });
+    .select(select, { count: "exact", head: true })
+    .is("scene_prompt->>aspect_ratio", null);
+  if (collectionId) query = query.eq("asset.collection_assets.collection_id", collectionId);
+  const { count } = await query;
   return count ?? 0;
 }
 
@@ -43,6 +85,7 @@ export async function POST(request: NextRequest) {
       mode = "missing",
       offset = 0,
       cap = null,
+      collectionId = null,
     } = await request.json();
 
     const geminiKey = apiKey || process.env.GEMINI_API_KEY;
@@ -76,40 +119,76 @@ export async function POST(request: NextRequest) {
           done: true,
         });
       }
-      const { data, error: fetchError } = await supabase
+      let query = supabase
         .from("prompts")
-        .select("id, asset:image_assets(storage_path, format)")
+        .select(promptSelect(collectionId))
         .order("created_at", { ascending: false })
         .range(start, start + take - 1);
+      if (collectionId) query = query.eq("asset.collection_assets.collection_id", collectionId);
+      const { data, error: fetchError } = await query;
       if (fetchError) {
         console.error("[backfill-scene] Fetch error:", fetchError);
         return NextResponse.json({ error: "Failed to load prompts" }, { status: 500 });
       }
-      batch = data;
-    } else {
-      const { data, error: fetchError } = await supabase
+      // supabase-js can only infer row types from a literal select string; ours
+      // is computed, so it falls back to an error type. The shape is checked at
+      // runtime in processOne.
+      batch = data as unknown as { id: string; asset: unknown }[];
+    } else if (mode === "fix") {
+      // The repair path: (re)generate scene JSON for every prompt not yet on the
+      // corrected pipeline (aspect_ratio absent). Each processed row gains
+      // aspect_ratio and drops out, so the set shrinks to zero and stays there.
+      let query = supabase
         .from("prompts")
-        .select("id, asset:image_assets(storage_path, format)")
+        .select(promptSelect(collectionId))
+        .is("scene_prompt->>aspect_ratio", null)
+        .order("created_at", { ascending: true })
+        .limit(batchSize);
+      if (collectionId) query = query.eq("asset.collection_assets.collection_id", collectionId);
+      const { data, error: fetchError } = await query;
+      if (fetchError) {
+        console.error("[backfill-scene] Fetch error:", fetchError);
+        return NextResponse.json({ error: "Failed to load prompts" }, { status: 500 });
+      }
+      batch = data as unknown as { id: string; asset: unknown }[];
+    } else {
+      let query = supabase
+        .from("prompts")
+        .select(promptSelect(collectionId))
         .is("scene_prompt->>high_level_description", null)
         .not("json_prompt->>image_type", "is", null)
         .order("created_at", { ascending: true })
         .limit(batchSize);
+      if (collectionId) query = query.eq("asset.collection_assets.collection_id", collectionId);
+      const { data, error: fetchError } = await query;
       if (fetchError) {
         console.error("[backfill-scene] Fetch error:", fetchError);
         return NextResponse.json({ error: "Failed to load prompts" }, { status: 500 });
       }
-      batch = data;
+      // supabase-js can only infer row types from a literal select string; ours
+      // is computed, so it falls back to an error type. The shape is checked at
+      // runtime in processOne.
+      batch = data as unknown as { id: string; asset: unknown }[];
     }
 
     let succeeded = 0;
     let failed = 0;
+    // Gemini's per-day quota returns 429 / RESOURCE_EXHAUSTED. Once we see it,
+    // every remaining call in this run will fail identically, so we stop the
+    // whole run and tell the client rather than grinding through the batch.
+    let quotaExceeded = false;
+
+    function isQuotaError(error: unknown): boolean {
+      const e = error as { status?: number; message?: string } | undefined;
+      return e?.status === 429 || /RESOURCE_EXHAUSTED|exceeded your current quota/i.test(e?.message || "");
+    }
 
     const CONCURRENCY = 3;
     const queue = [...(batch || [])];
 
     async function processOne(prompt: {
       id: string;
-      asset: { storage_path: string; format: string } | null;
+      asset: { storage_path: string; format: string; width: number; height: number } | null;
     }) {
       try {
         const asset = prompt.asset;
@@ -129,8 +208,21 @@ export async function POST(request: NextRequest) {
           return;
         }
 
-        const base64Image = Buffer.from(await imageData.arrayBuffer()).toString("base64");
+        const buffer = Buffer.from(await imageData.arrayBuffer());
+        const base64Image = buffer.toString("base64");
         const mimeType = `image/${asset.format}`;
+        const dimensions = await getImageDimensions(buffer);
+
+        // Backfill the asset's dimensions if they were never recorded (0×0).
+        if (
+          dimensions.width > 0 &&
+          (asset.width !== dimensions.width || asset.height !== dimensions.height)
+        ) {
+          await supabase
+            .from("image_assets")
+            .update({ width: dimensions.width, height: dimensions.height })
+            .eq("storage_path", asset.storage_path);
+        }
 
         const scene = await runSceneCompose({
           base64Image,
@@ -138,6 +230,7 @@ export async function POST(request: NextRequest) {
           apiKey: geminiKey,
           scenePrompt,
           sceneModel,
+          dimensions,
         });
 
         // Only count it done if the pass produced a valid scene document.
@@ -160,12 +253,19 @@ export async function POST(request: NextRequest) {
         succeeded++;
         console.log(`[backfill-scene] Backfilled scene for prompt ${prompt.id}`);
       } catch (error) {
-        console.error(`[backfill-scene] Failed for prompt ${prompt.id}:`, error);
+        if (isQuotaError(error)) {
+          quotaExceeded = true;
+          console.error(`[backfill-scene] Quota exceeded on prompt ${prompt.id} — halting run`);
+        } else {
+          console.error(`[backfill-scene] Failed for prompt ${prompt.id}:`, error);
+        }
         failed++;
       }
     }
 
     async function worker(): Promise<void> {
+      // Drain nothing further once the daily quota is spent.
+      if (quotaExceeded) return;
       const prompt = queue.shift();
       if (!prompt) return;
       // Supabase types the embedded asset as an array, but the FK is to-one so
@@ -181,10 +281,11 @@ export async function POST(request: NextRequest) {
 
     if (mode === "all") {
       // Advance the offset by the rows we just processed. We're done when the
-      // batch came back short (end of table) or we've reached the cap.
+      // batch came back short (end of table), we've reached the cap, or the
+      // daily quota ran out mid-run.
       const rows = batch || [];
       const nextOffset = start + rows.length;
-      const total = await countTotal();
+      const total = await countTotal(collectionId);
       const ceiling = capNum == null ? total : Math.min(capNum, total);
       const remaining = Math.max(0, ceiling - nextOffset);
       return NextResponse.json({
@@ -193,18 +294,22 @@ export async function POST(request: NextRequest) {
         failed,
         offset: nextOffset,
         remaining,
-        done: rows.length === 0 || nextOffset >= ceiling,
+        quotaExceeded,
+        done: quotaExceeded || rows.length === 0 || nextOffset >= ceiling,
       });
     }
 
-    const remaining = await countPending();
+    // "fix" converges on aspect_ratio; "missing" on high_level_description.
+    const remaining =
+      mode === "fix" ? await countUnfixed(collectionId) : await countPending(collectionId);
 
     return NextResponse.json({
       attempted: batch?.length || 0,
       succeeded,
       failed,
       remaining,
-      done: remaining === 0,
+      quotaExceeded,
+      done: quotaExceeded || remaining === 0,
     });
   } catch (error) {
     console.error("[backfill-scene] Error:", error);
@@ -213,11 +318,18 @@ export async function POST(request: NextRequest) {
 }
 
 // Lightweight counts so the UI can show how much work is pending before
-// starting — `remaining` for the missing-only fill, `total` for the overwrite.
-export async function GET() {
+// starting — `unfixed` drives the collection Retag (prompts not on the
+// corrected pipeline); `remaining`/`total` back the global Settings flows.
+export async function GET(request: NextRequest) {
   try {
-    const [remaining, total] = await Promise.all([countPending(), countTotal()]);
-    return NextResponse.json({ remaining, total });
+    // ?collectionId=… scopes the counts to one collection; omit it for global.
+    const collectionId = request.nextUrl.searchParams.get("collectionId");
+    const [remaining, total, unfixed] = await Promise.all([
+      countPending(collectionId),
+      countTotal(collectionId),
+      countUnfixed(collectionId),
+    ]);
+    return NextResponse.json({ remaining, total, unfixed });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

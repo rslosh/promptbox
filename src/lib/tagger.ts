@@ -406,6 +406,7 @@ export type RunTaggerArgs = {
   visionModel?: string | null;
   proseModel?: string | null;
   sceneModel?: string | null;
+  dimensions?: { width: number; height: number } | null;
 };
 
 /**
@@ -414,11 +415,40 @@ export type RunTaggerArgs = {
  * itself — not the VisionStruct JSON — so it captures detail the structured
  * analysis may have flattened. Shared by the full tagger and the backfill path.
  */
+function gcd(a: number, b: number): number {
+  return b === 0 ? a : gcd(b, a % b);
+}
+
+// "1080x1350" → "4:5". Empty string when dimensions are unknown.
+export function aspectRatioString(width: number, height: number): string {
+  if (!width || !height) return "";
+  const d = gcd(width, height);
+  return `${width / d}:${height / d}`;
+}
+
+/**
+ * Attach the source image's real shape to a scene JSON. The bboxes are
+ * normalized to a 1000×1000 canvas — aspect-independent by design — so the
+ * true dimensions must travel alongside them or a downstream generator has no
+ * way to know the image is portrait vs landscape (and renders it rotated).
+ */
+function withDimensions(
+  scene: Record<string, unknown>,
+  dimensions?: { width: number; height: number } | null
+): Record<string, unknown> {
+  if (dimensions && dimensions.width > 0 && dimensions.height > 0) {
+    scene.dimensions = { width: dimensions.width, height: dimensions.height };
+    scene.aspect_ratio = aspectRatioString(dimensions.width, dimensions.height);
+  }
+  return scene;
+}
+
 async function sceneComposeWithClient(
   ai: GoogleGenAI,
   image: { base64Image: string; mimeType: string },
   scenePrompt?: string | null,
-  sceneModel?: string | null
+  sceneModel?: string | null,
+  dimensions?: { width: number; height: number } | null
 ): Promise<Record<string, unknown>> {
   const sceneResponse = await ai.models.generateContent({
     model: sceneModel || SCENE_MODEL,
@@ -439,11 +469,13 @@ async function sceneComposeWithClient(
   });
 
   const sceneText = sceneResponse.text || "{}";
+  let scene: Record<string, unknown>;
   try {
-    return JSON.parse(sceneText);
+    scene = JSON.parse(sceneText);
   } catch {
-    return { raw_response: sceneText };
+    scene = { raw_response: sceneText };
   }
+  return withDimensions(scene, dimensions);
 }
 
 /**
@@ -457,15 +489,17 @@ export async function runSceneCompose({
   apiKey,
   scenePrompt,
   sceneModel,
+  dimensions,
 }: {
   base64Image: string;
   mimeType: string;
   apiKey: string;
   scenePrompt?: string | null;
   sceneModel?: string | null;
+  dimensions?: { width: number; height: number } | null;
 }): Promise<Record<string, unknown>> {
   const ai = new GoogleGenAI({ apiKey });
-  return sceneComposeWithClient(ai, { base64Image, mimeType }, scenePrompt, sceneModel);
+  return sceneComposeWithClient(ai, { base64Image, mimeType }, scenePrompt, sceneModel, dimensions);
 }
 
 export async function runTagger({
@@ -478,6 +512,7 @@ export async function runTagger({
   visionModel,
   proseModel,
   sceneModel,
+  dimensions,
 }: RunTaggerArgs): Promise<TagResult> {
   const ai = new GoogleGenAI({ apiKey });
 
@@ -540,7 +575,8 @@ export async function runTagger({
     ai,
     { base64Image, mimeType },
     scenePrompt,
-    sceneModelUsed
+    sceneModelUsed,
+    dimensions
   );
 
   return {
