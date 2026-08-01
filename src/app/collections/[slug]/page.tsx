@@ -516,6 +516,18 @@ export default function CollectionPage({
     );
   }
 
+  // How many images the running sync is still expected to add: the remote
+  // total minus what's already local. Shrinks live as polled downloads land.
+  // null when the platform has no known remote total (non-countable).
+  const expectedNew =
+    typeof collection?.remote_count === "number"
+      ? collection.remote_count - (collection.assets?.length ?? 0)
+      : null;
+  // One skeleton per expected image (capped at 24 so huge backlogs don't fill
+  // the viewport); a token 4-tile strip when the total is unknown.
+  const syncSkeletonCount =
+    expectedNew !== null ? Math.min(24, Math.max(0, expectedNew)) : 4;
+
   return (
     <div className="flex min-h-screen">
       <Sidebar />
@@ -852,8 +864,13 @@ export default function CollectionPage({
             <GallerySkeleton imageSize={imageSize} />
           ) : collection?.assets && collection.assets.length > 0 ? (
             <>
-              {/* Placeholder tiles where incoming images will appear */}
-              {isSyncing && <GallerySkeleton imageSize={imageSize} count={8} />}
+              {/* Placeholder tiles where incoming images will appear — one per
+                  image still missing locally (remote total minus what's here),
+                  shrinking as downloads stream in. Falls back to a small strip
+                  when the platform exposes no remote total. */}
+              {isSyncing && syncSkeletonCount > 0 && (
+                <GallerySkeleton imageSize={imageSize} count={syncSkeletonCount} />
+              )}
               <ImageGrid
               images={collection.assets}
               selectable
@@ -877,7 +894,10 @@ export default function CollectionPage({
             </>
           ) : isSyncing ? (
             /* Syncing empty state — skeleton grid where images will stream in */
-            <GallerySkeleton imageSize={imageSize} />
+            <GallerySkeleton
+              imageSize={imageSize}
+              count={expectedNew !== null && syncSkeletonCount > 0 ? syncSkeletonCount : 12}
+            />
           ) : (
             /* Empty state */
             <EmptyState
