@@ -252,6 +252,8 @@ export interface Database {
           last_synced_at: string | null;
           sync_cursor: string | null;
           image_count: number;
+          remote_count: number | null;
+          remote_count_checked_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -266,6 +268,8 @@ export interface Database {
           last_synced_at?: string | null;
           sync_cursor?: string | null;
           image_count?: number;
+          remote_count?: number | null;
+          remote_count_checked_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -280,6 +284,8 @@ export interface Database {
           last_synced_at?: string | null;
           sync_cursor?: string | null;
           image_count?: number;
+          remote_count?: number | null;
+          remote_count_checked_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };

@@ -7,6 +7,7 @@ import os from "os";
 import crypto from "crypto";
 import { fetchCosmosClusterImages, downloadCosmosImage } from "@/lib/cosmos";
 import { runTagger } from "@/lib/tagger";
+import { getImageDimensions } from "@/lib/image-meta";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -14,8 +15,9 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.
 // Using untyped client for server-side operations to avoid strict type constraints
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Custom prompts / per-pass models from Settings, forwarded by the client so
-// pulled images get tagged with the same instructions as manual uploads.
+// The browser forwards the user's Settings so a URL import tags with the same
+// prompts/models as a manual upload or "Regenerate" — otherwise this route
+// silently falls back to the built-in defaults.
 type TagSettings = {
   apiKey?: string | null;
   visionPrompt?: string | null;
@@ -51,25 +53,18 @@ function cosmosExtractName(url: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const {
-      url,
-      autoTag = true,
-      apiKey,
-      systemPrompt,
-      prosePrompt,
-      scenePrompt,
-      visionModel,
-      proseModel,
-      sceneModel,
-    } = await request.json();
-    const tagSettings: TagSettings = {
-      apiKey,
-      visionPrompt: systemPrompt,
-      prosePrompt,
-      scenePrompt,
-      visionModel,
-      proseModel,
-      sceneModel,
+    const body = await request.json();
+    const { url, autoTag = true } = body;
+    // Accept both request shapes: a bundled `tagSettings` object (readTagSettings)
+    // or the older flat body fields.
+    const tagSettings: TagSettings = body.tagSettings || {
+      apiKey: body.apiKey,
+      visionPrompt: body.systemPrompt,
+      prosePrompt: body.prosePrompt,
+      scenePrompt: body.scenePrompt,
+      visionModel: body.visionModel,
+      proseModel: body.proseModel,
+      sceneModel: body.sceneModel,
     };
 
     if (!url) {
@@ -259,6 +254,7 @@ async function tagImages(assetIds: string[], apiKey: string, tagSettings: TagSet
       const buffer = Buffer.from(await imageData.arrayBuffer());
       const base64Image = buffer.toString("base64");
       const mimeType = `image/${asset.format}`;
+      const dimensions = await getImageDimensions(buffer);
 
       const {
         jsonPrompt,
@@ -276,6 +272,7 @@ async function tagImages(assetIds: string[], apiKey: string, tagSettings: TagSet
         visionModel: tagSettings.visionModel,
         proseModel: tagSettings.proseModel,
         sceneModel: tagSettings.sceneModel,
+        dimensions,
       });
 
       if (tags.length > 0) {
@@ -448,6 +445,7 @@ async function processImage(filePath: string, sourceUrl: string): Promise<string
     });
 
   // Create asset record and return the ID
+  const { width, height } = await getImageDimensions(buffer);
   const { data: asset, error: assetError } = await supabase
     .from("image_assets")
     .insert({
@@ -455,8 +453,8 @@ async function processImage(filePath: string, sourceUrl: string): Promise<string
       hash_sha256: hash,
       source_type: "gallery_dl",
       source_ref: sourceUrl,
-      width: 0,
-      height: 0,
+      width,
+      height,
       format,
     })
     .select("id")

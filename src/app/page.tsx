@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useLayoutEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, Suspense } from "react";
 import Image from "next/image";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
@@ -12,23 +12,31 @@ import { ViewOptions, type LayoutType, type ImageSize } from "@/components/galle
 import { Button } from "@/components/ui/button";
 import { Sparkles, Upload, X } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { supabase, getThumbnailUrl } from "@/lib/supabase/client";
 import type { AssetTag, Collection } from "@/lib/supabase/types";
 import {
   getGalleryCache,
   updateGalleryCache,
+  clearGalleryRandom,
+  type SortBy,
   setGalleryScroll,
   type ImageWithDetails,
 } from "@/lib/gallery-cache";
 
 const MAX_VISIBLE_THUMBS = 5;
 
-export default function GalleryPage() {
+function GalleryView() {
+  // "Uploads" view: images that belong to no collection. Driven by the URL so
+  // the sidebar can link straight to it. It's a clean side-view — it does not
+  // use the gallery's scroll/list cache (kept dedicated to the main gallery).
+  const searchParams = useSearchParams();
+  const unfiled = searchParams.get("filter") === "unfiled";
+
   // Hydrate from the module cache so a return navigation renders instantly
   // from memory (full height on the first frame → scroll can be restored).
   const cached = getGalleryCache();
-  const [images, setImages] = useState<ImageWithDetails[]>(cached.images ?? []);
+  const [images, setImages] = useState<ImageWithDetails[]>(unfiled ? [] : cached.images ?? []);
   const [allImagesCount, setAllImagesCount] = useState(cached.allImagesCount);
   const [allTags, setAllTags] = useState<string[]>(cached.tags);
   const [collections, setCollections] = useState<Collection[]>(cached.collections);
@@ -39,7 +47,9 @@ export default function GalleryPage() {
   const [sourceFilter, setSourceFilter] = useState<"all" | "upload" | "gallery_dl">(
     cached.filters.sourceFilter
   );
-  const [sortBy, setSortBy] = useState<"newest" | "oldest">(cached.filters.sortBy);
+  const [sortBy, setSortBy] = useState<SortBy>(cached.filters.sortBy);
+  // Bumped to force a fresh shuffle when the user (re)selects Random.
+  const [randomNonce, setRandomNonce] = useState(0);
 
   const {
     selectedIds,
@@ -49,13 +59,17 @@ export default function GalleryPage() {
     clear: handleClearSelection,
   } = useImageSelection(images);
 
-  const [isLoading, setIsLoading] = useState(cached.images === null);
+  const [isLoading, setIsLoading] = useState(unfiled ? true : cached.images === null);
   const [layout, setLayout] = useState<LayoutType>("full");
   const [imageSize, setImageSize] = useState<ImageSize>("medium");
 
   const pathname = usePathname();
   const pathnameRef = useRef(pathname);
   useEffect(() => { pathnameRef.current = pathname; }, [pathname]);
+  // Mirror `unfiled` into a ref so the scroll listener can read it without
+  // re-subscribing, and never persist scroll while in the Uploads view.
+  const unfiledRef = useRef(unfiled);
+  useEffect(() => { unfiledRef.current = unfiled; }, [unfiled]);
   const filtersInitialized = useRef(false);
 
   const hasActiveFilters =
@@ -64,7 +78,7 @@ export default function GalleryPage() {
   useEffect(() => {
     fetchImages();
     fetchTags();
-  }, [selectedTags, selectedCollections, sourceFilter, sortBy]);
+  }, [selectedTags, selectedCollections, sourceFilter, sortBy, unfiled, randomNonce]);
 
   useEffect(() => { fetchCollections(); }, []);
 
@@ -80,9 +94,21 @@ export default function GalleryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Selecting "Random" (even when already on Random) reshuffles: clear the
+  // stored keys and bump the nonce so fetchImages re-randomizes from scratch.
+  function handleSortChange(next: SortBy) {
+    if (next === "random") {
+      clearGalleryRandom();
+      setRandomNonce((n) => n + 1);
+    }
+    setSortBy(next);
+  }
+
   // Keep the module cache mirroring state so a return navigation can re-render
   // from memory, and so deletes/uploads/filter changes don't leave it stale.
+  // Skip in the Uploads view so its filtered set never poisons the main cache.
   useEffect(() => {
+    if (unfiled) return;
     updateGalleryCache({
       images,
       allImagesCount,
@@ -91,6 +117,7 @@ export default function GalleryPage() {
       filters: { selectedTags, selectedCollections, sourceFilter, sortBy },
     });
   }, [
+    unfiled,
     images,
     allImagesCount,
     allTags,
@@ -110,7 +137,7 @@ export default function GalleryPage() {
     window.history.scrollRestoration = "manual";
     let ticking = false;
     const onScroll = () => {
-      if (pathnameRef.current !== "/" || ticking) return;
+      if (pathnameRef.current !== "/" || unfiledRef.current || ticking) return;
       ticking = true;
       requestAnimationFrame(() => {
         ticking = false;
@@ -136,7 +163,7 @@ export default function GalleryPage() {
   // re-asserting until it's stable, defeating Next's post-navigation reset, and
   // stops as soon as the target holds (so it never fights the user).
   useLayoutEffect(() => {
-    if (pathname !== "/") return;
+    if (pathname !== "/" || unfiled) return;
     const c = getGalleryCache();
     if (!c.images || c.images.length === 0 || c.scrollY <= 0) return;
     const target = c.scrollY;
@@ -152,7 +179,7 @@ export default function GalleryPage() {
     };
     tick();
     return () => cancelAnimationFrame(raf);
-  }, [pathname]);
+  }, [pathname, unfiled]);
 
   // A real filter/sort change (not the initial mount) resets to the top.
   useEffect(() => {
@@ -162,15 +189,29 @@ export default function GalleryPage() {
     }
     setGalleryScroll(0);
     window.scrollTo(0, 0);
-  }, [selectedTags, selectedCollections, sourceFilter, sortBy]);
+  }, [selectedTags, selectedCollections, sourceFilter, sortBy, unfiled, randomNonce]);
 
   async function fetchImages() {
     // Only show the skeleton on a cold load — a warm return or a background
     // revalidate keeps the existing grid (and its scroll position) on screen.
     if (images.length === 0) setIsLoading(true);
     let collectionAssetIds: string[] | null = null;
+    // In the Uploads view, gather every asset that belongs to ANY collection so
+    // we can exclude them, leaving only unfiled images.
+    let filedIds: Set<string> | null = null;
 
-    if (selectedCollections.length > 0) {
+    if (unfiled) {
+      filedIds = new Set<string>();
+      for (let from = 0; ; from += 1000) {
+        const { data: ca } = await supabase
+          .from("collection_assets")
+          .select("asset_id")
+          .range(from, from + 999);
+        const rows = ca || [];
+        for (const r of rows) filedIds.add(r.asset_id as string);
+        if (rows.length < 1000) break;
+      }
+    } else if (selectedCollections.length > 0) {
       const { data: ca } = await supabase
         .from("collection_assets")
         .select("asset_id")
@@ -189,6 +230,9 @@ export default function GalleryPage() {
         .from("image_assets")
         .select(`*, tags:asset_tags(*), prompts:prompts(*)`)
         .order("created_at", { ascending: sortBy === "oldest" })
+        // Newest prompt first within each asset, so prompts[0] is the latest
+        // regeneration (the one carrying scene_prompt for the Ideogram button).
+        .order("created_at", { referencedTable: "prompts", ascending: false })
         .range(from, from + PAGE - 1);
 
       if (sourceFilter !== "all") query = query.eq("source_type", sourceFilter);
@@ -202,14 +246,30 @@ export default function GalleryPage() {
 
     let filtered = all;
 
+    if (filedIds) {
+      filtered = filtered.filter((img) => !filedIds!.has(img.id));
+    }
+
     if (selectedTags.length > 0) {
       filtered = filtered.filter((img) =>
         selectedTags.every((tag) => img.tags?.some((t: AssetTag) => t.tag === tag))
       );
     }
 
+    if (sortBy === "random") {
+      // Sort by stable per-image random keys held in the cache: existing images
+      // keep their key (order stays put across navigation/revalidate), new ones
+      // get a fresh key and slot in randomly. Reshuffle clears the keys first.
+      const keys = getGalleryCache().randomKeys;
+      for (const img of filtered) {
+        if (keys[img.id] === undefined) keys[img.id] = Math.random();
+      }
+      filtered = [...filtered].sort((a, b) => keys[a.id] - keys[b.id]);
+      updateGalleryCache({ randomKeys: keys });
+    }
+
     setImages(filtered);
-    if (!hasActiveFilters) setAllImagesCount(filtered.length);
+    if (!hasActiveFilters && !unfiled) setAllImagesCount(filtered.length);
     setIsLoading(false);
   }
 
@@ -266,9 +326,10 @@ export default function GalleryPage() {
 
       <main className="flex-1 pl-60">
         <Header
-          title="Gallery"
+          title={unfiled ? "Uploads" : "Gallery"}
           description={
             isLoading ? "" :
+            unfiled ? `${images.length} unfiled image${images.length !== 1 ? "s" : ""}` :
             hasActiveFilters ? `${images.length} of ${allImagesCount} images` :
             `${images.length} image${images.length !== 1 ? "s" : ""}`
           }
@@ -372,7 +433,7 @@ export default function GalleryPage() {
             sourceFilter={sourceFilter}
             onSourceFilterChange={setSourceFilter}
             sortBy={sortBy}
-            onSortChange={setSortBy}
+            onSortChange={handleSortChange}
             onShuffle={handleShuffle}
             collections={collections}
             selectedCollections={selectedCollections}
@@ -398,5 +459,14 @@ export default function GalleryPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+// useSearchParams requires a Suspense boundary for static prerendering.
+export default function GalleryPage() {
+  return (
+    <Suspense fallback={null}>
+      <GalleryView />
+    </Suspense>
   );
 }

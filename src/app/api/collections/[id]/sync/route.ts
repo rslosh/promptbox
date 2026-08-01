@@ -8,14 +8,16 @@ import crypto from "crypto";
 import { fetchCosmosClusterImages, downloadCosmosImage, fetchArenaChannelImages, downloadArenaImage } from "@/lib/cosmos";
 import { runTagger } from "@/lib/tagger";
 import { fetchMidjourneyImages, downloadMidjourneyImage } from "@/lib/midjourney";
+import { getImageDimensions } from "@/lib/image-meta";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Custom prompts / per-pass models from Settings, forwarded by the client so
-// synced images get tagged with the same instructions as manual uploads.
+// Tagging config forwarded from the user's browser settings so sync tags with
+// the same model + prompts as the image page's "Regenerate" (otherwise sync
+// falls back to server defaults — Flash + default prompt).
 type TagSettings = {
   apiKey?: string | null;
   visionPrompt?: string | null;
@@ -35,7 +37,9 @@ export async function POST(
     const body = await request.json().catch(() => ({}));
     const autoTag = body.autoTag !== false;
     const limit: number | null = body.limit ? Math.max(1, Number(body.limit)) : null;
-    const tagSettings: TagSettings = {
+    // Accept both request shapes: a bundled `tagSettings` object (readTagSettings)
+    // or the older flat body fields.
+    const tagSettings: TagSettings = body.tagSettings || {
       apiKey: body.apiKey,
       visionPrompt: body.systemPrompt,
       prosePrompt: body.prosePrompt,
@@ -145,6 +149,9 @@ async function syncCollection(
     const newAssetIds: string[] = [];
     let position = existingHashes.size;
     let addedCount = 0;
+    // For platforms that enumerate the full remote set up front (cosmos/are_na),
+    // record the remote total so the sidebar can show a pending-sync badge.
+    let remoteTotal: number | null = null;
 
     async function processFile(filePath: string): Promise<void> {
       try {
@@ -168,6 +175,7 @@ async function syncCollection(
 
     if (platform === "cosmos" || resolvedUrl.includes("cosmos.so")) {
       const imageUrls = await fetchCosmosClusterImages(resolvedUrl);
+      remoteTotal = imageUrls.length;
       console.log(`[sync] Found ${imageUrls.length} Cosmos image URLs`);
       for (const url of imageUrls) {
         if (limit !== null && addedCount >= limit) break;
@@ -176,6 +184,7 @@ async function syncCollection(
       }
     } else if (platform === "are_na" || resolvedUrl.includes("are.na")) {
       const imageUrls = await fetchArenaChannelImages(resolvedUrl);
+      remoteTotal = imageUrls.length;
       console.log(`[sync] Found ${imageUrls.length} Are.na image URLs`);
       for (const url of imageUrls) {
         if (limit !== null && addedCount >= limit) break;
@@ -216,6 +225,7 @@ async function syncCollection(
 
     // Auto-tag new images if enabled
     if (autoTag && newAssetIds.length > 0) {
+      // Prefer the user's forwarded key, then the server env key.
       const geminiKey = tagSettings.apiKey || process.env.GEMINI_API_KEY;
       if (geminiKey) {
         console.log(`[sync] Starting auto-tagging for ${newAssetIds.length} images`);
@@ -225,10 +235,15 @@ async function syncCollection(
       }
     }
 
-    // Update collection sync timestamp
+    // Update collection sync timestamp (and remote total when we have it).
+    const now = new Date().toISOString();
     await supabase
       .from("collections")
-      .update({ last_synced_at: new Date().toISOString() })
+      .update(
+        remoteTotal !== null
+          ? { last_synced_at: now, remote_count: remoteTotal, remote_count_checked_at: now }
+          : { last_synced_at: now }
+      )
       .eq("id", collectionId);
 
     // Update job status to completed
@@ -276,9 +291,10 @@ function runGalleryDl(url: string, outputDir: string, limit: number | null = nul
     const args = [
       "--dest", outputDir,
       "--no-mtime",
-      // Skip Pinterest video pins: we only ingest images, and video pins
-      // otherwise route to yt-dlp (not installed) and fail the whole run.
+      // Skip video pins/posts: we only ingest images, and video otherwise
+      // routes to yt-dlp (not installed) and fails the whole run.
       "-o", "extractor.pinterest.videos=false",
+      "-o", "extractor.tumblr.videos=false",
     ];
     if (limit !== null) args.push("--range", `1-${limit}`);
     args.push(url);
@@ -298,19 +314,32 @@ function runGalleryDl(url: string, outputDir: string, limit: number | null = nul
     proc.on("close", (code) => {
       if (code === 0) {
         resolve(stdout);
-      } else if (code === 4) {
-        // Exit 4 = some downloads failed (e.g. an unsupported media type).
-        // Everything that succeeded is already on disk — process it rather
-        // than failing the whole sync.
-        console.warn(`[sync] gallery-dl finished with download errors (continuing): ${stderr.slice(0, 500)}`);
-        resolve(stdout);
-      } else {
-        const unsupported = stderr.includes("Unsupported URL");
-        const message = unsupported
-          ? `Unsupported URL. For Pinterest, use a board URL like: https://www.pinterest.com/username/boardname/`
-          : `gallery-dl exited with code ${code}: ${stderr}`;
-        reject(new Error(message));
+        return;
       }
+
+      if (stderr.includes("Unsupported URL")) {
+        reject(
+          new Error(
+            `Unsupported URL. For Pinterest, use a board URL like: https://www.pinterest.com/username/boardname/`
+          )
+        );
+        return;
+      }
+
+      // gallery-dl uses a bitfield exit code: 4 = HTTP/download error, 8 = not
+      // found. Those mean SOME items failed (e.g. a stray video) while others
+      // downloaded fine — don't fail the whole sync; let the caller ingest
+      // whatever images landed. Any other bits set are treated as fatal.
+      const NON_FATAL = 4 | 8;
+      if (code !== null && (code & ~NON_FATAL) === 0) {
+        console.warn(
+          `[sync] gallery-dl exited ${code} (partial download); continuing with what downloaded. stderr: ${stderr.slice(0, 400)}`
+        );
+        resolve(stdout);
+        return;
+      }
+
+      reject(new Error(`gallery-dl exited with code ${code}: ${stderr}`));
     });
 
     proc.on("error", (err) => {
@@ -414,7 +443,8 @@ async function processImageForCollection(
         upsert: false,
       });
 
-    // Create asset record
+    // Create asset record with real pixel dimensions.
+    const { width, height } = await getImageDimensions(buffer);
     const { data: asset, error: assetError } = await supabase
       .from("image_assets")
       .insert({
@@ -422,8 +452,8 @@ async function processImageForCollection(
         hash_sha256: hash,
         source_type: "gallery_dl",
         source_ref: sourceUrl,
-        width: 0,
-        height: 0,
+        width,
+        height,
         format,
       })
       .select("id")
@@ -474,6 +504,7 @@ async function tagImages(assetIds: string[], apiKey: string, tagSettings: TagSet
       const buffer = Buffer.from(await imageData.arrayBuffer());
       const base64Image = buffer.toString("base64");
       const mimeType = `image/${asset.format}`;
+      const dimensions = await getImageDimensions(buffer);
 
       const {
         jsonPrompt,
@@ -485,6 +516,7 @@ async function tagImages(assetIds: string[], apiKey: string, tagSettings: TagSet
         base64Image,
         mimeType,
         apiKey,
+        dimensions,
         visionPrompt: tagSettings.visionPrompt,
         prosePrompt: tagSettings.prosePrompt,
         scenePrompt: tagSettings.scenePrompt,

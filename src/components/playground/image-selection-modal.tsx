@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { copyToClipboard } from "@/lib/utils";
 import { supabase, getThumbnailUrl, getImageUrl } from "@/lib/supabase/client";
 import type { ImageAsset, AssetTag, Prompt } from "@/lib/supabase/types";
+import type { SortBy } from "@/lib/gallery-cache";
 import { X, Check, Images, Loader2, Copy } from "lucide-react";
 
 interface ImageWithDetails extends ImageAsset {
@@ -38,7 +39,7 @@ export function ImageSelectionModal({
   const [allTags, setAllTags] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sourceFilter, setSourceFilter] = useState<"all" | "upload" | "gallery_dl">("all");
-  const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest");
+  const [sortBy, setSortBy] = useState<SortBy>("newest");
 
   // Ref so fetchImages can read initialSelectedIds without it being a dep
   // (avoids the callback being recreated on every parent render, which would
@@ -68,6 +69,9 @@ export function ImageSelectionModal({
         filteredData = filteredData.filter((image) =>
           image.tags?.some((tag) => selectedTags.includes(tag.tag))
         );
+      }
+      if (sortBy === "random") {
+        filteredData = [...filteredData].sort(() => Math.random() - 0.5);
       }
       setImages(filteredData);
 

@@ -5,11 +5,13 @@ export interface ImageWithDetails extends ImageAsset {
   prompts?: Prompt[];
 }
 
+export type SortBy = "newest" | "oldest" | "random";
+
 export interface GalleryFilters {
   selectedTags: string[];
   selectedCollections: string[];
   sourceFilter: "all" | "upload" | "gallery_dl";
-  sortBy: "newest" | "oldest";
+  sortBy: SortBy;
 }
 
 interface GalleryCacheState {
@@ -21,6 +23,10 @@ interface GalleryCacheState {
   collections: Collection[];
   filters: GalleryFilters;
   scrollY: number;
+  // Stable per-image random sort keys for the "random" sort. Persisted so the
+  // shuffle order survives navigation (open an image and back) and background
+  // revalidates, instead of reshuffling on every fetch. Cleared to reshuffle.
+  randomKeys: Record<string, number>;
 }
 
 export const DEFAULT_FILTERS: GalleryFilters = {
@@ -41,10 +47,16 @@ const cache: GalleryCacheState = {
   collections: [],
   filters: DEFAULT_FILTERS,
   scrollY: 0,
+  randomKeys: {},
 };
 
 export function getGalleryCache(): GalleryCacheState {
   return cache;
+}
+
+// Drop all random sort keys so the next "random" fetch reshuffles from scratch.
+export function clearGalleryRandom(): void {
+  cache.randomKeys = {};
 }
 
 export function updateGalleryCache(patch: Partial<GalleryCacheState>): void {

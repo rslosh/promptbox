@@ -4,6 +4,13 @@ import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { X, ChevronDown, Check, FolderOpen, ArrowUpDown, Shuffle } from "lucide-react";
 import type { Collection } from "@/lib/supabase/types";
+import type { SortBy } from "@/lib/gallery-cache";
+
+const SORT_OPTIONS: { value: SortBy; label: string }[] = [
+  { value: "newest", label: "Newest first" },
+  { value: "oldest", label: "Oldest first" },
+  { value: "random", label: "Random" },
+];
 
 interface FilterBarProps {
   tags: string[];
@@ -11,8 +18,8 @@ interface FilterBarProps {
   onTagsChange: (tags: string[]) => void;
   sourceFilter: "all" | "upload" | "gallery_dl";
   onSourceFilterChange: (source: "all" | "upload" | "gallery_dl") => void;
-  sortBy: "newest" | "oldest";
-  onSortChange: (sort: "newest" | "oldest") => void;
+  sortBy: SortBy;
+  onSortChange: (sort: SortBy) => void;
   onShuffle?: () => void;
   collections?: Collection[];
   selectedCollections?: string[];
@@ -189,8 +196,12 @@ export function FilterBar({
             onClick={() => setShowSortDropdown((v) => !v)}
             className="flex h-7 items-center gap-1.5 rounded-lg border border-hairline bg-hover-soft px-2.5 text-xs font-medium text-secondary transition-colors hover:border-strong hover:text-primary"
           >
-            <ArrowUpDown className="h-3 w-3" />
-            {sortBy === "newest" ? "Newest" : "Oldest"}
+            {sortBy === "random" ? (
+              <Shuffle className="h-3 w-3" />
+            ) : (
+              <ArrowUpDown className="h-3 w-3" />
+            )}
+            {sortBy === "newest" ? "Newest" : sortBy === "oldest" ? "Oldest" : "Random"}
             <ChevronDown
               className={cn("h-3 w-3 transition-transform", showSortDropdown && "rotate-180")}
             />
@@ -198,23 +209,26 @@ export function FilterBar({
 
           {showSortDropdown && (
             <div className="absolute left-0 top-full z-50 mt-1.5 w-36 rounded-xl border border-hairline gos-glass py-1 shadow-lg backdrop-blur-xl">
-              {(["newest", "oldest"] as const).map((s) => (
+              {SORT_OPTIONS.map(({ value, label }) => (
                 <button
-                  key={s}
+                  key={value}
                   onClick={() => {
-                    onSortChange(s);
+                    onSortChange(value);
                     setShowSortDropdown(false);
                   }}
                   className={cn(
-                    "flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors capitalize",
-                    sortBy === s
+                    "flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors",
+                    sortBy === value
                       ? "text-primary font-medium"
                       : "text-secondary hover:bg-hover-soft hover:text-primary"
                   )}
                 >
-                  {sortBy === s && <Check className="h-3 w-3 text-secondary" />}
-                  {sortBy !== s && <span className="w-3" />}
-                  {s} first
+                  {sortBy === value ? (
+                    <Check className="h-3 w-3 text-secondary" />
+                  ) : (
+                    <span className="w-3" />
+                  )}
+                  {label}
                 </button>
               ))}
             </div>

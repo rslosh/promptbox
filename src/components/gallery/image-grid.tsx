@@ -325,31 +325,32 @@ export function ImageGrid({
                   <Eye className="mr-1 h-3 w-3" />
                   {imageSize === "small" ? "" : "View"}
                 </Link>
-                {firstPrompt && imageSize !== "small" && (
+                {firstPrompt && (
                   <button
                     className="inline-flex h-6 items-center rounded-md bg-white/15 px-2 text-xs font-medium text-white backdrop-blur-sm transition-colors duration-quick hover:bg-white/25"
                     onClick={(e) => handleCopyPrompt(firstPrompt, e)}
+                    title="Copy natural-language prompt"
                   >
                     {copiedId === firstPrompt.id ? (
-                      <Check className="mr-1 h-3 w-3" />
+                      <Check className={cn("h-3 w-3", imageSize !== "small" && "mr-1")} />
                     ) : (
-                      <Copy className="mr-1 h-3 w-3" />
+                      <Copy className={cn("h-3 w-3", imageSize !== "small" && "mr-1")} />
                     )}
-                    Copy
+                    {imageSize === "small" ? "" : "Copy"}
                   </button>
                 )}
-                {firstPrompt && hasScene && imageSize !== "small" && (
+                {firstPrompt && hasScene && (
                   <button
                     className="inline-flex h-6 items-center rounded-md bg-white/15 px-2 text-xs font-medium text-white backdrop-blur-sm transition-colors duration-quick hover:bg-white/25"
                     onClick={(e) => handleCopySceneJson(firstPrompt, e)}
                     title="Copy Ideogram (scene composition) JSON"
                   >
                     {copiedId === `scene-${firstPrompt.id}` ? (
-                      <Check className="mr-1 h-3 w-3" />
+                      <Check className={cn("h-3 w-3", imageSize !== "small" && "mr-1")} />
                     ) : (
-                      <Braces className="mr-1 h-3 w-3" />
+                      <Braces className={cn("h-3 w-3", imageSize !== "small" && "mr-1")} />
                     )}
-                    Ideogram
+                    {imageSize === "small" ? "" : "Ideogram"}
                   </button>
                 )}
               </div>
