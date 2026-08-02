@@ -29,6 +29,7 @@ import {
   Download,
   Plus,
   Info,
+  Loader2,
 } from "lucide-react";
 
 const PLATFORM_EMOJI: Record<string, string> = {
@@ -143,6 +144,24 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
     fetchImageDetails();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageId]);
+
+  // A recent image with no prompts yet is almost certainly mid-auto-tag
+  // (upload/sync fires /api/tag in the background). Poll until the prompt
+  // lands so the panel fills itself in instead of sitting on an empty state.
+  const AUTOTAG_WINDOW_MS = 15 * 60 * 1000;
+  const isAutoTagging =
+    !!image &&
+    image.id === imageId &&
+    prompts.length === 0 &&
+    !isRetagging &&
+    Date.now() - new Date(image.created_at).getTime() < AUTOTAG_WINDOW_MS;
+
+  useEffect(() => {
+    if (!isAutoTagging) return;
+    const interval = setInterval(() => fetchImageDetails(), 4000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAutoTagging, imageId]);
 
   // Close picker on outside click
   useEffect(() => {
@@ -852,6 +871,16 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
               </div>
             )}
           </>
+        ) : isAutoTagging ? (
+          <div className="flex items-center gap-2.5 rounded-md border border-hairline bg-hover-soft p-3">
+            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-secondary" />
+            <div>
+              <p className="text-xs font-medium text-primary">Generating prompt…</p>
+              <p className="text-xs text-tertiary">
+                Auto-tagging with Gemini — usually under a minute
+              </p>
+            </div>
+          </div>
         ) : (
           <Button size="sm" onClick={handleRetag} disabled={isRetagging}>
             {isRetagging ? (
@@ -1092,6 +1121,14 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
             </Panel>
           )}
         </>
+      ) : isAutoTagging ? (
+        <Panel className="py-14 text-center">
+          <Loader2 className="mx-auto h-5 w-5 animate-spin text-secondary" />
+          <p className="mt-3 text-sm font-medium text-primary">Generating prompts…</p>
+          <p className="mt-1 text-xs text-tertiary">
+            Auto-tagging runs in the background after upload — this usually takes under a minute
+          </p>
+        </Panel>
       ) : (
         <Panel className="py-14 text-center">
           <p className="text-sm text-tertiary">No prompts generated yet</p>

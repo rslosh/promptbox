@@ -329,6 +329,24 @@ export default function CollectionPage({
     };
   }, [isSyncing, fetchCollection, jobId, slug]);
 
+  // Newly added images arrive untagged (captioning runs in the background
+  // after upload/sync). While any recent asset still lacks a prompt, keep
+  // refetching so tiles flip from "Tagging…" to done without a manual reload.
+  useEffect(() => {
+    if (isSyncing) return; // the sync effect already polls
+    const hasFreshUntagged = collection?.assets?.some(
+      (a) =>
+        !(a.prompts && a.prompts.length > 0) &&
+        Date.now() - new Date(a.created_at).getTime() < 15 * 60 * 1000
+    );
+    if (!hasFreshUntagged) return;
+    const interval = setInterval(async () => {
+      const data = await fetchCollection();
+      if (data) setCollection(data);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [isSyncing, collection, fetchCollection]);
+
   async function handleSync(limitOverride?: number) {
     if (!collection) return;
 

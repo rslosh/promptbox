@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { setGalleryNav } from "@/lib/gallery-nav";
 import { cn } from "@/lib/utils";
-import { Check, Eye, Copy, Trash2, Braces } from "lucide-react";
+import { Check, Eye, Copy, Trash2, Braces, Sparkles } from "lucide-react";
 import type { ImageAsset, AssetTag, Prompt } from "@/lib/supabase/types";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getThumbnailUrl, getImageUrl } from "@/lib/supabase/client";
@@ -209,6 +209,11 @@ export function ImageGrid({
     const firstPrompt = image.prompts?.[0];
     const sceneJson = firstPrompt?.scene_prompt as Record<string, unknown> | null | undefined;
     const hasScene = !!sceneJson && Object.keys(sceneJson).length > 0;
+    // A recent image with no prompt yet is almost certainly mid-auto-tag
+    // (tagging fires in the background right after upload/sync). Older
+    // untagged images stay badge-free — those failed or were never tagged.
+    const isAutoTagging =
+      !firstPrompt && Date.now() - new Date(image.created_at).getTime() < 15 * 60 * 1000;
     const isDeleting = deletingId === image.id;
     const isConfirmingDelete = confirmDeleteId === image.id;
 
@@ -249,6 +254,15 @@ export function ImageGrid({
             }
             onError={() => handleImageError(image.id)}
           />
+
+          {/* Auto-tagging badge — visible without hover so in-progress
+              captioning is obvious at a glance */}
+          {isAutoTagging && (
+            <span className="absolute bottom-2 left-2 z-20 flex items-center gap-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
+              <Sparkles className="h-2.5 w-2.5 animate-pulse" />
+              Tagging…
+            </span>
+          )}
 
           {/* Selection checkbox */}
           {selectable && (

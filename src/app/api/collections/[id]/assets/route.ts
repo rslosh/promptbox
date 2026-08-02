@@ -13,16 +13,19 @@ export async function POST(
       return NextResponse.json({ error: "asset_ids array required" }, { status: 400 });
     }
 
-    // Get current max position so we append at the end
-    const { data: maxRow } = await (supabaseAdmin as any)
+    // Insert BEFORE the current minimum position so manually added images
+    // show first (the collection view orders position ascending, so smallest
+    // position = top-left). Negative positions are fine.
+    const { data: minRow } = await (supabaseAdmin as any)
       .from("collection_assets")
       .select("position")
       .eq("collection_id", id)
-      .order("position", { ascending: false })
+      .order("position", { ascending: true })
       .limit(1)
       .single();
 
-    const startPosition = ((maxRow as { position: number } | null)?.position ?? -1) + 1;
+    const startPosition =
+      ((minRow as { position: number } | null)?.position ?? 0) - asset_ids.length;
 
     const rows = asset_ids.map((asset_id: string, i: number) => ({
       collection_id: id,
