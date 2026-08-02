@@ -256,9 +256,11 @@ export function ImageGrid({
           />
 
           {/* Auto-tagging badge — visible without hover so in-progress
-              captioning is obvious at a glance */}
+              captioning is obvious at a glance. It shares the bottom-left
+              corner with the hover overlay's action chips, so it fades out
+              while the tile is hovered and yields to them. */}
           {isAutoTagging && (
-            <span className="animate-enter absolute bottom-2 left-2 z-20 flex items-center gap-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
+            <span className="animate-enter pointer-events-none absolute bottom-2 left-2 z-20 flex items-center gap-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm transition-opacity duration-quick group-hover:opacity-0">
               <Sparkles className="animate-gentle-pulse h-2.5 w-2.5" />
               Tagging…
             </span>
