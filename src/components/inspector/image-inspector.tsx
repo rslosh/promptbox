@@ -141,6 +141,7 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
     // state resets immediately — it must not carry across images.
     setIsEditing(false);
     setRetagError(null);
+    awaitingPromptRef.current = false;
     fetchImageDetails();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageId]);
@@ -162,6 +163,24 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAutoTagging, imageId]);
+
+  // Animate the prompt's arrival only when it just replaced the tagging
+  // spinner — ordinary image-to-image navigation stays instant (it's a
+  // high-frequency action and must not animate).
+  const [justTagged, setJustTagged] = useState(false);
+  const awaitingPromptRef = useRef(false);
+  useEffect(() => {
+    if (prompts.length === 0) {
+      awaitingPromptRef.current = isAutoTagging;
+      return;
+    }
+    if (awaitingPromptRef.current) {
+      awaitingPromptRef.current = false;
+      setJustTagged(true);
+      const t = setTimeout(() => setJustTagged(false), 450);
+      return () => clearTimeout(t);
+    }
+  }, [prompts.length, isAutoTagging]);
 
   // Close picker on outside click
   useEffect(() => {
@@ -742,7 +761,12 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
                 </div>
               </div>
             ) : (
-              <div className="rounded-md border border-hairline bg-hover-soft p-3">
+              <div
+                className={cn(
+                  "rounded-md border border-hairline bg-hover-soft p-3",
+                  justTagged && "animate-enter"
+                )}
+              >
                 <p className="whitespace-pre-wrap text-sm leading-relaxed text-secondary">
                   {selectedPrompt.natural_prompt}
                 </p>
@@ -872,7 +896,7 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
             )}
           </>
         ) : isAutoTagging ? (
-          <div className="flex items-center gap-2.5 rounded-md border border-hairline bg-hover-soft p-3">
+          <div className="animate-enter flex items-center gap-2.5 rounded-md border border-hairline bg-hover-soft p-3">
             <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-secondary" />
             <div>
               <p className="text-xs font-medium text-primary">Generating prompt…</p>
@@ -955,7 +979,7 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
       {selectedPrompt ? (
         <>
           {/* Natural prompt */}
-          <Panel className="overflow-hidden">
+          <Panel className={cn("overflow-hidden", justTagged && "animate-enter")}>
             <div className="flex items-center justify-between border-b border-hairline px-5 py-3.5">
               <p className="flex items-center gap-2 text-sm font-medium text-primary">
                 <FileText className="h-3.5 w-3.5 text-tertiary" />
@@ -1122,7 +1146,7 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
           )}
         </>
       ) : isAutoTagging ? (
-        <Panel className="py-14 text-center">
+        <Panel className="animate-enter py-14 text-center">
           <Loader2 className="mx-auto h-5 w-5 animate-spin text-secondary" />
           <p className="mt-3 text-sm font-medium text-primary">Generating prompts…</p>
           <p className="mt-1 text-xs text-tertiary">

@@ -252,3 +252,74 @@ body {
     -webkit-backdrop-filter: blur(20px) saturate(1.5);
   }
 }
+
+/* ── Motion utilities ──
+   Loading/arrival motion built on the token curves above. All movement is
+   transform/opacity only (compositor-friendly) and degrades to opacity-only
+   under prefers-reduced-motion. */
+
+/* Skeleton sheen — a gradient sweep translating across the placeholder.
+   Constant motion, so linear easing is correct here. */
+@keyframes skeleton-sheen {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
+}
+
+.skeleton-tile {
+  position: relative;
+  overflow: hidden;
+  background: var(--accent-bg-faint, rgba(0, 0, 0, 0.05));
+}
+.skeleton-tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--skeleton-sheen, rgba(255, 255, 255, 0.55)),
+    transparent
+  );
+  animation: skeleton-sheen 1.6s linear infinite;
+  animation-delay: var(--sheen-delay, 0ms);
+}
+:root[data-theme="dark"] .skeleton-tile::after,
+[data-theme="dark"] .skeleton-tile::after {
+  --skeleton-sheen: rgba(255, 255, 255, 0.06);
+}
+
+/* Gentle pulse — subtle ambient opacity breathing for "in progress" icons.
+   Deliberately narrow range; Tailwind's animate-pulse blinks too hard. */
+@keyframes gentle-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.animate-gentle-pulse {
+  animation: gentle-pulse 1.8s ease-in-out infinite;
+}
+
+/* Enter — content arriving in place (badge appearing, prompt landing after
+   tagging). Slight rise + scale from 0.97 (never from 0), strong ease-out. */
+@keyframes motion-enter {
+  from {
+    opacity: 0;
+    transform: translateY(2px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-enter {
+  animation: motion-enter var(--dur-medium) var(--ease-pop) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-tile::after { animation: none; }
+  .animate-gentle-pulse { animation: none; }
+  @keyframes motion-enter {
+    from { opacity: 0; transform: none; }
+    to   { opacity: 1; transform: none; }
+  }
+}

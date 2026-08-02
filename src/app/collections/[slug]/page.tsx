@@ -833,11 +833,11 @@ export default function CollectionPage({
           {/* Sync progress banner — deliberately loud so an in-flight sync is
               unmissable; new images stream into the grid below as they land */}
           {isSyncing && (
-            <div className="flex items-center gap-3 rounded-xl border border-hairline bg-accent-faint px-4 py-3">
+            <div className="animate-enter flex items-center gap-3 rounded-xl border border-hairline bg-accent-faint px-4 py-3">
               {syncProgress.status === "downloading" ? (
                 <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
               ) : (
-                <Wand2 className="h-4 w-4 shrink-0 animate-pulse text-primary" />
+                <Wand2 className="animate-gentle-pulse h-4 w-4 shrink-0 text-primary" />
               )}
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-primary">

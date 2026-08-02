@@ -7,7 +7,8 @@ const skeletonGridClasses: Record<ImageSize, string> = {
   large: "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4",
 };
 
-/** Pulsing placeholder grid shown during a cold gallery load. */
+/** Shimmering placeholder grid shown during a cold gallery load. Each tile
+ *  carries a staggered gradient sheen (see .skeleton-tile in globals.css). */
 export function GallerySkeleton({
   imageSize = "medium",
   count = 12,
@@ -20,8 +21,8 @@ export function GallerySkeleton({
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="aspect-square animate-pulse rounded-xl bg-accent-faint"
-          style={{ animationDelay: `${i * 40}ms` }}
+          className="skeleton-tile aspect-square rounded-xl"
+          style={{ "--sheen-delay": `${i * 60}ms` } as React.CSSProperties}
         />
       ))}
     </div>
