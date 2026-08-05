@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
@@ -15,22 +15,28 @@ import {
   Copy,
   Check,
   Download,
-  Play,
   RefreshCw,
 } from "lucide-react";
+
+interface StyleResult {
+  status: "pending" | "analyzing" | "complete" | "error";
+  caption?: string;
+  error?: string;
+}
 
 interface VideoItem {
   id: string;
   file: File;
   preview: string;
-  status: "pending" | "analyzing" | "complete" | "error";
-  caption?: string;
-  /** Which caption style produced `caption`. */
-  styleKey?: VideoCaptionStyleKey;
-  error?: string;
+  /** One result per caption style — both styles run for every video. */
+  results: Record<VideoCaptionStyleKey, StyleResult>;
 }
 
-const STYLE_STORAGE_KEY = "promptbox_video_style";
+function freshResults(): Record<VideoCaptionStyleKey, StyleResult> {
+  return Object.fromEntries(
+    VIDEO_CAPTION_STYLES.map((s) => [s.key, { status: "pending" as const }])
+  ) as Record<VideoCaptionStyleKey, StyleResult>;
+}
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
@@ -39,30 +45,20 @@ function formatBytes(bytes: number): string {
 
 export default function VideosPage() {
   const [videos, setVideos] = useState<VideoItem[]>([]);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [styleKey, setStyleKey] = useState<VideoCaptionStyleKey>("breakdown");
-
-  // Restore the last-used style (deferred to an effect so SSR markup matches).
-  useEffect(() => {
-    const stored = localStorage.getItem(STYLE_STORAGE_KEY);
-    if (VIDEO_CAPTION_STYLES.some((s) => s.key === stored)) {
-      setStyleKey(stored as VideoCaptionStyleKey);
-    }
-  }, []);
-
-  function selectStyle(key: VideoCaptionStyleKey) {
-    setStyleKey(key);
-    localStorage.setItem(STYLE_STORAGE_KEY, key);
-  }
+  // Serializes work: one video at a time (its styles run in parallel), so a
+  // big drop doesn't fan out unbounded concurrent Gemini calls.
+  const processingRef = useRef(false);
+  const [queueTick, setQueueTick] = useState(0);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const items = acceptedFiles.map((file) => ({
       id: crypto.randomUUID(),
       file,
       preview: URL.createObjectURL(file),
-      status: "pending" as const,
+      results: freshResults(),
     }));
+    // Both caption styles fire automatically — the queue effect picks these up.
     setVideos((prev) => [...prev, ...items]);
   }, []);
 
@@ -81,18 +77,24 @@ export default function VideosPage() {
     });
   };
 
-  async function analyzeOne(item: VideoItem) {
+  function setStyleResult(videoId: string, styleKey: VideoCaptionStyleKey, result: StyleResult) {
     setVideos((prev) =>
-      prev.map((v) => (v.id === item.id ? { ...v, status: "analyzing", error: undefined } : v))
+      prev.map((v) =>
+        v.id === videoId ? { ...v, results: { ...v.results, [styleKey]: result } } : v
+      )
     );
+  }
+
+  async function analyzeStyle(item: VideoItem, styleKey: VideoCaptionStyleKey) {
+    const style = VIDEO_CAPTION_STYLES.find((s) => s.key === styleKey)!;
+    setStyleResult(item.id, styleKey, { status: "analyzing" });
 
     try {
       const stored = localStorage.getItem("promptbox_settings");
       const settings = stored ? JSON.parse(stored) : {};
-      const style =
-        VIDEO_CAPTION_STYLES.find((s) => s.key === styleKey) ?? VIDEO_CAPTION_STYLES[0];
       // User-edited prompt from Settings for this style, else the built-in.
-      const systemPrompt = settings[style.settingsKey] || style.defaultPrompt;
+      const systemPrompt =
+        (settings as Record<string, string>)[style.settingsKey] || style.defaultPrompt;
 
       const formData = new FormData();
       formData.append("file", item.file);
@@ -104,90 +106,84 @@ export default function VideosPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `Analysis failed (${res.status})`);
 
-      setVideos((prev) =>
-        prev.map((v) =>
-          v.id === item.id
-            ? { ...v, status: "complete", caption: data.caption, styleKey: style.key }
-            : v
-        )
-      );
+      setStyleResult(item.id, styleKey, { status: "complete", caption: data.caption });
     } catch (error) {
-      setVideos((prev) =>
-        prev.map((v) =>
-          v.id === item.id
-            ? { ...v, status: "error", error: error instanceof Error ? error.message : String(error) }
-            : v
-        )
-      );
+      setStyleResult(item.id, styleKey, {
+        status: "error",
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
-  // Sequential so several large uploads don't run concurrent Gemini calls.
-  async function analyzeAll() {
-    if (isAnalyzing) return;
-    setIsAnalyzing(true);
-    for (const item of videos) {
-      if (item.status === "pending" || item.status === "error") {
-        await analyzeOne(item);
-      }
-    }
-    setIsAnalyzing(false);
+  // Queue runner: whenever any video has a pending style and nothing is in
+  // flight, analyze the next video's pending styles (both in parallel).
+  useEffect(() => {
+    if (processingRef.current) return;
+    const next = videos.find((v) =>
+      VIDEO_CAPTION_STYLES.some((s) => v.results[s.key].status === "pending")
+    );
+    if (!next) return;
+
+    processingRef.current = true;
+    const pendingStyles = VIDEO_CAPTION_STYLES.filter(
+      (s) => next.results[s.key].status === "pending"
+    );
+    Promise.all(pendingStyles.map((s) => analyzeStyle(next, s.key))).finally(() => {
+      processingRef.current = false;
+      setQueueTick((t) => t + 1); // re-check for more queued work
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videos, queueTick]);
+
+  function retryStyle(item: VideoItem, styleKey: VideoCaptionStyleKey) {
+    // Back to pending — the queue runner picks it up.
+    setStyleResult(item.id, styleKey, { status: "pending" });
   }
 
-  function copyCaption(item: VideoItem) {
-    if (!item.caption) return;
-    navigator.clipboard.writeText(item.caption);
-    setCopiedId(item.id);
+  function copyCaption(item: VideoItem, styleKey: VideoCaptionStyleKey) {
+    const caption = item.results[styleKey].caption;
+    if (!caption) return;
+    navigator.clipboard.writeText(caption);
+    setCopiedId(`${item.id}:${styleKey}`);
     setTimeout(() => setCopiedId(null), 1500);
   }
 
-  function downloadCaption(item: VideoItem) {
-    if (!item.caption) return;
+  function downloadCaption(item: VideoItem, styleKey: VideoCaptionStyleKey) {
+    const caption = item.results[styleKey].caption;
+    if (!caption) return;
     const base = item.file.name.replace(/\.[^.]+$/, "");
-    const blob = new Blob([item.caption], { type: "text/plain" });
+    const blob = new Blob([caption], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${base}.txt`;
+    a.download = `${base}.${styleKey}.txt`;
     a.click();
     URL.revokeObjectURL(url);
   }
 
-  const pendingCount = videos.filter((v) => v.status === "pending" || v.status === "error").length;
+  const totalCaptions = videos.length * VIDEO_CAPTION_STYLES.length;
+  const doneCaptions = videos.reduce(
+    (sum, v) =>
+      sum + VIDEO_CAPTION_STYLES.filter((s) => v.results[s.key].status === "complete").length,
+    0
+  );
+  const isWorking = videos.some((v) =>
+    VIDEO_CAPTION_STYLES.some((s) =>
+      ["pending", "analyzing"].includes(v.results[s.key].status)
+    )
+  );
 
   return (
     <div className="flex min-h-screen">
       <Sidebar />
 
       <main className="flex-1 pl-64">
-        <Header title="Videos" description="Upload clips and generate hyper-granular captions" />
+        <Header
+          title="Videos"
+          description="Drop clips — every video is captioned in both styles automatically"
+        />
 
         <div className="p-6 space-y-5 max-w-4xl">
-          {/* ── Caption style ── */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-gray-500">Caption style</span>
-            <div className="flex rounded-lg border border-black/[0.1] bg-black/[0.03] p-0.5">
-              {VIDEO_CAPTION_STYLES.map((s) => (
-                <button
-                  key={s.key}
-                  onClick={() => selectStyle(s.key)}
-                  title={s.description}
-                  className={cn(
-                    "flex h-7 items-center rounded-md px-3 text-xs font-medium transition-colors",
-                    styleKey === s.key
-                      ? "bg-white text-gray-900 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900"
-                  )}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </div>
-            <span className="text-xs text-gray-500">
-              {VIDEO_CAPTION_STYLES.find((s) => s.key === styleKey)?.description}
-            </span>
-          </div>
-
           {/* ── Dropzone ── */}
           <section className="rounded-2xl border border-black/[0.07] bg-white/65 backdrop-blur-sm overflow-hidden">
             <div
@@ -214,54 +210,30 @@ export default function VideosPage() {
 
               <div className="text-center">
                 <p className={cn("text-sm font-medium", isDragActive ? "text-gray-800" : "text-gray-700")}>
-                  {isDragActive ? "Drop to add" : "Drag videos here"}
+                  {isDragActive ? "Drop to analyze" : "Drag videos here"}
                 </p>
                 <p className="mt-0.5 text-xs text-gray-600">
-                  or click to browse — MP4, MOV, WebM, MKV
+                  or click to browse — MP4, MOV, WebM, MKV · captions start automatically
                 </p>
               </div>
             </div>
 
             {videos.length > 0 && (
               <div className="flex items-center justify-between p-4">
-                <p className="text-xs text-gray-600">
-                  {videos.length} video{videos.length !== 1 ? "s" : ""} ·{" "}
-                  {videos.filter((v) => v.status === "complete").length} captioned
+                <p className="flex items-center gap-2 text-xs text-gray-600">
+                  {isWorking && <Loader2 className="h-3 w-3 animate-spin" />}
+                  {videos.length} video{videos.length !== 1 ? "s" : ""} · {doneCaptions}/
+                  {totalCaptions} captions done
                 </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      videos.forEach((v) => URL.revokeObjectURL(v.preview));
-                      setVideos([]);
-                    }}
-                    className="text-xs text-gray-600 transition-colors hover:text-gray-800"
-                  >
-                    Clear all
-                  </button>
-                  <button
-                    onClick={analyzeAll}
-                    disabled={pendingCount === 0 || isAnalyzing}
-                    className={cn(
-                      "flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-colors",
-                      pendingCount === 0 || isAnalyzing
-                        ? "cursor-not-allowed bg-black/[0.05] text-gray-400"
-                        : "bg-gray-900 text-white hover:bg-gray-800"
-                    )}
-                  >
-                    {isAnalyzing ? (
-                      <>
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        Analyzing…
-                      </>
-                    ) : (
-                      <>
-                        <Play className="h-3.5 w-3.5" />
-                        Analyze {pendingCount > 0 ? pendingCount : ""}{" "}
-                        {pendingCount === 1 ? "video" : "videos"}
-                      </>
-                    )}
-                  </button>
-                </div>
+                <button
+                  onClick={() => {
+                    videos.forEach((v) => URL.revokeObjectURL(v.preview));
+                    setVideos([]);
+                  }}
+                  className="text-xs text-gray-600 transition-colors hover:text-gray-800"
+                >
+                  Clear all
+                </button>
               </div>
             )}
           </section>
@@ -270,7 +242,7 @@ export default function VideosPage() {
           {videos.map((item) => (
             <section
               key={item.id}
-              className="rounded-2xl border border-black/[0.07] bg-white/65 backdrop-blur-sm overflow-hidden"
+              className="animate-enter rounded-2xl border border-black/[0.07] bg-white/65 backdrop-blur-sm overflow-hidden"
             >
               <div className="flex items-start gap-4 p-4">
                 <div className="relative w-48 shrink-0 overflow-hidden rounded-xl border border-black/[0.08] bg-black">
@@ -283,89 +255,117 @@ export default function VideosPage() {
                       <p className="truncate text-sm font-medium text-gray-800">{item.file.name}</p>
                       <p className="mt-0.5 text-xs text-gray-500">{formatBytes(item.file.size)}</p>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      {item.status === "pending" && (
-                        <button
-                          onClick={() => analyzeOne(item)}
-                          className="flex h-7 items-center gap-1 rounded-lg border border-black/[0.12] px-2.5 text-xs font-medium text-gray-700 transition-colors hover:border-black/[0.2] hover:text-gray-900"
-                        >
-                          <Play className="h-3 w-3" />
-                          Analyze
-                        </button>
-                      )}
-                      {(item.status === "complete" || item.status === "error") && (
-                        <button
-                          onClick={() => analyzeOne(item)}
-                          title="Re-run analysis"
-                          className="flex h-7 items-center gap-1 rounded-lg border border-black/[0.12] px-2.5 text-xs font-medium text-gray-700 transition-colors hover:border-black/[0.2] hover:text-gray-900"
-                        >
-                          <RefreshCw className="h-3 w-3" />
-                          Re-run
-                        </button>
-                      )}
-                      <button
-                        onClick={() => removeVideo(item.id)}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-black/[0.05] hover:text-gray-700"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => removeVideo(item.id)}
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-black/[0.05] hover:text-gray-700"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
                   </div>
 
-                  {item.status === "analyzing" && (
-                    <div className="mt-3 flex items-center gap-2 text-xs text-gray-600">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      Analyzing with Gemini — large clips can take a couple of minutes…
-                    </div>
-                  )}
-
-                  {item.status === "error" && (
-                    <div className="mt-3 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
-                      <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-500" />
-                      <p className="text-xs text-red-600">{item.error}</p>
-                    </div>
-                  )}
+                  {/* Per-style status chips */}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {VIDEO_CAPTION_STYLES.map((s) => {
+                      const r = item.results[s.key];
+                      return (
+                        <span
+                          key={s.key}
+                          className={cn(
+                            "flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[11px] font-medium",
+                            r.status === "complete" &&
+                              "border-emerald-200 bg-emerald-50 text-emerald-700",
+                            r.status === "error" && "border-red-200 bg-red-50 text-red-600",
+                            (r.status === "pending" || r.status === "analyzing") &&
+                              "border-black/[0.08] bg-black/[0.03] text-gray-600"
+                          )}
+                        >
+                          {r.status === "analyzing" && (
+                            <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                          )}
+                          {r.status === "complete" && <Check className="h-2.5 w-2.5" />}
+                          {r.status === "error" && <AlertCircle className="h-2.5 w-2.5" />}
+                          {s.label}
+                          {r.status === "pending" && " · queued"}
+                        </span>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
-              {item.status === "complete" && item.caption && (
-                <div className="border-t border-black/[0.06]">
-                  <div className="flex items-center justify-between px-4 py-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-500">
-                      {VIDEO_CAPTION_STYLES.find((s) => s.key === item.styleKey)?.label ??
-                        "Caption"}
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => copyCaption(item)}
-                        className="flex h-7 items-center gap-1 rounded-lg px-2.5 text-xs font-medium text-gray-600 transition-colors hover:bg-black/[0.05] hover:text-gray-900"
-                      >
-                        {copiedId === item.id ? (
+              {/* One caption section per style */}
+              {VIDEO_CAPTION_STYLES.map((s) => {
+                const r = item.results[s.key];
+                if (r.status === "pending") return null;
+                return (
+                  <div key={s.key} className="border-t border-black/[0.06]">
+                    <div className="flex items-center justify-between px-4 py-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-500">
+                        {s.label}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {r.status === "complete" && (
                           <>
-                            <Check className="h-3 w-3 text-emerald-600" />
-                            Copied
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="h-3 w-3" />
-                            Copy
+                            <button
+                              onClick={() => copyCaption(item, s.key)}
+                              className="flex h-7 items-center gap-1 rounded-lg px-2.5 text-xs font-medium text-gray-600 transition-colors hover:bg-black/[0.05] hover:text-gray-900"
+                            >
+                              {copiedId === `${item.id}:${s.key}` ? (
+                                <>
+                                  <Check className="h-3 w-3 text-emerald-600" />
+                                  Copied
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="h-3 w-3" />
+                                  Copy
+                                </>
+                              )}
+                            </button>
+                            <button
+                              onClick={() => downloadCaption(item, s.key)}
+                              className="flex h-7 items-center gap-1 rounded-lg px-2.5 text-xs font-medium text-gray-600 transition-colors hover:bg-black/[0.05] hover:text-gray-900"
+                            >
+                              <Download className="h-3 w-3" />
+                              .txt
+                            </button>
                           </>
                         )}
-                      </button>
-                      <button
-                        onClick={() => downloadCaption(item)}
-                        className="flex h-7 items-center gap-1 rounded-lg px-2.5 text-xs font-medium text-gray-600 transition-colors hover:bg-black/[0.05] hover:text-gray-900"
-                      >
-                        <Download className="h-3 w-3" />
-                        .txt
-                      </button>
+                        {(r.status === "complete" || r.status === "error") && (
+                          <button
+                            onClick={() => retryStyle(item, s.key)}
+                            title={`Re-run ${s.label}`}
+                            className="flex h-7 items-center gap-1 rounded-lg px-2.5 text-xs font-medium text-gray-600 transition-colors hover:bg-black/[0.05] hover:text-gray-900"
+                          >
+                            <RefreshCw className="h-3 w-3" />
+                            Re-run
+                          </button>
+                        )}
+                      </div>
                     </div>
+
+                    {r.status === "analyzing" && (
+                      <div className="flex items-center gap-2 border-t border-black/[0.06] bg-black/[0.02] px-4 py-3 text-xs text-gray-600">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Analyzing with Gemini — large clips can take a couple of minutes…
+                      </div>
+                    )}
+
+                    {r.status === "error" && (
+                      <div className="flex items-start gap-2 border-t border-black/[0.06] bg-red-50/60 px-4 py-3">
+                        <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-500" />
+                        <p className="text-xs text-red-600">{r.error}</p>
+                      </div>
+                    )}
+
+                    {r.status === "complete" && r.caption && (
+                      <pre className="animate-enter max-h-96 overflow-y-auto whitespace-pre-wrap border-t border-black/[0.06] bg-black/[0.02] px-4 py-3 font-sans text-xs leading-relaxed text-gray-800">
+                        {r.caption}
+                      </pre>
+                    )}
                   </div>
-                  <pre className="max-h-96 overflow-y-auto whitespace-pre-wrap border-t border-black/[0.06] bg-black/[0.02] px-4 py-3 font-sans text-xs leading-relaxed text-gray-800">
-                    {item.caption}
-                  </pre>
-                </div>
-              )}
+                );
+              })}
             </section>
           ))}
         </div>
