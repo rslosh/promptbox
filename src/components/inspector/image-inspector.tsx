@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { copyToClipboard, formatDate } from "@/lib/utils";
 import { supabase, getImageUrl, getMediaThumbUrl } from "@/lib/supabase/client";
 import { reorderForDisplay } from "@/lib/tagger";
+import { VIDEO_CAPTION_STYLES } from "@/lib/video-analyzer";
 import type { ImageAsset, AssetTag, Prompt, PromptVersion } from "@/lib/supabase/types";
 import {
   Copy,
@@ -415,6 +416,16 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
 
   const imageUrl = getImageUrl(image.storage_path);
 
+  // Selector shows oldest-first so labels read Prompt 1 → Prompt 2 left to
+  // right. Video captions are labeled by their style instead of a number.
+  const displayPrompts = [...prompts].reverse();
+  function promptLabel(prompt: PromptWithVersions, index: number): string {
+    const style = (prompt.model_params as { style?: string } | null)?.style;
+    const styleMeta = VIDEO_CAPTION_STYLES.find((s) => s.key === style);
+    if (styleMeta) return styleMeta.label;
+    return `Prompt ${index + 1}`;
+  }
+
   const actionBar = (
     <div className="flex flex-wrap items-center gap-2">
       {variant === "page" && (
@@ -723,7 +734,7 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
 
         {prompts.length > 1 && (
           <div className="flex gap-2 overflow-x-auto pb-1">
-            {prompts.map((prompt, index) => (
+            {displayPrompts.map((prompt, index) => (
               <button
                 key={prompt.id}
                 onClick={() => setSelectedPrompt(prompt)}
@@ -734,7 +745,7 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
                     : "border-input text-secondary hover:border-strong hover:text-primary"
                 )}
               >
-                Prompt {prompts.length - index}
+                {promptLabel(prompt, index)}
               </button>
             ))}
           </div>
@@ -767,10 +778,9 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
                   justTagged && "animate-enter"
                 )}
               >
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-secondary">
-                  {selectedPrompt.natural_prompt}
-                </p>
-                <div className="mt-2 flex items-center gap-0.5 border-t border-hairline pt-2">
+                {/* Actions live above the text — long captions (videos)
+                    shouldn't require scrolling to reach Copy */}
+                <div className="mb-2 flex items-center gap-0.5 border-b border-hairline pb-2">
                   <button
                     onClick={() =>
                       handleCopy(selectedPrompt.natural_prompt, `natural-${selectedPrompt.id}`)
@@ -802,6 +812,9 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
                     <Trash2 className="h-3 w-3" />
                   </button>
                 </div>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-secondary">
+                  {selectedPrompt.natural_prompt}
+                </p>
               </div>
             )}
 
@@ -959,7 +972,7 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
       {/* Prompt selector (multiple prompts) */}
       {prompts.length > 1 && (
         <div className="flex gap-2 overflow-x-auto pb-1">
-          {prompts.map((prompt, index) => (
+          {displayPrompts.map((prompt, index) => (
             <button
               key={prompt.id}
               onClick={() => setSelectedPrompt(prompt)}
@@ -970,7 +983,7 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
                   : "border-input text-secondary hover:border-strong hover:text-primary"
               )}
             >
-              Prompt {prompts.length - index}
+              {promptLabel(prompt, index)}
             </button>
           ))}
         </div>
