@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { IconWell } from "@/components/ui/icon-well";
 import { cn } from "@/lib/utils";
+import { VIDEO_CAPTION_STYLES, type VideoCaptionStyleKey } from "@/lib/video-analyzer";
 import {
   Clapperboard,
   X,
@@ -24,8 +25,12 @@ interface VideoItem {
   preview: string;
   status: "pending" | "analyzing" | "complete" | "error";
   caption?: string;
+  /** Which caption style produced `caption`. */
+  styleKey?: VideoCaptionStyleKey;
   error?: string;
 }
+
+const STYLE_STORAGE_KEY = "promptbox_video_style";
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
@@ -36,6 +41,20 @@ export default function VideosPage() {
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [styleKey, setStyleKey] = useState<VideoCaptionStyleKey>("breakdown");
+
+  // Restore the last-used style (deferred to an effect so SSR markup matches).
+  useEffect(() => {
+    const stored = localStorage.getItem(STYLE_STORAGE_KEY);
+    if (VIDEO_CAPTION_STYLES.some((s) => s.key === stored)) {
+      setStyleKey(stored as VideoCaptionStyleKey);
+    }
+  }, []);
+
+  function selectStyle(key: VideoCaptionStyleKey) {
+    setStyleKey(key);
+    localStorage.setItem(STYLE_STORAGE_KEY, key);
+  }
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const items = acceptedFiles.map((file) => ({
@@ -69,20 +88,28 @@ export default function VideosPage() {
 
     try {
       const stored = localStorage.getItem("promptbox_settings");
-      const { geminiApiKey, geminiVideoPrompt, videoModel } = stored ? JSON.parse(stored) : {};
+      const settings = stored ? JSON.parse(stored) : {};
+      const style =
+        VIDEO_CAPTION_STYLES.find((s) => s.key === styleKey) ?? VIDEO_CAPTION_STYLES[0];
+      // User-edited prompt from Settings for this style, else the built-in.
+      const systemPrompt = settings[style.settingsKey] || style.defaultPrompt;
 
       const formData = new FormData();
       formData.append("file", item.file);
-      if (geminiApiKey) formData.append("apiKey", geminiApiKey);
-      if (geminiVideoPrompt) formData.append("systemPrompt", geminiVideoPrompt);
-      if (videoModel) formData.append("model", videoModel);
+      if (settings.geminiApiKey) formData.append("apiKey", settings.geminiApiKey);
+      formData.append("systemPrompt", systemPrompt);
+      if (settings.videoModel) formData.append("model", settings.videoModel);
 
       const res = await fetch("/api/analyze-video", { method: "POST", body: formData });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `Analysis failed (${res.status})`);
 
       setVideos((prev) =>
-        prev.map((v) => (v.id === item.id ? { ...v, status: "complete", caption: data.caption } : v))
+        prev.map((v) =>
+          v.id === item.id
+            ? { ...v, status: "complete", caption: data.caption, styleKey: style.key }
+            : v
+        )
       );
     } catch (error) {
       setVideos((prev) =>
@@ -136,6 +163,31 @@ export default function VideosPage() {
         <Header title="Videos" description="Upload clips and generate hyper-granular captions" />
 
         <div className="p-6 space-y-5 max-w-4xl">
+          {/* ── Caption style ── */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-gray-500">Caption style</span>
+            <div className="flex rounded-lg border border-black/[0.1] bg-black/[0.03] p-0.5">
+              {VIDEO_CAPTION_STYLES.map((s) => (
+                <button
+                  key={s.key}
+                  onClick={() => selectStyle(s.key)}
+                  title={s.description}
+                  className={cn(
+                    "flex h-7 items-center rounded-md px-3 text-xs font-medium transition-colors",
+                    styleKey === s.key
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
+                  )}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+            <span className="text-xs text-gray-500">
+              {VIDEO_CAPTION_STYLES.find((s) => s.key === styleKey)?.description}
+            </span>
+          </div>
+
           {/* ── Dropzone ── */}
           <section className="rounded-2xl border border-black/[0.07] bg-white/65 backdrop-blur-sm overflow-hidden">
             <div
@@ -280,7 +332,8 @@ export default function VideosPage() {
                 <div className="border-t border-black/[0.06]">
                   <div className="flex items-center justify-between px-4 py-2">
                     <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-500">
-                      Caption
+                      {VIDEO_CAPTION_STYLES.find((s) => s.key === item.styleKey)?.label ??
+                        "Caption"}
                     </span>
                     <div className="flex items-center gap-1.5">
                       <button

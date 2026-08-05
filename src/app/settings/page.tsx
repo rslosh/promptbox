@@ -20,6 +20,7 @@ import {
 } from "@/lib/tagger";
 import {
   VIDEOANALYZER_SYSTEM_INSTRUCTION as DEFAULT_VIDEOANALYZER_PROMPT,
+  MINIMAX_H3_SYSTEM_INSTRUCTION as DEFAULT_MINIMAX_PROMPT,
   VIDEO_MODEL,
 } from "@/lib/video-analyzer";
 
@@ -30,6 +31,7 @@ interface Settings {
   geminiProsePrompt: string;
   geminiScenePrompt: string;
   geminiVideoPrompt: string;
+  geminiVideoMinimaxPrompt: string;
   visionModel: string;
   proseModel: string;
   sceneModel: string;
@@ -226,6 +228,7 @@ export default function SettingsPage() {
     geminiProsePrompt: DEFAULT_PROMPTFORGE_PROMPT,
     geminiScenePrompt: DEFAULT_SCENECOMPOSE_PROMPT,
     geminiVideoPrompt: DEFAULT_VIDEOANALYZER_PROMPT,
+    geminiVideoMinimaxPrompt: DEFAULT_MINIMAX_PROMPT,
     visionModel: VISION_MODEL,
     proseModel: PROSE_MODEL,
     sceneModel: SCENE_MODEL,
@@ -830,6 +833,40 @@ export default function SettingsPage() {
                 value={settings.geminiVideoPrompt}
                 onChange={(e) =>
                   setSettings((prev) => ({ ...prev, geminiVideoPrompt: e.target.value }))
+                }
+                rows={12}
+                className="font-mono text-xs"
+              />
+            </CardContent>
+          </Card>
+
+          {/* MiniMax H3 Video Prompt */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div>
+                  <CardTitle>MiniMax H3 Video Prompt</CardTitle>
+                  <CardDescription>
+                    Second Videos-tab caption style — writes one copy-ready MiniMax H3
+                    text-to-video prompt describing the clip, ready to paste into the model.
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setSettings((prev) => ({ ...prev, geminiVideoMinimaxPrompt: DEFAULT_MINIMAX_PROMPT }))
+                  }
+                >
+                  Reset to Default
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                value={settings.geminiVideoMinimaxPrompt}
+                onChange={(e) =>
+                  setSettings((prev) => ({ ...prev, geminiVideoMinimaxPrompt: e.target.value }))
                 }
                 rows={12}
                 className="font-mono text-xs"

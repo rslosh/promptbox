@@ -65,7 +65,11 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const caption = (response.text || "").trim();
+    let caption = (response.text || "").trim();
+    // Some styles (MiniMax H3) instruct the model to return the prompt inside
+    // a code block — unwrap it so the caption is copy-ready plain text.
+    const fenced = caption.match(/^```[a-zA-Z]*\n([\s\S]*?)\n?```$/);
+    if (fenced) caption = fenced[1].trim();
     if (!caption) {
       return NextResponse.json({ error: "Gemini returned an empty response" }, { status: 500 });
     }
