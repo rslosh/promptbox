@@ -6,11 +6,13 @@ export interface ImageWithDetails extends ImageAsset {
 }
 
 export type SortBy = "newest" | "oldest" | "random";
+export type MediaFilter = "all" | "image" | "video";
 
 export interface GalleryFilters {
   selectedTags: string[];
   selectedCollections: string[];
   sourceFilter: "all" | "upload" | "gallery_dl";
+  mediaFilter: MediaFilter;
   sortBy: SortBy;
 }
 
@@ -33,6 +35,7 @@ export const DEFAULT_FILTERS: GalleryFilters = {
   selectedTags: [],
   selectedCollections: [],
   sourceFilter: "all",
+  mediaFilter: "all",
   sortBy: "newest",
 };
 

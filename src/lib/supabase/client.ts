@@ -26,6 +26,19 @@ export function getImageUrl(storagePath: string): string {
   return getStorageUrl(storagePath, "image_assets");
 }
 
+/** Grid-tile thumbnail for any asset: videos use their extracted poster
+ *  frame; images use the standard _thumb derivative. */
+export function getMediaThumbUrl(asset: {
+  storage_path: string;
+  media_type?: "image" | "video" | null;
+  poster_path?: string | null;
+}): string {
+  if (asset.media_type === "video" && asset.poster_path) {
+    return getStorageUrl(asset.poster_path, "image_thumbs");
+  }
+  return getThumbnailUrl(asset.storage_path);
+}
+
 export async function getSignedUrl(
   path: string,
   bucket: string = "image_assets",

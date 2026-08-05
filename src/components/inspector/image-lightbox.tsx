@@ -43,8 +43,12 @@ export function ImageLightbox({ imageId }: { imageId: string }) {
 
   // Fallback for the rare case the store has no entry (e.g. a link from a
   // page that isn't a grid): fetch the path once.
-  const [fetchedPath, setFetchedPath] = useState<string | null>(null);
-  const storagePath = entry?.storagePath ?? fetchedPath;
+  const [fetched, setFetched] = useState<{
+    storagePath: string;
+    mediaType: "image" | "video";
+  } | null>(null);
+  const storagePath = entry?.storagePath ?? fetched?.storagePath ?? null;
+  const isVideo = (entry?.mediaType ?? fetched?.mediaType) === "video";
 
   const [fullLoaded, setFullLoaded] = useState(false);
   const [zoom, setZoom] = useState(1);
@@ -58,10 +62,19 @@ export function ImageLightbox({ imageId }: { imageId: string }) {
     if (!entry) {
       supabase
         .from("image_assets")
-        .select("storage_path")
+        .select("storage_path, media_type")
         .eq("id", imageId)
         .single()
-        .then(({ data }) => setFetchedPath(data?.storage_path ?? null));
+        .then(({ data }) =>
+          setFetched(
+            data
+              ? {
+                  storagePath: data.storage_path,
+                  mediaType: (data.media_type as "image" | "video") ?? "image",
+                }
+              : null
+          )
+        );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageId]);
@@ -76,9 +89,10 @@ export function ImageLightbox({ imageId }: { imageId: string }) {
   }, [zoom]);
 
   // Preload neighbor full-res images so arrow navigation is instant
+  // (videos are streamed by the <video> element — nothing to preload here).
   useEffect(() => {
     [prev, next].forEach((n) => {
-      if (n) {
+      if (n && n.mediaType !== "video") {
         const img = new window.Image();
         img.src = getImageUrl(n.storagePath);
       }
@@ -275,7 +289,26 @@ export function ImageLightbox({ imageId }: { imageId: string }) {
             </button>
           )}
 
-          {storagePath && (
+          {storagePath && isVideo && (
+            <div
+              className="relative flex h-full w-full items-center justify-center p-4"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) router.back();
+              }}
+            >
+              <video
+                key={imageId}
+                src={getImageUrl(storagePath)}
+                controls
+                autoPlay
+                loop
+                playsInline
+                className="max-h-full max-w-full rounded-lg"
+              />
+            </div>
+          )}
+
+          {storagePath && !isVideo && (
             <div
               ref={stageScrollRef}
               className="relative flex h-full w-full overflow-auto"

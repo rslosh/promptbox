@@ -2,9 +2,9 @@
 
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { X, ChevronDown, Check, FolderOpen, ArrowUpDown, Shuffle } from "lucide-react";
+import { X, ChevronDown, Check, FolderOpen, ArrowUpDown, Shuffle, ImageIcon, Clapperboard } from "lucide-react";
 import type { Collection } from "@/lib/supabase/types";
-import type { SortBy } from "@/lib/gallery-cache";
+import type { SortBy, MediaFilter } from "@/lib/gallery-cache";
 
 const SORT_OPTIONS: { value: SortBy; label: string }[] = [
   { value: "newest", label: "Newest first" },
@@ -18,6 +18,8 @@ interface FilterBarProps {
   onTagsChange: (tags: string[]) => void;
   sourceFilter: "all" | "upload" | "gallery_dl";
   onSourceFilterChange: (source: "all" | "upload" | "gallery_dl") => void;
+  mediaFilter?: MediaFilter;
+  onMediaFilterChange?: (media: MediaFilter) => void;
   sortBy: SortBy;
   onSortChange: (sort: SortBy) => void;
   onShuffle?: () => void;
@@ -32,6 +34,8 @@ export function FilterBar({
   onTagsChange,
   sourceFilter,
   onSourceFilterChange,
+  mediaFilter = "all",
+  onMediaFilterChange,
   sortBy,
   onSortChange,
   onShuffle,
@@ -112,6 +116,33 @@ export function FilterBar({
             </button>
           ))}
         </div>
+
+        {/* Media type pills */}
+        {onMediaFilterChange && (
+          <div className="flex items-center rounded-lg border border-hairline bg-hover-soft p-0.5">
+            {(
+              [
+                { value: "all", label: "All", icon: null },
+                { value: "image", label: "Images", icon: ImageIcon },
+                { value: "video", label: "Videos", icon: Clapperboard },
+              ] as const
+            ).map(({ value, label, icon: Icon }) => (
+              <button
+                key={value}
+                onClick={() => onMediaFilterChange(value)}
+                className={cn(
+                  "flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                  mediaFilter === value
+                    ? "bg-surface shadow-sm text-primary"
+                    : "text-secondary hover:text-primary"
+                )}
+              >
+                {Icon && <Icon className="h-3 w-3" />}
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="h-4 w-px bg-accent-faint" />
 

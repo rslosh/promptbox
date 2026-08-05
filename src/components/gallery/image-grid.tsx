@@ -7,16 +7,23 @@ import { useRouter } from "next/navigation";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { setGalleryNav } from "@/lib/gallery-nav";
 import { cn } from "@/lib/utils";
-import { Check, Eye, Copy, Trash2, Braces, Sparkles } from "lucide-react";
+import { Check, Eye, Copy, Trash2, Braces, Sparkles, Play } from "lucide-react";
 import type { ImageAsset, AssetTag, Prompt } from "@/lib/supabase/types";
 import { EmptyState } from "@/components/ui/empty-state";
-import { getThumbnailUrl, getImageUrl } from "@/lib/supabase/client";
+import { getThumbnailUrl, getImageUrl, getMediaThumbUrl } from "@/lib/supabase/client";
 import { copyToClipboard, formatRelativeTime } from "@/lib/utils";
 import type { LayoutType, ImageSize } from "./view-options";
 
 interface ImageWithDetails extends ImageAsset {
   tags?: AssetTag[];
   prompts?: Prompt[];
+}
+
+// 24.3 → "0:24"; null → "video" (duration unknown)
+function formatDuration(seconds: number | null | undefined): string {
+  if (typeof seconds !== "number" || !Number.isFinite(seconds)) return "video";
+  const s = Math.round(seconds);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
 interface ImageGridProps {
@@ -80,7 +87,14 @@ export function ImageGrid({
   // Publish the current grid order so the lightbox can arrow-key through it
   // and paint thumbnails instantly without refetching
   useEffect(() => {
-    setGalleryNav(images.map((i) => ({ id: i.id, storagePath: i.storage_path })));
+    setGalleryNav(
+      images.map((i) => ({
+        id: i.id,
+        storagePath: i.storage_path,
+        mediaType: i.media_type ?? "image",
+        posterPath: i.poster_path ?? null,
+      }))
+    );
   }, [images]);
 
   // ── Virtualization ──────────────────────────────────────────────────────
@@ -217,8 +231,13 @@ export function ImageGrid({
     const isDeleting = deletingId === image.id;
     const isConfirmingDelete = confirmDeleteId === image.id;
 
+    const isVideo = image.media_type === "video";
     const useFallback = failedImages.has(image.id);
-    const imageUrl = useFallback
+    // Videos always render their poster frame; images fall back from the
+    // thumbnail to the original if the thumb 404s.
+    const imageUrl = isVideo
+      ? getMediaThumbUrl(image)
+      : useFallback
       ? getImageUrl(image.storage_path)
       : getThumbnailUrl(image.storage_path);
 
@@ -254,6 +273,15 @@ export function ImageGrid({
             }
             onError={() => handleImageError(image.id)}
           />
+
+          {/* Video badge — play glyph + duration, bottom-right so it clears
+              the tagging badge and hover chips (bottom-left) */}
+          {isVideo && (
+            <span className="pointer-events-none absolute bottom-2 right-2 z-20 flex items-center gap-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
+              <Play className="h-2.5 w-2.5 fill-current" />
+              {formatDuration(image.duration_seconds)}
+            </span>
+          )}
 
           {/* Auto-tagging badge — visible without hover so in-progress
               captioning is obvious at a glance. It shares the bottom-left

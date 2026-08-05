@@ -11,7 +11,7 @@ import { Panel } from "@/components/ui/panel";
 import { Chip } from "@/components/ui/chip";
 import { cn } from "@/lib/utils";
 import { copyToClipboard, formatDate } from "@/lib/utils";
-import { supabase, getImageUrl } from "@/lib/supabase/client";
+import { supabase, getImageUrl, getMediaThumbUrl } from "@/lib/supabase/client";
 import { reorderForDisplay } from "@/lib/tagger";
 import type { ImageAsset, AssetTag, Prompt, PromptVersion } from "@/lib/supabase/types";
 import {
@@ -476,7 +476,7 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
           <div className="relative overflow-hidden rounded-lg border border-hairline bg-hover-soft">
             <div className="relative aspect-[4/3]">
               <Image
-                src={getImageUrl(image.storage_path)}
+                src={getMediaThumbUrl(image)}
                 alt=""
                 fill
                 className="object-cover"
@@ -484,7 +484,7 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
               />
             </div>
             <span className="absolute right-2 top-2 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
-              {image.format}
+              {image.media_type === "video" ? `${image.format} · video` : image.format}
             </span>
           </div>
         )}
@@ -1198,17 +1198,26 @@ export function ImageInspector({ imageId, variant }: ImageInspectorProps) {
     <div className="grid gap-5 lg:grid-cols-2">
       {/* ── Left column ── */}
       <div className="space-y-4">
-        {/* Image preview */}
+        {/* Media preview */}
         <Panel className="overflow-hidden">
-          <div className="relative aspect-square">
-            <Image
+          {image.media_type === "video" ? (
+            <video
               src={imageUrl}
-              alt=""
-              fill
-              className="object-contain"
-              sizes="(max-width: 1024px) 100vw, 50vw"
+              controls
+              playsInline
+              className="aspect-square w-full bg-black object-contain"
             />
-          </div>
+          ) : (
+            <div className="relative aspect-square">
+              <Image
+                src={imageUrl}
+                alt=""
+                fill
+                className="object-contain"
+                sizes="(max-width: 1024px) 100vw, 50vw"
+              />
+            </div>
+          )}
         </Panel>
 
         {actionBar}

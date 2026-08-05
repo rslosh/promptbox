@@ -5,6 +5,8 @@
 export interface GalleryNavEntry {
   id: string;
   storagePath: string;
+  mediaType?: "image" | "video";
+  posterPath?: string | null;
 }
 
 let entries: GalleryNavEntry[] = [];

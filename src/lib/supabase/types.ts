@@ -19,6 +19,9 @@ export interface Database {
           width: number;
           height: number;
           format: string;
+          media_type: "image" | "video";
+          duration_seconds: number | null;
+          poster_path: string | null;
           name: string | null;
           note: string | null;
           created_at: string;
@@ -33,6 +36,9 @@ export interface Database {
           width: number;
           height: number;
           format: string;
+          media_type?: "image" | "video";
+          duration_seconds?: number | null;
+          poster_path?: string | null;
           name?: string | null;
           note?: string | null;
           created_at?: string;

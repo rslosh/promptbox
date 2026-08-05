@@ -28,6 +28,10 @@ interface VideoItem {
   id: string;
   file: File;
   preview: string;
+  /** Supabase asset id once the video is filed into the library. */
+  assetId?: string;
+  upload: "pending" | "uploading" | "complete" | "error";
+  uploadError?: string;
   /** One result per caption style — both styles run for every video. */
   results: Record<VideoCaptionStyleKey, StyleResult>;
 }
@@ -56,9 +60,11 @@ export default function VideosPage() {
       id: crypto.randomUUID(),
       file,
       preview: URL.createObjectURL(file),
+      upload: "pending" as const,
       results: freshResults(),
     }));
-    // Both caption styles fire automatically — the queue effect picks these up.
+    // Upload + both caption styles fire automatically — the queue effect
+    // picks these up.
     setVideos((prev) => [...prev, ...items]);
   }, []);
 
@@ -85,7 +91,43 @@ export default function VideosPage() {
     );
   }
 
-  async function analyzeStyle(item: VideoItem, styleKey: VideoCaptionStyleKey) {
+  /** Uploads the video into the library. Returns the asset id, or null on failure. */
+  async function uploadVideo(item: VideoItem): Promise<string | null> {
+    setVideos((prev) =>
+      prev.map((v) => (v.id === item.id ? { ...v, upload: "uploading" } : v))
+    );
+    try {
+      const formData = new FormData();
+      formData.append("file", item.file);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Upload failed (${res.status})`);
+      const assetId: string = data.asset.id;
+      setVideos((prev) =>
+        prev.map((v) => (v.id === item.id ? { ...v, upload: "complete", assetId } : v))
+      );
+      return assetId;
+    } catch (error) {
+      setVideos((prev) =>
+        prev.map((v) =>
+          v.id === item.id
+            ? {
+                ...v,
+                upload: "error",
+                uploadError: error instanceof Error ? error.message : String(error),
+              }
+            : v
+        )
+      );
+      return null;
+    }
+  }
+
+  async function analyzeStyle(
+    item: VideoItem,
+    assetId: string,
+    styleKey: VideoCaptionStyleKey
+  ) {
     const style = VIDEO_CAPTION_STYLES.find((s) => s.key === styleKey)!;
     setStyleResult(item.id, styleKey, { status: "analyzing" });
 
@@ -96,8 +138,11 @@ export default function VideosPage() {
       const systemPrompt =
         (settings as Record<string, string>)[style.settingsKey] || style.defaultPrompt;
 
+      // Caption against the stored asset — the server reads the video from
+      // storage and persists the caption as a prompt row on the asset.
       const formData = new FormData();
-      formData.append("file", item.file);
+      formData.append("assetId", assetId);
+      formData.append("styleKey", styleKey);
       if (settings.geminiApiKey) formData.append("apiKey", settings.geminiApiKey);
       formData.append("systemPrompt", systemPrompt);
       if (settings.videoModel) formData.append("model", settings.videoModel);
@@ -115,20 +160,30 @@ export default function VideosPage() {
     }
   }
 
-  // Queue runner: whenever any video has a pending style and nothing is in
-  // flight, analyze the next video's pending styles (both in parallel).
+  // Queue runner: one video at a time — upload it into the library first,
+  // then run its pending caption styles in parallel.
   useEffect(() => {
     if (processingRef.current) return;
-    const next = videos.find((v) =>
-      VIDEO_CAPTION_STYLES.some((s) => v.results[s.key].status === "pending")
+    const next = videos.find(
+      (v) =>
+        v.upload === "pending" ||
+        (v.upload === "complete" &&
+          VIDEO_CAPTION_STYLES.some((s) => v.results[s.key].status === "pending"))
     );
     if (!next) return;
 
     processingRef.current = true;
-    const pendingStyles = VIDEO_CAPTION_STYLES.filter(
-      (s) => next.results[s.key].status === "pending"
-    );
-    Promise.all(pendingStyles.map((s) => analyzeStyle(next, s.key))).finally(() => {
+    (async () => {
+      let assetId = next.assetId ?? null;
+      if (next.upload === "pending") {
+        assetId = await uploadVideo(next);
+        if (!assetId) return; // upload failed — styles stay pending until retried
+      }
+      const pendingStyles = VIDEO_CAPTION_STYLES.filter(
+        (s) => next.results[s.key].status === "pending"
+      );
+      await Promise.all(pendingStyles.map((s) => analyzeStyle(next, assetId!, s.key)));
+    })().finally(() => {
       processingRef.current = false;
       setQueueTick((t) => t + 1); // re-check for more queued work
     });
@@ -167,10 +222,14 @@ export default function VideosPage() {
       sum + VIDEO_CAPTION_STYLES.filter((s) => v.results[s.key].status === "complete").length,
     0
   );
-  const isWorking = videos.some((v) =>
-    VIDEO_CAPTION_STYLES.some((s) =>
-      ["pending", "analyzing"].includes(v.results[s.key].status)
-    )
+  const isWorking = videos.some(
+    (v) =>
+      v.upload === "pending" ||
+      v.upload === "uploading" ||
+      (v.upload === "complete" &&
+        VIDEO_CAPTION_STYLES.some((s) =>
+          ["pending", "analyzing"].includes(v.results[s.key].status)
+        ))
   );
 
   return (
@@ -253,15 +312,55 @@ export default function VideosPage() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-gray-800">{item.file.name}</p>
-                      <p className="mt-0.5 text-xs text-gray-500">{formatBytes(item.file.size)}</p>
+                      <p className="mt-0.5 flex items-center gap-2 text-xs text-gray-500">
+                        {formatBytes(item.file.size)}
+                        {item.upload === "uploading" && (
+                          <span className="flex items-center gap-1 text-gray-600">
+                            <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                            Saving to library…
+                          </span>
+                        )}
+                        {item.upload === "complete" && item.assetId && (
+                          <a
+                            href={`/image/${item.assetId}`}
+                            className="flex items-center gap-1 text-emerald-700 hover:underline"
+                          >
+                            <Check className="h-2.5 w-2.5" />
+                            In library
+                          </a>
+                        )}
+                      </p>
                     </div>
                     <button
                       onClick={() => removeVideo(item.id)}
+                      title="Remove from this list (stays in the library)"
                       className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-black/[0.05] hover:text-gray-700"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
+
+                  {item.upload === "error" && (
+                    <div className="mt-3 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-500" />
+                      <p className="flex-1 text-xs text-red-600">{item.uploadError}</p>
+                      <button
+                        onClick={() =>
+                          setVideos((prev) =>
+                            prev.map((v) =>
+                              v.id === item.id
+                                ? { ...v, upload: "pending", uploadError: undefined }
+                                : v
+                            )
+                          )
+                        }
+                        className="flex h-6 items-center gap-1 rounded-md px-2 text-xs font-medium text-red-700 transition-colors hover:bg-red-100"
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                        Retry
+                      </button>
+                    </div>
+                  )}
 
                   {/* Per-style status chips */}
                   <div className="mt-3 flex flex-wrap gap-2">

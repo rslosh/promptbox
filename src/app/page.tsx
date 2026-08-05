@@ -20,6 +20,7 @@ import {
   updateGalleryCache,
   clearGalleryRandom,
   type SortBy,
+  type MediaFilter,
   setGalleryScroll,
   type ImageWithDetails,
 } from "@/lib/gallery-cache";
@@ -48,6 +49,10 @@ function GalleryView() {
     cached.filters.sourceFilter
   );
   const [sortBy, setSortBy] = useState<SortBy>(cached.filters.sortBy);
+  // ?? guards a stale module cache persisted before mediaFilter existed.
+  const [mediaFilter, setMediaFilter] = useState<MediaFilter>(
+    cached.filters.mediaFilter ?? "all"
+  );
   // Bumped to force a fresh shuffle when the user (re)selects Random.
   const [randomNonce, setRandomNonce] = useState(0);
 
@@ -78,7 +83,7 @@ function GalleryView() {
   useEffect(() => {
     fetchImages();
     fetchTags();
-  }, [selectedTags, selectedCollections, sourceFilter, sortBy, unfiled, randomNonce]);
+  }, [selectedTags, selectedCollections, sourceFilter, mediaFilter, sortBy, unfiled, randomNonce]);
 
   useEffect(() => { fetchCollections(); }, []);
 
@@ -114,7 +119,7 @@ function GalleryView() {
       allImagesCount,
       tags: allTags,
       collections,
-      filters: { selectedTags, selectedCollections, sourceFilter, sortBy },
+      filters: { selectedTags, selectedCollections, sourceFilter, mediaFilter, sortBy },
     });
   }, [
     unfiled,
@@ -125,6 +130,7 @@ function GalleryView() {
     selectedTags,
     selectedCollections,
     sourceFilter,
+    mediaFilter,
     sortBy,
   ]);
 
@@ -236,6 +242,7 @@ function GalleryView() {
         .range(from, from + PAGE - 1);
 
       if (sourceFilter !== "all") query = query.eq("source_type", sourceFilter);
+      if (mediaFilter !== "all") query = query.eq("media_type", mediaFilter);
       if (collectionAssetIds) query = query.in("id", collectionAssetIds);
 
       const { data } = await query;
@@ -431,6 +438,8 @@ function GalleryView() {
             selectedTags={selectedTags}
             onTagsChange={setSelectedTags}
             sourceFilter={sourceFilter}
+            mediaFilter={mediaFilter}
+            onMediaFilterChange={setMediaFilter}
             onSourceFilterChange={setSourceFilter}
             sortBy={sortBy}
             onSortChange={handleSortChange}
